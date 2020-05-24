@@ -25,3 +25,15 @@ tools/**/*.json
 tools/**/**/*.json
 tools/**/**/**/*.json
 
+venv
+
+.idea
+
+log.txt
+*.txt
+
+data/THUMOS
+
+checkpoints
+
+data/.DS_STORE
