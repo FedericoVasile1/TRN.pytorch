@@ -96,17 +96,28 @@ def main(args):
                         loss = enc_loss + dec_loss
                         loss.backward()
                         optimizer.step()
-                    #else:
-                    # Prepare metrics for encoder
-                    enc_score = softmax(enc_score).cpu().numpy()
-                    enc_target = enc_target.cpu().numpy()
-                    enc_score_metrics.extend(enc_score)
-                    enc_target_metrics.extend(enc_target)
-                    # Prepare metrics for decoder
-                    dec_score = softmax(dec_score).cpu().numpy()
-                    dec_target = dec_target.cpu().numpy()
-                    dec_score_metrics.extend(dec_score)
-                    dec_target_metrics.extend(dec_target)
+
+                        # Prepare metrics for encoder
+                        enc_score = softmax(enc_score).cpu().detach().numpy()
+                        enc_target = enc_target.cpu().detach().numpy()
+                        enc_score_metrics.extend(enc_score)
+                        enc_target_metrics.extend(enc_target)
+                        # Prepare metrics for decoder
+                        dec_score = softmax(dec_score).cpu().detach().numpy()
+                        dec_target = dec_target.cpu().detach().numpy()
+                        dec_score_metrics.extend(dec_score)
+                        dec_target_metrics.extend(dec_target)
+                    else:
+                        # Prepare metrics for encoder
+                        enc_score = softmax(enc_score).cpu().numpy()
+                        enc_target = enc_target.cpu().numpy()
+                        enc_score_metrics.extend(enc_score)
+                        enc_target_metrics.extend(enc_target)
+                        # Prepare metrics for decoder
+                        dec_score = softmax(dec_score).cpu().numpy()
+                        dec_target = dec_target.cpu().numpy()
+                        dec_score_metrics.extend(dec_score)
+                        dec_target_metrics.extend(dec_target)
         end = time.time()
 
         if args.debug:

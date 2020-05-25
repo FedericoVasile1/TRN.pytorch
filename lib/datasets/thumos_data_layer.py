@@ -15,6 +15,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
         self.training = phase=='train'
 
         self.inputs = []
+        print(self.sessions)
         for session in self.sessions:
             target = np.load(osp.join(self.data_root, 'target', session+'.npy'))
             seed = np.random.randint(self.enc_steps) if self.training else 0
