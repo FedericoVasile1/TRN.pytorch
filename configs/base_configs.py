@@ -13,6 +13,7 @@ def parse_base_args():
     parser.add_argument('--gpu', default='0', type=str)
     parser.add_argument('--num_workers', default=4, type=int)
     parser.add_argument('--epochs', default=21, type=int)
+    parser.add_argument('--save_last', action='store_true')
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--mini_batch', default=0, type=int)
     parser.add_argument('--lr', default=5e-04, type=float)

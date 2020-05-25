@@ -18,7 +18,7 @@ def main(args):
     if not osp.isdir(save_dir):
         os.makedirs(save_dir)
     command = 'python ' + ' '.join(sys.argv)
-    logger = utl.setup_logger(osp.join(this_dir, 'log.txt'), command=command)
+    logger = utl.setup_logger(osp.join(this_dir, 'log.txt'), args.phases, command=command)
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     utl.set_seed(int(args.seed))
@@ -48,19 +48,22 @@ def main(args):
             for param_group in optimizer.param_groups:
                 param_group['lr'] = args.lr
 
+        # TODO: try to move it outside of the epochs loop. Now this is here
+        #  due to the data augmentation made in TRNTHUMOSDataLayer.__init__ because
+        #  data augmentation must be done at the start of every epoch.
         data_loaders = {
             phase: utl.build_data_loader(args, phase)
             for phase in args.phases
         }
 
         enc_losses = {phase: 0.0 for phase in args.phases}
-        enc_score_metrics = []
-        enc_target_metrics = []
-        enc_mAP = 0.0
+        enc_score_metrics = {phase: [] for phase in args.phases}
+        enc_target_metrics = {phase: [] for phase in args.phases}
+        enc_mAP = {phase: 0.0 for phase in args.phases}
         dec_losses = {phase: 0.0 for phase in args.phases}
-        dec_score_metrics = []
-        dec_target_metrics = []
-        dec_mAP = 0.0
+        dec_score_metrics = {phase: [] for phase in args.phases}
+        dec_target_metrics = {phase: [] for phase in args.phases}
+        dec_mAP = {phase: 0.0 for phase in args.phases}
 
         start = time.time()
         for phase in args.phases:
@@ -97,68 +100,59 @@ def main(args):
                         loss.backward()
                         optimizer.step()
 
-                        # Prepare metrics for encoder
-                        enc_score = softmax(enc_score).cpu().detach().numpy()
-                        enc_target = enc_target.cpu().detach().numpy()
-                        enc_score_metrics.extend(enc_score)
-                        enc_target_metrics.extend(enc_target)
-                        # Prepare metrics for decoder
-                        dec_score = softmax(dec_score).cpu().detach().numpy()
-                        dec_target = dec_target.cpu().detach().numpy()
-                        dec_score_metrics.extend(dec_score)
-                        dec_target_metrics.extend(dec_target)
-                    else:
-                        # Prepare metrics for encoder
-                        enc_score = softmax(enc_score).cpu().numpy()
-                        enc_target = enc_target.cpu().numpy()
-                        enc_score_metrics.extend(enc_score)
-                        enc_target_metrics.extend(enc_target)
-                        # Prepare metrics for decoder
-                        dec_score = softmax(dec_score).cpu().numpy()
-                        dec_target = dec_target.cpu().numpy()
-                        dec_score_metrics.extend(dec_score)
-                        dec_target_metrics.extend(dec_target)
+                    # Prepare metrics for encoder
+                    enc_score = softmax(enc_score).cpu().detach().numpy()
+                    enc_target = enc_target.cpu().detach().numpy()
+                    enc_score_metrics[phase].extend(enc_score)
+                    enc_target_metrics[phase].extend(enc_target)
+                    # Prepare metrics for decoder
+                    dec_score = softmax(dec_score).cpu().detach().numpy()
+                    dec_target = dec_target.cpu().detach().numpy()
+                    dec_score_metrics[phase].extend(dec_score)
+                    dec_target_metrics[phase].extend(dec_target)
+
         end = time.time()
 
         if args.debug:
             result_file = 'inputs-{}-epoch-{}.json'.format(args.inputs, epoch)
             # Compute result for encoder
-            enc_mAP = utl.compute_result_multilabel(
+            enc_mAP = {phase: utl.compute_result_multilabel(
                 args.class_index,
-                enc_score_metrics,
-                enc_target_metrics,
+                enc_score_metrics[phase],
+                enc_target_metrics[phase],
                 save_dir,
                 result_file,
                 ignore_class=[0,21],
                 save=True,
-            )
+                verbose=False,
+            ) for phase in args.phases}
             # Compute result for decoder
-            dec_mAP = utl.compute_result_multilabel(
+            dec_mAP = {phase: utl.compute_result_multilabel(
                 args.class_index,
-                dec_score_metrics,
-                dec_target_metrics,
+                dec_score_metrics[phase],
+                dec_target_metrics[phase],
                 save_dir,
                 result_file,
                 ignore_class=[0,21],
                 save=False,
-            )
+                verbose=False
+            ) for phase in args.phases}
 
-        print('prima')
         # Output result
         logger.output(epoch, enc_losses, dec_losses,
-                      len(data_loaders['train'].dataset), len(data_loaders['test'].dataset),
+                      {phase: len(data_loaders[phase].dataset) for phase in args.phases},
                       enc_mAP, dec_mAP, end - start, debug=args.debug)
-        print('dopo')
 
-        '''
-        # Save model
-        checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-        }, osp.join(save_dir, checkpoint_file))
-        '''
+        if args.save_last == False or epoch == (args.start_epoch + args.epochs - 1):
+            # Save model
+            checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }, osp.join(save_dir, checkpoint_file))
+
+
 
 if __name__ == '__main__':
     main(parse_args())

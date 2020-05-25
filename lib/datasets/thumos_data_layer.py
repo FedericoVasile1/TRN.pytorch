@@ -10,14 +10,20 @@ class TRNTHUMOSDataLayer(data.Dataset):
         self.camera_feature = args.camera_feature
         self.motion_feature = args.motion_feature
         self.sessions = getattr(args, phase+'_session_set')
-        self.enc_steps = args.enc_steps
-        self.dec_steps = args.dec_steps
+        self.enc_steps = args.enc_steps     # in the paper is called 'le' (input sequence length)
+        self.dec_steps = args.dec_steps     # in the paper is called 'ld' (timesteps in the future)
         self.training = phase=='train'
 
+        # Only for debug purpose; works only on a minibatch of
+        #  samples to check if everything works correctly
+        if args.mini_batch != 0:
+            self.sessions = self.sessions[0:args.mini_batch]
+
         self.inputs = []
-        print(self.sessions)
         for session in self.sessions:
             target = np.load(osp.join(self.data_root, 'target', session+'.npy'))
+
+            # data augmentation
             seed = np.random.randint(self.enc_steps) if self.training else 0
             for start, end in zip(
                 range(seed, target.shape[0] - self.dec_steps, self.enc_steps),

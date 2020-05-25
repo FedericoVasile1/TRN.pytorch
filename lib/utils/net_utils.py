@@ -25,10 +25,8 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
 
 def build_data_loader(args, phase='train'):
-    is_minibatch_training = args.mini_batch != 0
-    dataset = build_dataset(args, phase)
     data_loaders = data.DataLoader(
-        dataset=data.Subset(dataset, np.arange(args.mini_batch).tolist()) if is_minibatch_training else dataset,
+        dataset=build_dataset(args, phase),
         batch_size=args.batch_size,
         shuffle=phase=='train',
         num_workers=args.num_workers,

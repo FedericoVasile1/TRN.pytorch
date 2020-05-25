@@ -50,6 +50,7 @@ def compute_result_multilabel(class_index, score_metrics, target_metrics, save_d
             result['AP'][class_index[cls]] = average_precision_score(
                 (target_metrics[valid_index, cls]==1).astype(np.int),
                 score_metrics[valid_index, cls])
+
             if verbose:
                 print('{} AP: {:.5f}'.format(class_index[cls], result['AP'][class_index[cls]]))
 
