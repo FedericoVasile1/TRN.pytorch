@@ -96,17 +96,17 @@ def main(args):
                         loss = enc_loss + dec_loss
                         loss.backward()
                         optimizer.step()
-                    else:
-                        # Prepare metrics for encoder
-                        enc_score = softmax(enc_score).cpu().numpy()
-                        enc_target = enc_target.cpu().numpy()
-                        enc_score_metrics.extend(enc_score)
-                        enc_target_metrics.extend(enc_target)
-                        # Prepare metrics for decoder
-                        dec_score = softmax(dec_score).cpu().numpy()
-                        dec_target = dec_target.cpu().numpy()
-                        dec_score_metrics.extend(dec_score)
-                        dec_target_metrics.extend(dec_target)
+                    #else:
+                    # Prepare metrics for encoder
+                    enc_score = softmax(enc_score).cpu().numpy()
+                    enc_target = enc_target.cpu().numpy()
+                    enc_score_metrics.extend(enc_score)
+                    enc_target_metrics.extend(enc_target)
+                    # Prepare metrics for decoder
+                    dec_score = softmax(dec_score).cpu().numpy()
+                    dec_target = dec_target.cpu().numpy()
+                    dec_score_metrics.extend(dec_score)
+                    dec_target_metrics.extend(dec_target)
         end = time.time()
 
         if args.debug:
@@ -132,11 +132,14 @@ def main(args):
                 save=False,
             )
 
+        print('prima')
         # Output result
         logger.output(epoch, enc_losses, dec_losses,
                       len(data_loaders['train'].dataset), len(data_loaders['test'].dataset),
                       enc_mAP, dec_mAP, end - start, debug=args.debug)
+        print('dopo')
 
+        '''
         # Save model
         checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
         torch.save({
@@ -144,6 +147,7 @@ def main(args):
             'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
         }, osp.join(save_dir, checkpoint_file))
+        '''
 
 if __name__ == '__main__':
     main(parse_args())
