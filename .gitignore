@@ -37,3 +37,5 @@ data/THUMOS
 checkpoints
 
 data/.DS_STORE
+
+tools/trn_thumos/run_strings.txt

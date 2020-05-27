@@ -1,88 +1,63 @@
 import torch
 import torch.nn as nn
+from torchvision import models
 
-class Flatten(nn.Module):
+class GlobalAvgPool(nn.Module):
     def __init__(self):
-        super(Flatten, self).__init__()
+        super(GlobalAvgPool, self).__init__()
 
     def forward(self, x):
-        return x.view(x.shape[0], -1)
-
-class HDDFeatureExtractor(nn.Module):
-    def __init__(self, args):
-        super(HDDFeatureExtractor, self).__init__()
-
-        if args.inputs in ['camera', 'sensor', 'multimodal']:
-            self.with_camera = 'sensor' not in args.inputs
-            self.with_sensor = 'camera' not in args.inputs
-        else:
-            raise(RuntimeError('Unknown inputs of {}'.format(args.inputs)))
-
-        if self.with_camera and self.with_sensor:
-            self.fusion_size = 1280 + 20
-        elif self.with_camera:
-            self.fusion_size = 1280
-        elif self.with_sensor:
-            self.fusion_size = 20
-
-        self.camera_linear = nn.Sequential(
-            nn.Conv2d(1536, 20, kernel_size=1),
-            nn.ReLU(inplace=True),
-            Flatten(),
-        )
-
-        self.sensor_linear = nn.Sequential(
-            nn.Linear(8, 20),
-            nn.ReLU(inplace=True),
-        )
-
-    def forward(self, camera_input, sensor_input):
-        if self.with_camera:
-            camera_input = self.camera_linear(camera_input)
-        if self.with_sensor:
-            sensor_input = self.sensor_linear(sensor_input)
-
-        if self.with_camera and self.with_sensor:
-            fusion_input = torch.cat((camera_input, sensor_input), 1)
-        elif self.with_camera:
-            fusion_input = camera_input
-        elif self.with_sensor:
-            fusion_input = sensor_input
-        return fusion_input
+        return torch.mean(x, dim=[-2, -1])
 
 class THUMOSFeatureExtractor(nn.Module):
     def __init__(self, args):
         super(THUMOSFeatureExtractor, self).__init__()
 
-        if args.inputs in ['camera', 'motion', 'multistream']:
-            self.with_camera = 'motion' not in args.inputs
-            self.with_motion = 'camera' not in args.inputs
+        self.trainable = args.feat_extr_trainable
+        # This variable will contain the dimension of the final feature
+        #  vector, thanks to the global_avg_pool the dimension of the
+        #  feature vector will be equal to the number of filters in the last conv layer
+        self.feat_vect_dim = None
+        self.modelname = args.feat_extr
+        if self.modelname == 'resnet18':
+            self.feature_extractor = models.resnet18(pretrained=True)
+            self.feature_extractor = nn.Sequential(
+                *list(self.feature_extractor.children())[:-2],     # remove linear and adaptive_avgpool
+                GlobalAvgPool(),
+            )
+            self.feat_vect_dim = 512
+        elif self.modelname == 'resnet152':
+            self.feature_extractor = models.resnet152(pretrained=True)
+            self.feature_extractor = nn.Sequential(
+                *list(self.feature_extractor.children())[:-2],     # remove linear and adaptive_avgpool
+                GlobalAvgPool(),
+            )
+            self.feat_vect_dim = 2048
+        elif self.modelname == 'vgg16':
+            self.feature_extractor = models.vgg16(pretrained=True)
+            self.feature_extractor = nn.Sequential(
+                *list(self.feature_extractor.children())[:-9],     # remove fully-connected layers and maxpool
+                GlobalAvgPool(),
+            )
+            self.feat_vect_dim = 512
         else:
-            raise(RuntimeError('Unknown inputs of {}'.format(args.inputs)))
-
-        if self.with_camera and self.with_motion:
-            self.fusion_size = 2048 + 1024
-        elif self.with_camera:
-            self.fusion_size = 2048
-        elif self.with_motion:
-            self.fusion_size = 1024
+            raise Exception('modelname not found')
 
         self.input_linear = nn.Sequential(
-            nn.Linear(self.fusion_size, self.fusion_size),
+            nn.Linear(self.feat_vect_dim, self.feat_vect_dim),
             nn.ReLU(inplace=True),
         )
 
-    def forward(self, camera_input, motion_input):
-        if self.with_camera and self.with_motion:
-            fusion_input = torch.cat((camera_input, motion_input), 1)
-        elif self.with_camera:
-            fusion_input = camera_input
-        elif self.with_motion:
-            fusion_input = motion_input
-        return self.input_linear(fusion_input)
+        if not self.trainable:
+            for param in self.feature_extractor.parameters():
+                param.requires_grad = False
+
+    def forward(self, x):
+        x = self.feature_extractor(x)
+        x = self.input_linear(x)
+        return x
 
 _FEATURE_EXTRACTORS = {
-    'HDD': HDDFeatureExtractor,
     'THUMOS': THUMOSFeatureExtractor,
 }
 

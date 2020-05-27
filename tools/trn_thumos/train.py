@@ -8,9 +8,9 @@ import torch.nn as nn
 import torch.optim as optim
 
 import _init_paths
-import utils as utl
+from lib import utils as utl
 from configs.thumos import parse_trn_args as parse_args
-from models import build_model
+from lib.models import build_model
 
 def main(args):
     this_dir = osp.join(osp.dirname(__file__), '.')
@@ -51,6 +51,8 @@ def main(args):
         # TODO: try to move it outside of the epochs loop. Now this is here
         #  due to the data augmentation made in TRNTHUMOSDataLayer.__init__ because
         #  data augmentation must be done at the start of every epoch.
+        #  Try to move data_aug in __getitem__, in this way we could move these line
+        #  outside of the loop
         data_loaders = {
             phase: utl.build_data_loader(args, phase)
             for phase in args.phases
@@ -90,8 +92,8 @@ def main(args):
                     enc_losses[phase] += enc_loss.item() * batch_size
                     dec_losses[phase] += dec_loss.item() * batch_size
                     if args.verbose:
-                        print('Epoch: {:2} | iteration: {:3} | enc_loss: {:.5f} dec_loss: {:.5f}'.format(
-                            epoch, batch_idx, enc_loss.item(), dec_loss.item()
+                        print('[{}]Epoch: {:2} | iteration: {:3} | enc_loss: {:.5f} dec_loss: {:.5f}'.format(
+                            phase, epoch, batch_idx, enc_loss.item(), dec_loss.item()
                         ))
 
                     if training:
@@ -143,16 +145,15 @@ def main(args):
                       {phase: len(data_loaders[phase].dataset) for phase in args.phases},
                       enc_mAP, dec_mAP, end - start, debug=args.debug)
 
-        if args.save_last == False or epoch == (args.start_epoch + args.epochs - 1):
-            # Save model
-            checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
-            torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-            }, osp.join(save_dir, checkpoint_file))
-
-
+        if not args.no_save:
+            if args.save_last == False or epoch == (args.start_epoch + args.epochs - 1):
+                # Save model
+                checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                }, osp.join(save_dir, checkpoint_file))
 
 if __name__ == '__main__':
     main(parse_args())
