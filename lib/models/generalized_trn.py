@@ -70,7 +70,7 @@ class GeneralizedTRN(nn.Module):
 
         return future_input, enc_hx, enc_cx, enc_score, dec_score_stack
 
-    def forward(self, camera_inputs, sensor_inputs):
+    def forward(self, camera_inputs):
         batch_size = camera_inputs.shape[0]
         enc_hx = camera_inputs.new_zeros((batch_size, self.hidden_size))
         enc_cx = camera_inputs.new_zeros((batch_size, self.hidden_size))

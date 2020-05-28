@@ -78,15 +78,15 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (camera_inputs, motion_inputs, enc_target, dec_target) \
+                for batch_idx, (camera_inputs, enc_target, dec_target) \
                         in enumerate(data_loaders[phase], start=1):
+                    # camera_inputs.shape:(batch_size, num_frames_in_video, 3, H, W)
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
-                    motion_inputs = motion_inputs.to(device)
                     enc_target = enc_target.to(device).view(-1, args.num_classes)
                     dec_target = dec_target.to(device).view(-1, args.num_classes)
 
-                    enc_score, dec_score = model(camera_inputs, motion_inputs)
+                    enc_score, dec_score = model(camera_inputs)
                     enc_loss = criterion(enc_score, enc_target)
                     dec_loss = criterion(dec_score, dec_target)
                     enc_losses[phase] += enc_loss.item() * batch_size
@@ -116,7 +116,7 @@ def main(args):
         end = time.time()
 
         if args.debug:
-            result_file = 'inputs-{}-epoch-{}.json'.format(args.inputs, epoch)
+            result_file = 'epoch-{}.json'.format(epoch)
             # Compute result for encoder
             enc_mAP = {phase: utl.compute_result_multilabel(
                 args.class_index,
@@ -148,7 +148,7 @@ def main(args):
         if not args.no_save:
             if args.save_last == False or epoch == (args.start_epoch + args.epochs - 1):
                 # Save model
-                checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
+                checkpoint_file = 'epoch-{}.pth'.format(epoch)
                 torch.save({
                     'epoch': epoch,
                     'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),

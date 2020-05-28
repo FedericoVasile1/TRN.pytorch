@@ -7,7 +7,7 @@ from PIL import Image
 import numpy as np
 
 class TRNTHUMOSDataLayer(data.Dataset):
-    def __init__(self, args, phase='train'):
+    def __init__(self, args, transform, phase='train'):
         self.data_root = args.data_root
         self.camera_frames_root = args.camera_frames_root   # base dir where the frames are
         self.sessions = getattr(args, phase+'_session_set')   # contains the names of all videos, both validation and test
@@ -15,7 +15,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
         self.dec_steps = args.dec_steps     # in the paper is called 'ld' (timesteps in the future)
         self.training = phase=='train'
         self.data_aug = args.data_aug
-        self.transform = None           # TODO
+        self.transform = transform
 
         # Only for debug purpose; train only on a minibatch of
         #  samples to check if everything works correctly
@@ -24,7 +24,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
 
         self.inputs = []
         for session in self.sessions:
-            target = np.load(osp.join(self.data_root, 'target', session+'.npy'))   # shape:(num_frames, one_hot_vector)
+            target = np.load(osp.join(self.data_root, 'target_frames', session+'.npy'))   # shape:(num_frames, one_hot_vector)
             # data augmentation
             seed = np.random.randint(self.enc_steps) if self.training and self.data_aug else 0
             for start, end in zip(
@@ -55,18 +55,22 @@ class TRNTHUMOSDataLayer(data.Dataset):
         session, start, end, enc_target, dec_target = self.inputs[index]
 
         # get the mini-sample of the video (i.e. start to end frames of the video)
-        frames = []
+        frames = None
         for idx_frame in range(start, end):
-            frame = Image.open(osp.join(self.data_root, self.camera_frames_root, session, idx_frame+'.jpg'))
+            # sum 1 to idx_frame because the index of frame images start from 1 while target array starts from 0
+            frame = Image.open(osp.join(self.data_root, self.camera_frames_root, session, str(idx_frame+1)+'.jpg'))
             # TODO: do we need to apply some transformation to each frame?? (e.g. normalization)
-            if self.transform is not None:
-                pass
-            frames.append(frame)
+            frame = self.transform(frame)
+            if frames is None:
+                # frames.shape:(num_frames, 3, H, W)
+                frames = torch.zeros(end-start, frame.shape[0], frame.shape[1], frame.shape[2], dtype=torch.float32)
+            frames[idx_frame-start] = frame.to(torch.float32)
 
         # also self.training? makes sense?
         if self.training and self.data_aug:
             pass
 
+        frames = torch.FloatTensor(frames)
         enc_target = torch.as_tensor(enc_target.astype(np.float32))
         dec_target = torch.as_tensor(dec_target.astype(np.float32))
 
