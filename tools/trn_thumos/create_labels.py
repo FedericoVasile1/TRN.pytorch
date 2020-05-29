@@ -32,7 +32,7 @@ def read_files(annotations_folder, count_2_file, target_folder='target_frames_24
             try:
                 target_array[frames, :] = one_hot_vect
             except:
-                print(videoname, start, end)
+                print(filename, videoname, start, end)
                 return
 
             np.save(dest, target_array)
