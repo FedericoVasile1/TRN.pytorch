@@ -24,7 +24,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
 
         self.inputs = []
         for session in self.sessions:
-            target = np.load(osp.join(self.data_root, 'target_frames', session+'.npy'))   # shape:(num_frames, one_hot_vector)
+            target = np.load(osp.join(self.data_root, 'target_frames_24fps', session+'.npy'))   # shape:(num_frames, one_hot_vector)
             # data augmentation
             seed = np.random.randint(self.enc_steps) if self.training and self.data_aug else 0
             for start, end in zip(
