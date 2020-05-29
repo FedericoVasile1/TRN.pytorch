@@ -22,17 +22,18 @@ def read_files(annotations_folder, count_2_file, target_folder='target_frames_24
             end = float(line.split(' ')[3].split('\\')[0])
 
             dest = os.path.join(data_root, target_folder, videoname+'.npy')
-            try:
-                target_array = np.load(dest)
-            except:
-                continue
+            target_array = np.load(dest)
 
             start_frame = int(start * 24)        # 24 fps
             end_frame = int(end * 24)
             one_hot_vect = np.zeros(22)     # 22 classes
             one_hot_vect[count] = 1
             frames = np.arange(start_frame, end_frame)
-            target_array[frames, :] = one_hot_vect
+            try:
+                target_array[frames, :] = one_hot_vect
+            except:
+                print(videoname, start, end)
+                return
 
             np.save(dest, target_array)
 
@@ -50,8 +51,9 @@ if __name__ == '__main__':
 
     count_2_file = enumerate_labels()
     read_files(os.path.join('TH14_Temporal_annotations_validation', 'annotation'), count_2_file)
-    count_2_file = enumerate_labels(annotation_folder='TH14_Temporal_Annotations_Test/annotations/annotation')
-    read_files(os.path.join('TH14_Temporal_Annotations_Test', 'annotations', 'annotation'), count_2_file)
+    #count_2_file = enumerate_labels(annotation_folder='TH14_Temporal_Annotations_Test/annotations/annotation')
+    #read_files(os.path.join('TH14_Temporal_Annotations_Test', 'annotations', 'annotation'), count_2_file)
+
 
     #print(np.load('data/THUMOS/target_frames_24fps/video_validation_0000170.npy')[590:630, :])
     #print(np.load('data/THUMOS/target_frames/video_validation_0000162.npy').shape)
