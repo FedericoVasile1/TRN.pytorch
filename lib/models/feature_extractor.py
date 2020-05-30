@@ -36,8 +36,8 @@ class THUMOSFeatureExtractor(nn.Module):
         elif self.modelname == 'vgg16':
             self.feature_extractor = models.vgg16(pretrained=True)
             self.feature_extractor = nn.Sequential(
-                *list(self.feature_extractor.children())[:-9],     # remove fully-connected layers and maxpool
-                GlobalAvgPool(),
+                *list(self.feature_extractor.children())[0][:-1],     # remove fully-connected layers and maxpool, check
+                GlobalAvgPool(),                                      #  torchsummary to better understand
             )
             self.feat_vect_dim = 512
         else:
