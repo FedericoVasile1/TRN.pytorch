@@ -1,10 +1,8 @@
-from .hdd_data_layer import TRNHDDDataLayer
 from .thumos_data_layer import TRNTHUMOSDataLayer
 
 from torchvision import transforms
 
 _DATA_LAYERS = {
-    'TRNHDD': TRNHDDDataLayer,
     'TRNTHUMOS': TRNTHUMOSDataLayer,
 }
 

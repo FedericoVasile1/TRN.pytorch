@@ -5,6 +5,9 @@ import time
 
 import torch
 import torch.nn as nn
+from torchvision import transforms
+from PIL import Image
+
 import numpy as np
 
 import _init_paths
@@ -34,24 +37,40 @@ def main(args):
 
     softmax = nn.Softmax(dim=1).to(device)
 
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+
+    print(args.test_session_set)
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
-            camera_inputs = np.load(osp.join(args.data_root, args.camera_feature, session+'.npy'), mmap_mode='r')
-            motion_inputs = np.load(osp.join(args.data_root, args.motion_feature, session+'.npy'), mmap_mode='r')
-            target = np.load(osp.join(args.data_root, 'target', session+'.npy'))
+            idx_to_frame = {}
+            name_frames = os.listdir(osp.join(args.data_root, args.camera_frames_root, session))
+            for name_frame in name_frames:
+                idx_frame = int(name_frame[:-4])-1        # e.g. name_frame == '7.jpg'
+                if args.sample_frames != 0:
+                    if not (idx_frame == args.sample_frames//2 or (idx_frame-args.sample_frames//2) % 6 == 0):
+                        continue
+
+                frame = Image.open(osp.join(args.data_root, args.camera_frames_root, session, name_frame))
+                frame = transform(frame).unsqueeze(0)
+                idx_to_frame[int(name_frame[:-4])] = frame
+
+            target = np.load(osp.join(args.data_root, args.camera_target_root, session+'.npy'))
+            if args.sample_frames != 0:
+                target = target[args.sample_frames//2::args.sample_frames]
             future_input = to_device(torch.zeros(model.future_size), device)
             enc_hx = to_device(torch.zeros(model.hidden_size), device)
             enc_cx = to_device(torch.zeros(model.hidden_size), device)
 
             for l in range(target.shape[0]):
-                camera_input = to_device(
-                    torch.as_tensor(camera_inputs[l].astype(np.float32)), device)
-                motion_input = to_device(
-                    torch.as_tensor(motion_inputs[l].astype(np.float32)), device)
+                appo = l
+                if args.sample_frames != 0:
+                    appo = (appo * args.sample_frames) + args.sample_frames // 2
 
                 future_input, enc_hx, enc_cx, enc_score, dec_score_stack = \
-                        model.step(camera_input, motion_input, future_input, enc_hx, enc_cx)
+                        model.step(idx_to_frame[appo+1], future_input, enc_hx, enc_cx)
 
                 enc_score_metrics.append(softmax(enc_score).cpu().numpy()[0])
                 enc_target_metrics.append(target[l])

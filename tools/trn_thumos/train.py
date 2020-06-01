@@ -17,7 +17,7 @@ def main(args):
     save_dir = osp.join(this_dir, 'checkpoints')
     if not osp.isdir(save_dir):
         os.makedirs(save_dir)
-    command = 'python ' + ' '.join(sys.argv)
+    command = '\n\npython ' + ' '.join(sys.argv)
     logger = utl.setup_logger(osp.join(this_dir, 'log.txt'), args.phases, command=command)
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -48,11 +48,6 @@ def main(args):
             for param_group in optimizer.param_groups:
                 param_group['lr'] = args.lr
 
-        # TODO: try to move it outside of the epochs loop. Now this is here
-        #  due to the data augmentation made in TRNTHUMOSDataLayer.__init__ because
-        #  data augmentation must be done at the start of every epoch.
-        #  Try to move data_aug in __getitem__, in this way we could move these line
-        #  outside of the loop
         data_loaders = {
             phase: utl.build_data_loader(args, phase)
             for phase in args.phases
@@ -116,14 +111,15 @@ def main(args):
         end = time.time()
 
         if args.debug:
-            result_file = 'epoch-{}.json'.format(epoch)
+            #result_file = 'epoch-{}.json'.format(epoch)
             # Compute result for encoder
             enc_mAP = {phase: utl.compute_result_multilabel(
                 args.class_index,
                 enc_score_metrics[phase],
                 enc_target_metrics[phase],
                 save_dir,
-                result_file,
+                'ENC--phase-{}--epoch-{}.json'.format(phase, epoch),
+                #result_file,
                 ignore_class=[0,21],
                 save=True,
                 verbose=False,
@@ -134,9 +130,10 @@ def main(args):
                 dec_score_metrics[phase],
                 dec_target_metrics[phase],
                 save_dir,
-                result_file,
+                'DEC--phase-{}--epoch-{}.json'.format(phase, epoch),
+                #result_file,
                 ignore_class=[0,21],
-                save=False,
+                save=True,
                 verbose=False
             ) for phase in args.phases}
 
@@ -148,7 +145,7 @@ def main(args):
         if not args.no_save:
             if args.save_last == False or epoch == (args.start_epoch + args.epochs - 1):
                 # Save model
-                checkpoint_file = 'epoch-{}.pth'.format(epoch)
+                checkpoint_file = 'model-{}--epoch-{}.pth'.format(args.feat_extr, epoch)
                 torch.save({
                     'epoch': epoch,
                     'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
