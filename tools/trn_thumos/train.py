@@ -18,7 +18,8 @@ def main(args):
     if not osp.isdir(save_dir):
         os.makedirs(save_dir)
     command = '\n\npython ' + ' '.join(sys.argv)
-    logger = utl.setup_logger(osp.join(this_dir, 'log.txt'), args.phases, command=command)
+    logger = utl.setup_logger(osp.join(this_dir, 'log_train.txt'), args.phases, command=command)
+    logger_APs = utl.setup_logger(osp.join(this_dir, 'APs_train.txt'), args.phases, command=command)
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     utl.set_seed(int(args.seed))
@@ -111,15 +112,15 @@ def main(args):
         end = time.time()
 
         if args.debug:
-            #result_file = 'epoch-{}.json'.format(epoch)
             # Compute result for encoder
             enc_mAP = {phase: utl.compute_result_multilabel(
                 args.class_index,
                 enc_score_metrics[phase],
                 enc_target_metrics[phase],
-                save_dir,
-                'ENC--phase-{}--epoch-{}.json'.format(phase, epoch),
-                #result_file,
+                logger_APs,
+                phase,
+                epoch,
+                'enc',
                 ignore_class=[0,21],
                 save=True,
                 verbose=False,
@@ -129,9 +130,10 @@ def main(args):
                 args.class_index,
                 dec_score_metrics[phase],
                 dec_target_metrics[phase],
-                save_dir,
-                'DEC--phase-{}--epoch-{}.json'.format(phase, epoch),
-                #result_file,
+                logger_APs,
+                phase,
+                epoch,
+                'dec',
                 ignore_class=[0,21],
                 save=True,
                 verbose=False

@@ -41,7 +41,6 @@ def main(args):
         transforms.ToTensor(),
     ])
 
-    print(args.test_session_set)
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
@@ -88,13 +87,13 @@ def main(args):
     # Compute result for encoder
     utl.compute_result_multilabel(args.class_index,
                                   enc_score_metrics, enc_target_metrics,
-                                  save_dir, result_file, ignore_class=[0,21], save=True, verbose=True)
+                                  None, None, None, None, ignore_class=[0,21], save=False, verbose=True)
 
     # Compute result for decoder
     for step in range(args.dec_steps):
         utl.compute_result_multilabel(args.class_index,
                                       dec_score_metrics[step], dec_target_metrics[step],
-                                      save_dir, result_file, ignore_class=[0,21], save=False, verbose=True)
+                                      None, None, None, None, ignore_class=[0,21], save=False, verbose=True)
 
 if __name__ == '__main__':
     main(parse_args())

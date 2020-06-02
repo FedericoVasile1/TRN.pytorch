@@ -12,7 +12,7 @@ __all__ = [
     'compute_result',
 ]
 
-def compute_result_multilabel(class_index, score_metrics, target_metrics, save_dir, result_file,
+def compute_result_multilabel(class_index, score_metrics, target_metrics, logger_APs, phase, epoch, model,
                               ignore_class=[0], save=True, verbose=False, smooth=True, switch=True):
     result = OrderedDict()
     score_metrics = np.array(score_metrics)
@@ -43,6 +43,9 @@ def compute_result_multilabel(class_index, score_metrics, target_metrics, save_d
     # Remove ambiguous (21)
     valid_index = np.where(target_metrics[:, 21]!=1)[0]
 
+    if save:
+        log = 'MODEL:{} PHASE:{} EPOCH:{}\n'.format(model, phase, epoch)
+
     # Compute AP
     result['AP'] = OrderedDict()
     for cls in range(len(class_index)):
@@ -53,20 +56,16 @@ def compute_result_multilabel(class_index, score_metrics, target_metrics, save_d
 
             if verbose:
                 print('{} AP: {:.5f}'.format(class_index[cls], result['AP'][class_index[cls]]))
+            if save:
+                log += '{} AP: {:.5f}\n'.format(class_index[cls], result['AP'][class_index[cls]])
 
     # Compute mAP
     result['mAP'] = np.mean(list(result['AP'].values()))
     if verbose:
         print('mAP: {:.5f}'.format(result['mAP']))
-
-    # Save
     if save:
-        if not osp.isdir(save_dir):
-            os.makedirs(save_dir)
-        with open(osp.join(save_dir, result_file), 'w') as f:
-            json.dump(result, f)
-        if verbose:
-            print('Saved the result to {}'.format(osp.join(save_dir, result_file)))
+        log += 'mAP: {:.5f}\n'.format(result['mAP'])
+        logger_APs._write(log)
 
     return result['mAP']
 
@@ -107,7 +106,7 @@ def compute_result(class_index, score_metrics, target_metrics, save_dir, result_
     if save:
         if not osp.isdir(save_dir):
             os.makedirs(save_dir)
-        with open(osp.join(save_dir, result_file), 'w') as f:
+        with open(osp.join(save_dir, result_file), 'w+') as f:
             json.dump(result, f)
         if verbose:
             print('Saved the result to {}'.format(osp.join(save_dir, result_file)))

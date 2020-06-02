@@ -39,7 +39,8 @@ def read_files(annotations_folder, count_2_file, target_folder='target_frames_24
 
 def create_zeros_labels(frames_folder='video_frames_24fps', data_root='data/THUMOS', target_folder='target_frames_24fps'):
     for video_dir in os.listdir(os.path.join(data_root, frames_folder)):
-        if 'video_validation' not in video_dir and 'video_test' not in video_dir:
+        #if 'video_validation' not in video_dir and 'video_test' not in video_dir:
+        if 'video_test' not in video_dir:
             continue
         num_frames = len([name for name in os.listdir(os.path.join(data_root, frames_folder, video_dir))])
         all_background_vect = np.zeros((num_frames, 22))    # 22 classes
@@ -50,9 +51,9 @@ if __name__ == '__main__':
     create_zeros_labels()
 
     count_2_file = enumerate_labels()
-    read_files(os.path.join('TH14_Temporal_annotations_validation', 'annotation'), count_2_file)
+    #read_files(os.path.join('TH14_Temporal_annotations_validation', 'annotation'), count_2_file)
     #count_2_file = enumerate_labels(annotation_folder='TH14_Temporal_Annotations_Test/annotations/annotation')
-    #read_files(os.path.join('TH14_Temporal_Annotations_Test', 'annotations', 'annotation'), count_2_file)
+    read_files(os.path.join('TH14_Temporal_Annotations_Test', 'annotations', 'annotation'), count_2_file)
 
 
     #print(np.load('data/THUMOS/target_frames_24fps/video_validation_0000170.npy')[590:630, :])
