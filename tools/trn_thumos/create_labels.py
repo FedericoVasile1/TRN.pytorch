@@ -50,9 +50,9 @@ def create_zeros_labels(frames_folder='video_frames_24fps', data_root='data/THUM
 if __name__ == '__main__':
     create_zeros_labels()
 
-    count_2_file = enumerate_labels()
+    #count_2_file = enumerate_labels()
     #read_files(os.path.join('TH14_Temporal_annotations_validation', 'annotation'), count_2_file)
-    #count_2_file = enumerate_labels(annotation_folder='TH14_Temporal_Annotations_Test/annotations/annotation')
+    count_2_file = enumerate_labels(annotation_folder='TH14_Temporal_Annotations_Test/annotations/annotation')
     read_files(os.path.join('TH14_Temporal_Annotations_Test', 'annotations', 'annotation'), count_2_file)
 
 

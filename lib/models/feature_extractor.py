@@ -2,12 +2,12 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
-class GlobalAvgPool(nn.Module):
+class Flatten(nn.Module):
     def __init__(self):
-        super(GlobalAvgPool, self).__init__()
+        super(Flatten, self).__init__()
 
     def forward(self, x):
-        return torch.mean(x, dim=[-2, -1])
+        return x.view(x.shape[0], -1)
 
 class THUMOSFeatureExtractor(nn.Module):
     def __init__(self, args):
@@ -22,24 +22,24 @@ class THUMOSFeatureExtractor(nn.Module):
         if self.modelname == 'resnet18':
             self.feature_extractor = models.resnet18(pretrained=True)
             self.feature_extractor = nn.Sequential(
-                *list(self.feature_extractor.children())[:-2],     # remove linear and adaptive_avgpool
-                GlobalAvgPool(),
+                *list(self.feature_extractor.children())[:-1],
+                Flatten(),
             )
-            self.feat_vect_dim = 512
+            self.feat_vect_dim = 512 * 1 * 1    # this line should not be hardcoded
         elif self.modelname == 'resnet152':
             self.feature_extractor = models.resnet152(pretrained=True)
             self.feature_extractor = nn.Sequential(
-                *list(self.feature_extractor.children())[:-2],     # remove linear and adaptive_avgpool
-                GlobalAvgPool(),
+                *list(self.feature_extractor.children())[:-1],
+                Flatten(),
             )
-            self.feat_vect_dim = 2048
+            self.feat_vect_dim = 2048 * 1 * 1   # this line should not be hardcoded
         elif self.modelname == 'vgg16':
             self.feature_extractor = models.vgg16(pretrained=True)
             self.feature_extractor = nn.Sequential(
-                *list(self.feature_extractor.children())[0][:-1],     # remove fully-connected layers and maxpool, check
-                GlobalAvgPool(),                                      #  torchsummary to better understand
+                *list(self.feature_extractor.children())[:-1],
+                Flatten(),
             )
-            self.feat_vect_dim = 512
+            self.feat_vect_dim = 512 * 7 * 7    # this line should not be hardcoded
         else:
             raise Exception('modelname not found')
 

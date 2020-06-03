@@ -23,6 +23,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
         #  samples to check if everything works correctly
         if args.mini_batch != 0:
             self.sessions = self.sessions[0:args.mini_batch]
+            print(self.sessions)
 
         self.inputs = []
         for session in self.sessions:

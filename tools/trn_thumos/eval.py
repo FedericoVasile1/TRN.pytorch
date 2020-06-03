@@ -41,7 +41,10 @@ def main(args):
         transforms.ToTensor(),
     ])
 
-    for session_idx, session in enumerate(args.test_session_set, start=1):
+    videos_test = args.test_session_set
+    if args.mini_batch != 0:
+        videos_test = videos_test[0:args.mini_batch]
+    for session_idx, session in enumerate(videos_test, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
             idx_to_frame = {}
@@ -53,7 +56,7 @@ def main(args):
                         continue
 
                 frame = Image.open(osp.join(args.data_root, args.camera_frames_root, session, name_frame))
-                frame = transform(frame).unsqueeze(0)
+                frame = to_device(transform(frame), device)
                 idx_to_frame[int(name_frame[:-4])] = frame
 
             target = np.load(osp.join(args.data_root, args.camera_target_root, session+'.npy'))

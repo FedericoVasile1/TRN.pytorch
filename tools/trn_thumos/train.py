@@ -34,7 +34,10 @@ def main(args):
         model = nn.DataParallel(model)
     model = model.to(device)
 
-    criterion = utl.MultiCrossEntropyLoss(ignore_index=21).to(device)
+    #criterion = utl.MultiCrossEntropyLoss(ignore_index=21).to(device)
+    weights_classes = torch.ones(22).to(device=device, dtype=torch.float32)
+    weights_classes[0] = 0.5
+    criterion = nn.CrossEntropyLoss(ignore_index=21, weight=weights_classes).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -83,8 +86,10 @@ def main(args):
                     dec_target = dec_target.to(device).view(-1, args.num_classes)
 
                     enc_score, dec_score = model(camera_inputs)
-                    enc_loss = criterion(enc_score, enc_target)
-                    dec_loss = criterion(dec_score, dec_target)
+                    enc_loss = criterion(enc_score, torch.max(enc_target, 1)[1])
+                    dec_loss = criterion(dec_score, torch.max(dec_target, 1)[1])
+                    #enc_loss = criterion(enc_score, enc_target)
+                    #dec_loss = criterion(dec_score, dec_target)
                     enc_losses[phase] += enc_loss.item() * batch_size
                     dec_losses[phase] += dec_loss.item() * batch_size
                     if args.verbose:
