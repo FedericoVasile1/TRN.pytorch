@@ -137,13 +137,14 @@ def main(args):
                       len(data_loaders['train'].dataset), len(data_loaders['test'].dataset),
                       enc_mAP, dec_mAP, end - start, debug=args.debug)
 
-        # Save model
-        checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-        }, osp.join(save_dir, checkpoint_file))
+        if args.save_last == False or epoch == (args.start_epoch + args.epochs - 1):
+            # Save model
+            checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }, osp.join(save_dir, checkpoint_file))
 
 if __name__ == '__main__':
     main(parse_args())
