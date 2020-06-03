@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torchvision import models
 
 class Flatten(nn.Module):
     def __init__(self):
@@ -67,10 +68,17 @@ class THUMOSFeatureExtractor(nn.Module):
         elif self.with_motion:
             self.fusion_size = 1024
 
-        self.input_linear = nn.Sequential(
-            nn.Linear(self.fusion_size, self.fusion_size),
-            nn.ReLU(inplace=True),
+        self.feature_extractor = nn.Sequential(
+            *list(models.resnet152(pretrained=True).children())[:-1],       # feature vector dimesion == 2048
+            Flatten(),
         )
+        self.input_linear = nn.Sequential(
+            nn.Linear(2048, self.fusion_size),                               # 2048
+            #nn.ReLU(inplace=True),
+        )
+        for param in self.feature_extractor.parameters():
+            param.requires_grad = False
+
 
     def forward(self, camera_input, motion_input):
         if self.with_camera and self.with_motion:
@@ -79,7 +87,7 @@ class THUMOSFeatureExtractor(nn.Module):
             fusion_input = camera_input
         elif self.with_motion:
             fusion_input = motion_input
-        return self.input_linear(fusion_input)
+        return self.input_linear(self.feature_extractor(fusion_input))
 
 _FEATURE_EXTRACTORS = {
     'HDD': HDDFeatureExtractor,
