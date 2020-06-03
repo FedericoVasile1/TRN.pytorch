@@ -47,7 +47,7 @@ class THUMOSFeatureExtractor(nn.Module):
             nn.Linear(self.feat_vect_dim, self.feat_vect_dim if self.modelname != 'vgg16' else 1000),
         )
         if self.modelname == 'vgg16':
-            self.feat_vect_dim = 10000
+            self.feat_vect_dim = 1000
 
         if not self.trainable:
             for param in self.feature_extractor.parameters():
