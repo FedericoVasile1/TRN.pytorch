@@ -5,6 +5,8 @@ import time
 
 import torch
 import torch.nn as nn
+from PIL import Image
+from torchvision import transforms
 import numpy as np
 
 import _init_paths
@@ -32,21 +34,34 @@ def main(args):
     model.load_state_dict(checkpoint['model_state_dict'])
     model.train(False)
 
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+
     softmax = nn.Softmax(dim=1).to(device)
 
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
-            camera_inputs = np.load(osp.join(args.data_root, args.camera_feature, session+'.npy'), mmap_mode='r')
-            motion_inputs = np.load(osp.join(args.data_root, args.motion_feature, session+'.npy'), mmap_mode='r')
-            target = np.load(osp.join(args.data_root, 'target', session+'.npy'))
+            camera_inputs = None
+            num_frames = len(os.listdir(osp.join(args.data_root, args.camera_feature, session)))
+            for idx_frame in range(num_frames):
+                frame = Image.open(osp.join(args.data_root, args.camera_feature, session, str(idx_frame+1)+'.jpg'))
+                frame = transform(frame)
+                if camera_inputs is None:
+                    camera_inputs = torch.zeros(num_frames, frame.shape[0], frame.shape[1], frame.shape[2], dtype=torch.float32)
+                camera_inputs[idx_frame] = frame.to(dtype=torch.float32)
+
+            #motion_inputs = np.load(osp.join(args.data_root, args.motion_feature, session+'.npy'), mmap_mode='r')
+            motion_inputs = np.zeros((num_frames))   # optical flow will not be used
+            target = np.load(osp.join(args.data_root, 'target_frames_24fps', session+'.npy'))
             future_input = to_device(torch.zeros(model.future_size), device)
             enc_hx = to_device(torch.zeros(model.hidden_size), device)
             enc_cx = to_device(torch.zeros(model.hidden_size), device)
 
             for l in range(target.shape[0]):
                 camera_input = to_device(
-                    torch.as_tensor(camera_inputs[l].astype(np.float32)), device)
+                    camera_inputs[l], device)
                 motion_input = to_device(
                     torch.as_tensor(motion_inputs[l].astype(np.float32)), device)
 
