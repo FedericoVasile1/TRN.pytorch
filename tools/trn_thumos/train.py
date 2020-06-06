@@ -134,7 +134,7 @@ def main(args):
 
         # Output result
         logger.output(epoch, enc_losses, dec_losses,
-                      len(data_loaders['train'].dataset), len(data_loaders['test'].dataset),
+                      len(data_loaders['train'].dataset), len(data_loaders['test'].dataset) if 'test' in args.phases else 0,
                       enc_mAP, dec_mAP, end - start, debug=args.debug)
 
         if args.save_last == False or epoch == (args.start_epoch + args.epochs - 1):

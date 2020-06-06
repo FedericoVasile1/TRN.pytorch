@@ -68,17 +68,30 @@ class THUMOSFeatureExtractor(nn.Module):
         elif self.with_motion:
             self.fusion_size = 1024
 
+        if args.model_name == 'resnet18':
+            model = models.resnet18(pretrained=True)
+            feat_vect_dim = 512
+        elif args.model_name == 'resnet50':
+            model = models.resnet50(pretrained=True)
+            feat_vect_dim = 512
+        elif args.model_name == 'resent152':
+            model = models.resnet152(pretrained=True)
+            feat_vect_dim = 2048
+        elif args.model_name == 'vgg16':
+            model = models.vgg16(pretrained=True)
+            feat_vect_dim = 512*7*7
+        else:
+            raise Exception('model_name not found')
         self.feature_extractor = nn.Sequential(
-            *list(models.resnet152(pretrained=True).children())[:-1],       # feature vector dimesion == 2048
+            *list(model.children())[:-1],
             Flatten(),
         )
         self.input_linear = nn.Sequential(
-            nn.Linear(2048, self.fusion_size),                               # 2048
+            nn.Linear(feat_vect_dim, self.fusion_size),
             #nn.ReLU(inplace=True),
         )
         for param in self.feature_extractor.parameters():
             param.requires_grad = False
-
 
     def forward(self, camera_input, motion_input):
         if self.with_camera and self.with_motion:

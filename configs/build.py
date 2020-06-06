@@ -11,4 +11,5 @@ def build_data_info(args):
     args.test_session_set = data_info['test_session_set']
     args.class_index = data_info['class_index']
     args.num_classes = len(args.class_index)
+    args.phases = args.phases.split(",")
     return args

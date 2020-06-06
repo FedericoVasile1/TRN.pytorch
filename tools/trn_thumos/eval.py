@@ -35,7 +35,9 @@ def main(args):
     model.train(False)
 
     transform = transforms.Compose([
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
     softmax = nn.Softmax(dim=1).to(device)
@@ -45,7 +47,7 @@ def main(args):
         with torch.set_grad_enabled(False):
             camera_inputs = None
             num_frames = len(os.listdir(osp.join(args.data_root, args.camera_feature, session)))
-            for idx_frame in range(num_frames):
+            for idx_frame in range(3, num_frames, 6):
                 frame = Image.open(osp.join(args.data_root, args.camera_feature, session, str(idx_frame+1)+'.jpg'))
                 frame = transform(frame)
                 if camera_inputs is None:
@@ -54,7 +56,7 @@ def main(args):
 
             #motion_inputs = np.load(osp.join(args.data_root, args.motion_feature, session+'.npy'), mmap_mode='r')
             motion_inputs = np.zeros((num_frames))   # optical flow will not be used
-            target = np.load(osp.join(args.data_root, 'target_frames_24fps', session+'.npy'))
+            target = np.load(osp.join(args.data_root, 'target_frames_24fps', session+'.npy'))[3::6]
             future_input = to_device(torch.zeros(model.future_size), device)
             enc_hx = to_device(torch.zeros(model.hidden_size), device)
             enc_cx = to_device(torch.zeros(model.hidden_size), device)
