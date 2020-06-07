@@ -35,7 +35,8 @@ def build_data_loader(args, phase='train'):
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
-        m.weight.data.normal_(0.0, 0.001)
+        #m.weight.data.normal_(0.0, 0.001)
+        pass
     elif isinstance(m, nn.Linear):
         m.weight.data.normal_(0.0, 0.001)
     elif isinstance(m, nn.LSTMCell):
