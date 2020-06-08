@@ -73,7 +73,7 @@ class THUMOSFeatureExtractor(nn.Module):
             feat_vect_dim = 512
         elif args.model_name == 'resnet50':
             model = models.resnet50(pretrained=True)
-            feat_vect_dim = 512
+            feat_vect_dim = 2048
         elif args.model_name == 'resent152':
             model = models.resnet152(pretrained=True)
             feat_vect_dim = 2048

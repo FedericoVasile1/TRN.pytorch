@@ -46,12 +46,14 @@ def main(args):
         with torch.set_grad_enabled(False):
             camera_inputs = None
             num_frames = len(os.listdir(osp.join(args.data_root, args.camera_feature, session)))
+            # round to multiple of 6
+            num_frames = num_frames - (num_frames%6)
             for idx_frame in range(3, num_frames, 6):
                 frame = Image.open(osp.join(args.data_root, args.camera_feature, session, str(idx_frame+1)+'.jpg'))
                 frame = transform(frame)
                 if camera_inputs is None:
-                    camera_inputs = torch.zeros(num_frames, frame.shape[0], frame.shape[1], frame.shape[2], dtype=torch.float32)
-                camera_inputs[idx_frame] = frame.to(dtype=torch.float32)
+                    camera_inputs = torch.zeros(num_frames//6, frame.shape[0], frame.shape[1], frame.shape[2], dtype=torch.float32)
+                camera_inputs[(idx_frame-3)//6] = frame.to(dtype=torch.float32)
 
             #motion_inputs = np.load(osp.join(args.data_root, args.motion_feature, session+'.npy'), mmap_mode='r')
             motion_inputs = np.zeros((num_frames))   # optical flow will not be used
