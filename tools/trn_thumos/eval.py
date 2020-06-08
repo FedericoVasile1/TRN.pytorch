@@ -31,7 +31,15 @@ def main(args):
     else:
         raise(RuntimeError('Cannot find the checkpoint {}'.format(args.checkpoint)))
     model = build_model(args).to(device)
+    appo = 0
+    for p in model.enc_cell.parameters():
+        appo += p.sum().item()
+    print(appo)
     model.load_state_dict(checkpoint['model_state_dict'])
+    appo = 0
+    for p in model.enc_cell.parameters():
+        appo += p.sum().item()
+    print(appo)
     model.train(False)
 
     transform = transforms.Compose([

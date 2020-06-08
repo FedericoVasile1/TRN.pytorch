@@ -21,10 +21,12 @@ class TRNTHUMOSDataLayer(data.Dataset):
         ])
 
         self.inputs = []
+        self.sessions = ['video_validation_0000690']
         for session in self.sessions:
             target = np.load(osp.join(self.data_root, 'target_frames_24fps', session+'.npy'))
             target = target[3::6]
             seed = np.random.randint(self.enc_steps) if self.training else 0
+            seed = 0
             for start, end in zip(
                 range(seed, target.shape[0] - self.dec_steps, self.enc_steps),
                 range(seed + self.enc_steps, target.shape[0] - self.dec_steps, self.enc_steps)):
