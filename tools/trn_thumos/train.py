@@ -138,10 +138,6 @@ def main(args):
                       enc_mAP, dec_mAP, end - start, debug=args.debug)
 
         if args.save_last == False or epoch == (args.start_epoch + args.epochs - 1):
-            appo = 0
-            for p in model.enc_cell.parameters():
-                appo += p.sum().item()
-            print(appo)
             # Save model
             checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
             torch.save({
