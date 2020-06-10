@@ -139,8 +139,8 @@ def main(args):
                       len(data_loaders['train'].dataset), len(data_loaders['test'].dataset) if 'test' in args.phases else 0,
                       enc_mAP, dec_mAP, end - start, debug=args.debug)
 
-        # save only last epoch, or save every epoch, in any case save also every five epochs
-        if args.save_last == False or epoch == (args.start_epoch + args.epochs - 1) or epoch%5 == 0:
+        # save only last epoch, or save every epoch, in any case save also every three epochs
+        if args.save_last == False or epoch == (args.start_epoch + args.epochs - 1) or epoch%3 == 0:
             # Save model
             checkpoint_file = 'model-{}-epoch-{}.pth'.format(args.model_name, epoch)
             torch.save({

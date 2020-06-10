@@ -47,7 +47,7 @@ def main(args):
             camera_inputs = None
             num_frames = len(os.listdir(osp.join(args.data_root, args.camera_feature, session)))
             # round to multiple of 6
-            num_frames = num_frames - (num_frames%6)
+            num_frames = num_frames - (num_frames % 6)
             for idx_frame in range(3, num_frames, 6):
                 frame = Image.open(osp.join(args.data_root, args.camera_feature, session, str(idx_frame+1)+'.jpg'))
                 frame = transform(frame)
@@ -57,7 +57,9 @@ def main(args):
 
             #motion_inputs = np.load(osp.join(args.data_root, args.motion_feature, session+'.npy'), mmap_mode='r')
             motion_inputs = np.zeros((num_frames))   # optical flow will not be used
-            target = np.load(osp.join(args.data_root, 'target_frames_24fps', session+'.npy'))[3::6]
+            # take target frames and round to multiple of 6 ( -> [:num_frames])
+            target = np.load(osp.join(args.data_root, 'target_frames_24fps', session+'.npy'))[:num_frames]
+            target = target[3::6]
             future_input = to_device(torch.zeros(model.future_size), device)
             enc_hx = to_device(torch.zeros(model.hidden_size), device)
             enc_cx = to_device(torch.zeros(model.hidden_size), device)
