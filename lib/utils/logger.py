@@ -9,14 +9,14 @@ class Logger(object):
 
     def output(self, epoch, enc_losses, dec_losses, training_samples, testing_samples,
                enc_mAP, dec_mAP, running_time, debug=True, log=''):
-        log += 'Epoch: {:2} | TRAIN enc_loss: {:.5f} dec_loss: {:.5f} enc_mAP: {:.5f} dec_mAP: {:.5f} |\n'.format(
+        log += 'Epoch: {:2} | TRAIN enc_loss: {:.5f} dec_loss: {:.5f} enc_mAP: {:.5f} dec_mAP: {:.5f} | '.format(
             epoch,
             enc_losses['train'] / training_samples,
             dec_losses['train'] / training_samples,
             enc_mAP['train'],
             dec_mAP['train']
         )
-        log += '          | TEST  enc_loss: {:.5f} dec_loss: {:.5f} enc_mAP: {:.5f} dec_mAP: {:.5f} | '.format(
+        log += 'TEST  enc_loss: {:.5f} dec_loss: {:.5f} enc_mAP: {:.5f} dec_mAP: {:.5f} | '.format(
             enc_losses['test'] / testing_samples,
             dec_losses['test'] / testing_samples,
             enc_mAP['test'],
