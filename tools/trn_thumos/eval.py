@@ -49,14 +49,14 @@ def main(args):
             # round to multiple of 6
             num_frames = num_frames - (num_frames % 6)
             for idx_frame in range(3, num_frames, 6):
-                frame = Image.open(osp.join(args.data_root, args.camera_feature, session, str(idx_frame+1)+'.jpg'))
+                frame = Image.open(osp.join(args.data_root, args.camera_feature, session, str(idx_frame+1)+'.jpg')).convert('RGB')
                 frame = transform(frame)
                 if camera_inputs is None:
                     camera_inputs = torch.zeros(num_frames//6, frame.shape[0], frame.shape[1], frame.shape[2], dtype=torch.float32)
                 camera_inputs[(idx_frame-3)//6] = frame.to(dtype=torch.float32)
 
             #motion_inputs = np.load(osp.join(args.data_root, args.motion_feature, session+'.npy'), mmap_mode='r')
-            motion_inputs = np.zeros((num_frames))   # optical flow will not be used
+            motion_inputs = np.zeros((num_frames//6))   # optical flow will not be used
             # take target frames and round to multiple of 6 ( -> [:num_frames])
             target = np.load(osp.join(args.data_root, 'target_frames_24fps', session+'.npy'))[:num_frames]
             target = target[3::6]
