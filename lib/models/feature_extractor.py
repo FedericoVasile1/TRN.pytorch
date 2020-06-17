@@ -79,16 +79,17 @@ class THUMOSFeatureExtractor(nn.Module):
             feat_vect_dim = 2048
         elif args.model_name == 'vgg16':
             model = models.vgg16(pretrained=True)
-            feat_vect_dim = 512*7*7
+            model.classifier = model.classifier[:2]
+            feat_vect_dim = 4096
         else:
             raise Exception('model_name not found')
         self.feature_extractor = nn.Sequential(
-            *list(model.children())[:-1],
+            *list(model.children()),
             Flatten(),
         )
         self.input_linear = nn.Sequential(
             nn.Linear(feat_vect_dim, self.fusion_size),
-            #nn.ReLU(inplace=True),
+            nn.ReLU(inplace=True),
         )
         for param in self.feature_extractor.parameters():
             param.requires_grad = False
