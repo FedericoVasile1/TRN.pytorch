@@ -4,6 +4,7 @@ from .thumos_data_layer import TRNTHUMOSDataLayer
 _DATA_LAYERS = {
     'TRNHDD': TRNHDDDataLayer,
     'TRNTHUMOS': TRNTHUMOSDataLayer,
+    'LSTMTHUMOS': TRNTHUMOSDataLayer,
 }
 
 def build_dataset(args, phase):

@@ -1,3 +1,7 @@
+'''
+python tools/trn_thumos/train.py --epochs 10 --enc_steps 2 --dec_steps 2 --hidden_size 32 --neurons 12 --feat_vect_dim 2048 --data_info data/small_data_info.json --model LSTM
+python3 tools/trn_thumos/train.py --epochs 5 --enc_steps 64 --dec_steps 8 --hidden_size 2048 --neurons 128 --model TRN
+'''
 import os
 import os.path as osp
 import sys
@@ -81,9 +85,9 @@ def main(args):
                 for batch_idx, (camera_inputs, motion_inputs, enc_target, dec_target) \
                         in enumerate(data_loaders[phase], start=1):
                     batch_size = camera_inputs.shape[0]
-                    camera_inputs = camera_inputs.to(device)
-                    motion_inputs = motion_inputs.to(device)
-                    enc_target = enc_target.to(device).view(-1, args.num_classes)
+                    camera_inputs = camera_inputs.to(device)        # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
+                    #motion_inputs = motion_inputs.to(device)
+                    enc_target = enc_target.to(device).view(-1, args.num_classes)   # enc_target.shape == (batch_size * enc_steps, num_classes)
                     dec_target = dec_target.to(device).view(-1, args.num_classes)
 
                     enc_score, dec_score = model(camera_inputs, motion_inputs)
