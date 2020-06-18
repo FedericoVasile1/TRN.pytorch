@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from torchvision import models, transforms
 
 class LSTMmodel(nn.Module):
     def __init__(self, args):
@@ -9,6 +8,7 @@ class LSTMmodel(nn.Module):
         self.num_classes = args.num_classes
         self.enc_steps = args.enc_steps
         self.dec_steps = args.dec_steps
+        self.future_size = args.neurons
 
         FEAT_VECT_DIM = args.feat_vect_dim
         self.lin_transf = nn.Sequential(
@@ -33,3 +33,12 @@ class LSTMmodel(nn.Module):
         junk = torch.zeros(x.shape[0], self.enc_steps*self.dec_steps, self.num_classes).view(-1, self.num_classes)
         scores = torch.stack(score_stack, dim=1).view(-1, self.num_classes)
         return scores, junk
+
+    def step(self, camera_input, junk, junk2, h_n, c_n):
+        out = self.lin_transf(camera_input)
+        h_n, c_n = self.lstm(out, (h_n, c_n))
+        out = self.classifier(h_n)
+
+        junk = camera_input.new_zeros((camera_input.shape[0], self.future_size))
+        junk2 = [torch.zeros(1, 22) for dec_step in range(self.dec_steps)]
+        return junk, h_n, c_n, out, junk2
