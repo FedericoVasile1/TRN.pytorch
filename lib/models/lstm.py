@@ -32,7 +32,7 @@ class LSTMmodel(nn.Module):
             score_stack.append(out)
         junk = torch.zeros(x.shape[0], self.enc_steps*self.dec_steps, self.num_classes).view(-1, self.num_classes)
         scores = torch.stack(score_stack, dim=1).view(-1, self.num_classes)
-        return scores, junk
+        return scores, junk.to(scores.device)
 
     def step(self, camera_input, junk, junk2, h_n, c_n):
         out = self.lin_transf(camera_input)
