@@ -83,17 +83,17 @@ def main(args):
                     target_metrics[phase].extend(target)
 
                     if training:
-                        writer.add_scalar('Loss_iter/train', loss.item(), batch_idx_train)
+                        writer.add_scalar('Loss_iter/train_enc', loss.item(), batch_idx_train)
                         batch_idx_train += 1
                     else:
-                        writer.add_scalar('Loss_iter/val', loss.item(), batch_idx_test)
+                        writer.add_scalar('Loss_iter/val_enc', loss.item(), batch_idx_test)
                         batch_idx_test += 1
 
                     print('[{:5s}] Epoch: {:2}  Iteration: {:3}  Loss: {:.5f}'.format(phase, epoch+1, batch_idx, loss.item()))
         end = time.time()
 
         writer.add_scalars('Loss_epoch/train_val',
-                           {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
+                           {phase: losses[phase] / len(data_loaders[phase]) for phase in args.phases},
                            epoch)
         print('Epoch: {:2} | [train] avg_loss: {:.5f} | [test] avg_loss: {:.5f} | running_time: {:.2f} sec'
               .format(epoch+1, losses['train'] / len(data_loaders['train']),

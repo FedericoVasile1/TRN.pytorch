@@ -93,8 +93,8 @@ def main(args):
                     enc_score, dec_score = model(camera_inputs, motion_inputs)
                     enc_loss = criterion(enc_score, enc_target)
                     dec_loss = criterion(dec_score, dec_target)
-                    enc_losses[phase] += enc_loss.item() * batch_size
-                    dec_losses[phase] += dec_loss.item() * batch_size
+                    enc_losses[phase] += enc_loss.item()
+                    dec_losses[phase] += dec_loss.item()
                     if args.verbose:
                         print('Epoch: {:2} | iteration: {:3} | enc_loss: {:.5f} dec_loss: {:.5f}'.format(
                             epoch, batch_idx, enc_loss.item(), dec_loss.item()
@@ -154,9 +154,9 @@ def main(args):
             writer.add_scalars('mAP_epoch/train_val_dec', {phase: dec_mAP[phase] for phase in args.phases}, epoch)
 
         writer.add_scalars('Loss_epoch/train_val_enc',
-                           {phase: enc_losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases}, epoch)
+                           {phase: enc_losses[phase] / len(data_loaders[phase]) for phase in args.phases}, epoch)
         writer.add_scalars('Loss_epoch/train_val_dec',
-                           {phase: dec_losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases}, epoch)
+                           {phase: dec_losses[phase] / len(data_loaders[phase]) for phase in args.phases}, epoch)
 
         # Output result
         logger.output(epoch, enc_losses, dec_losses,

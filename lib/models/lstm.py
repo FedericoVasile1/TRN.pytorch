@@ -65,8 +65,8 @@ class LSTMmodelV2(nn.Module):
 
     def forward(self, x):
         # x.shape == (batch_size, enc_steps, feat_vect_dim)
-        h_n = torch.zeros(x.shape[0], self.hidden_size, dtype=x.dtype)
-        c_n = torch.zeros(x.shape[0], self.hidden_size, dtype=x.dtype)
+        h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
+        c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
         for step in range(x.shape[1]):
             x_t = x[:, step]
@@ -75,7 +75,7 @@ class LSTMmodelV2(nn.Module):
             out = self.classifier(h_n)  # self.classifier(h_n).shape == (batch_size, num_classes)
 
             scores[:, step, :] = out
-        return scores
+        return scores.to(x.device)
 
     def step(self, camera_input, h_n, c_n):
         out = self.lin_transf(camera_input)
