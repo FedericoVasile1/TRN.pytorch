@@ -23,7 +23,15 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     utl.set_seed(int(args.seed))
 
-    model = LSTMmodelV2(args).to(device)
+    model = LSTMmodelV2(args)
+    if osp.isfile(args.checkpoint):
+        checkpoint = torch.load(args.checkpoint, map_location=torch.device('cpu'))
+        model.load_state_dict(checkpoint['model_state_dict'])
+    else:
+        model.apply(utl.weights_init)
+    if args.distributed:
+        model = nn.DataParallel(model)
+    model = model.to(device)
 
     criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
