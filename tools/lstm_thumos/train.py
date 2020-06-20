@@ -71,7 +71,7 @@ def main(args):
                         loss += criterion(score[:, step], target[:, step].max(axis=1)[1])
                     loss /= camera_inputs.shape[1]
 
-                    losses[phase] += loss.item()
+                    losses[phase] += loss.item() * batch_size
 
                     if training:
                         loss.backward()
@@ -92,12 +92,12 @@ def main(args):
                     print('[{:5s}] Epoch: {:2}  Iteration: {:3}  Loss: {:.5f}'.format(phase, epoch+1, batch_idx, loss.item()))
         end = time.time()
 
-        writer.add_scalars('Loss_epoch/train_val',
-                           {phase: losses[phase] / len(data_loaders[phase]) for phase in args.phases},
-                           epoch)
+        writer.add_scalars('Loss_epoch/train_val_enc',
+                           {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
+                           epoch+1)
         print('Epoch: {:2} | [train] avg_loss: {:.5f} | [test] avg_loss: {:.5f} | running_time: {:.2f} sec'
-              .format(epoch+1, losses['train'] / len(data_loaders['train']),
-                      losses['test'] / len(data_loaders['test']), end-start))
+              .format(epoch+1, losses['train'] / len(data_loaders['train'].dataset),
+                      losses['test'] / len(data_loaders['test'].dataset), end-start))
 
         '''
         result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
