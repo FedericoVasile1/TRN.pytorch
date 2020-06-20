@@ -30,12 +30,14 @@ def build_data_loader(args, phase='train'):
         batch_size=args.batch_size,
         shuffle=phase=='train',
         num_workers=args.num_workers,
+        drop_last=True,
     )
     return data_loaders
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
-        m.weight.data.normal_(0.0, 0.001)
+        #m.weight.data.normal_(0.0, 0.001)
+        pass
     elif isinstance(m, nn.Linear):
         m.weight.data.normal_(0.0, 0.001)
     elif isinstance(m, nn.LSTMCell):
