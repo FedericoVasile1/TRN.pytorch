@@ -17,6 +17,7 @@ class LSTMmodel(nn.Module):
             nn.ReLU(inplace=True)
         )
 
+        self.drop = nn.Dropout(args.dropout)
         self.lstm = nn.LSTMCell(args.neurons, self.hidden_size)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
@@ -28,7 +29,7 @@ class LSTMmodel(nn.Module):
         for step in range(x.shape[1]):
             x_t = x[:, step]
             out = self.lin_transf(x_t)
-            h_n, c_n = self.lstm(out, (h_n, c_n))
+            h_n, c_n = self.lstm(self.drop(out), (h_n, c_n))
             out = self.classifier(h_n)  # self.classifier(h_n).shape == (batch_size, num_classes)
             score_stack.append(out)
         junk = torch.zeros(x.shape[0], self.enc_steps*self.dec_steps, self.num_classes).view(-1, self.num_classes)
@@ -60,6 +61,7 @@ class LSTMmodelV2(nn.Module):
             nn.ReLU(inplace=True)
         )
 
+        self.drop = nn.Dropout(args.dropout)
         self.lstm = nn.LSTMCell(args.neurons, self.hidden_size)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
@@ -71,7 +73,7 @@ class LSTMmodelV2(nn.Module):
         for step in range(x.shape[1]):
             x_t = x[:, step]
             out = self.lin_transf(x_t)
-            h_n, c_n = self.lstm(out, (h_n, c_n))
+            h_n, c_n = self.lstm(self.drop(out), (h_n, c_n))
             out = self.classifier(h_n)  # self.classifier(h_n).shape == (batch_size, num_classes)
 
             scores[:, step, :] = out
