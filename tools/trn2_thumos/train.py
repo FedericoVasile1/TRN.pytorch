@@ -82,6 +82,7 @@ def main(args):
                                                                     # dec_scores.shape == (batch_size, enc_steps, dec_steps, num_classes)
 
                     # sum encoder losses along all timesteps
+                    enc_scores = enc_scores.to(device)
                     enc_target = enc_target.to(device)
                     enc_loss = criterion(enc_scores[:, 0], enc_target[:, 0].max(axis=1)[1])
                     for enc_step in range(1, camera_inputs.shape[1]):
@@ -89,6 +90,7 @@ def main(args):
                     enc_loss /= camera_inputs.shape[1]   # scale loss by enc_steps
 
                     # sum decoder losses along all timesteps
+                    dec_scores = dec_scores.to(device)
                     dec_target = dec_target.view(dec_target.shape[0], args.enc_steps, args.dec_steps, dec_target.shape[2]).to(device)
                     for enc_step in range(camera_inputs.shape[1]):
                         for dec_step in range(0, dec_scores.shape[2]):
