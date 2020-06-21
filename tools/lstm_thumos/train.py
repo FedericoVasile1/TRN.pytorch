@@ -1,3 +1,7 @@
+'''
+python tools/lstm_thumos/train.py --epochs 10 --enc_steps 2 --dec_steps 2 --hidden_size 32 --neurons 12 --feat_vect_dim 2048 --data_info data/small_data_info.json --model LSTM
+python3 tools/lstm_thumos/train.py --epochs 5 --enc_steps 64 --dec_steps 8 --hidden_size 2048 --neurons 128 --model TRN
+'''
 import os
 import os.path as osp
 import sys
@@ -11,19 +15,20 @@ from torch.utils.tensorboard import SummaryWriter
 import _init_paths
 import utils as utl
 from configs.thumos import parse_trn_args as parse_args
-from lib.models.lstm import LSTMmodelV2
+from models import build_model
 
 def main(args):
     this_dir = osp.join(osp.dirname(__file__), '.')
     save_dir = osp.join(this_dir, 'checkpoints')
     if not osp.isdir(save_dir):
         os.makedirs(save_dir)
-    this_dir = osp.join(osp.dirname(__file__), '.')
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     utl.set_seed(int(args.seed))
 
-    model = LSTMmodelV2(args)
+    if args.model != 'LSTMV2':
+        raise Exception('wrong model name, this pipeline is only for LSTMmodelV2 class')
+    model = build_model(args)
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint, map_location=torch.device('cpu'))
         model.load_state_dict(checkpoint['model_state_dict'])

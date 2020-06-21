@@ -5,6 +5,7 @@ _DATA_LAYERS = {
     'TRNHDD': TRNHDDDataLayer,
     'TRNTHUMOS': TRNTHUMOSDataLayer,
     'LSTMTHUMOS': TRNTHUMOSDataLayer,
+    'LSTMV2THUMOS': TRNTHUMOSDataLayer,
 }
 
 def build_dataset(args, phase):

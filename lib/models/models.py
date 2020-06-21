@@ -1,9 +1,10 @@
 from .generalized_trn import GeneralizedTRN
-from .lstm import LSTMmodel
+from .lstm import LSTMmodel, LSTMmodelV2
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
-    'LSTM': LSTMmodel
+    'LSTM': LSTMmodel,
+    'LSTMV2': LSTMmodelV2,
 }
 
 def build_model(args):
