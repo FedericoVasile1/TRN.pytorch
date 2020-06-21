@@ -1,6 +1,6 @@
 '''
-
-
+PYTHONPATH=/Users/federicovasile/Documents/Tirocinio/trn_repo/TRN.pytorch python tools/trn2_thumos/train.py --epochs 10 --enc_steps 8 --dec_steps 2 --hidden_size 16 --neurons 8 --feat_vect_dim 512 --data_info data/small_data_info.json --model TRN2V2
+PYTHONPATH=~/trn_repo_dataset/TRN.pytorch python3 tools/trn2_thumos/train.py --epochs 22 --hidden_size 1024 --neurons 32 --model TRN2V2 --camera_feature resnet3d_112x112 --feat_vect_dim 512
 '''
 import os.path as osp
 import os
@@ -96,7 +96,7 @@ def main(args):
                                 dec_loss = criterion(dec_scores[:, enc_step, dec_step], dec_target[:, enc_step, dec_step].max(axis=1)[1])
                             else:
                                 dec_loss += criterion(dec_scores[:, enc_step, dec_step], dec_target[:, enc_step, dec_step].max(axis=1)[1])
-                    dec_loss /= (camera_inputs.shape[1] * dec_scores.shape[2])           # scale by enc_steps*dec_steps
+                    dec_loss /= (camera_inputs.shape[1] * dec_scores.shape[2])      # scale by enc_steps*dec_steps
 
                     enc_avg_losses[phase] += enc_loss.item() * batch_size
                     dec_avg_losses[phase] += dec_loss.item() * batch_size
@@ -106,12 +106,20 @@ def main(args):
                         loss.backward()
                         optimizer.step()
 
-                    '''
-                    score = softmax(score).cpu().detach().numpy()
-                    target = target.cpu().detach().numpy()
-                    score_metrics[phase].extend(score)
-                    target_metrics[phase].extend(target)
-                    '''
+                    # Prepare metrics for encoder
+                    enc_scores = enc_scores.view(-1, args.num_classes)
+                    enc_target = enc_target.view(-1, args.num_classes)
+                    enc_scores = softmax(enc_scores).cpu().detach().numpy()
+                    enc_target = enc_target.cpu().detach().numpy()
+                    enc_score_metrics[phase].extend(enc_scores)
+                    enc_target_metrics[phase].extend(enc_target)
+                    # Prepare metrics for decoder
+                    dec_scores = dec_scores.view(-1, args.num_classes)
+                    dec_target = dec_target.view(-1, args.num_classes)
+                    dec_scores = softmax(dec_scores).cpu().detach().numpy()
+                    dec_target = dec_target.cpu().detach().numpy()
+                    dec_score_metrics[phase].extend(dec_scores)
+                    dec_target_metrics[phase].extend(dec_target)
 
                     if training:
                         writer.add_scalar('Loss_iter/train_enc', enc_loss.item(), batch_idx_train)
@@ -135,27 +143,46 @@ def main(args):
         writer.add_scalars('Loss_epoch/train_val_dec',
                            {phase: dec_avg_losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
                            epoch)
-        print('Epoch: {:2} | [train] enc_avg_loss: {:.5f}  dec_avg_loss: {:.5f} | [test] enc_avg_loss: {:.5f}  dec_avg_loss: {:.5f} | running_time: {:.2f} sec'
-              .format(epoch,
-                      enc_avg_losses['train'] / len(data_loaders['train'].dataset),
-                      dec_avg_losses['train'] / len(data_loaders['train'].dataset),
-                      enc_avg_losses['test'] / len(data_loaders['test'].dataset),
-                      dec_avg_losses['test'] / len(data_loaders['test'].dataset),
-                      end - start))
 
-        '''
-        result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
-        mAP = {phase: utl.compute_result_multilabel(
+        result_file = {phase: 'enc-phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
+        enc_mAP = {phase: utl.compute_result_multilabel(
             args.class_index,
-            score_metrics[phase],
-            target_metrics[phase],
+            enc_score_metrics[phase],
+            enc_target_metrics[phase],
             save_dir,
             result_file[phase],
             ignore_class=[0, 21],
             save=True,
         ) for phase in args.phases}
-        writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
-        '''
+
+        result_file = {phase: 'dec-phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
+        dec_mAP = {phase: utl.compute_result_multilabel(
+            args.class_index,
+            dec_score_metrics[phase],
+            dec_target_metrics[phase],
+            save_dir,
+            result_file[phase],
+            ignore_class=[0, 21],
+            save=True,
+        ) for phase in args.phases}
+
+        writer.add_scalars('mAP_epoch/train_val_enc', {phase: enc_mAP[phase] for phase in args.phases}, epoch)
+        writer.add_scalars('mAP_epoch/train_val_dec', {phase: dec_mAP[phase] for phase in args.phases}, epoch)
+
+        log = 'Epoch: {:2} | [train] enc_avg_loss: {:.5f}  dec_avg_loss: {:.5f}  enc_mAP: {:.4f}  dec_mAP: {:.4f} |'
+        log += ' [test] enc_avg_loss: {:.5f}  dec_avg_loss: {:.5f}  enc_mAP: {:.4f}  dec_mAP: {:.4f} |\n'
+        log += 'running_time: {:.2f} sec'
+        log = str(log).format(epoch,
+                              enc_avg_losses['train'] / len(data_loaders['train'].dataset),
+                              dec_avg_losses['train'] / len(data_loaders['train'].dataset),
+                              enc_mAP['train'],
+                              dec_mAP['train'],
+                              enc_avg_losses['test'] / len(data_loaders['test'].dataset),
+                              dec_avg_losses['test'] / len(data_loaders['test'].dataset),
+                              enc_mAP['test'],
+                              dec_mAP['test'],
+                              end - start)
+        print(log)
 
         checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
         torch.save({
