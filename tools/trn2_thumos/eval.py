@@ -2,10 +2,11 @@ import os
 import os.path as osp
 import sys
 import time
+import numpy as np
 
 import torch
 import torch.nn as nn
-import numpy as np
+from torch.utils.tensorboard import SummaryWriter
 
 import _init_paths
 import utils as utl
@@ -14,6 +15,20 @@ from models import build_model
 
 def to_device(x, device):
     return x.unsqueeze(0).to(device)
+
+def add_pr_curve_tensorboard(writer, class_name, class_index, test_probs, test_preds, global_step=0):
+    '''
+    Takes in a "class_index" and plots the corresponding
+    precision-recall curve
+    '''
+    tensorboard_preds = test_preds == class_index
+    tensorboard_probs = test_probs[:, class_index]
+
+    writer.add_pr_curve(class_name,
+                        tensorboard_preds,
+                        tensorboard_probs,
+                        global_step=global_step)
+    writer.close()
 
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -34,6 +49,7 @@ def main(args):
 
     softmax = nn.Softmax(dim=1).to(device)
 
+    args.test_session_set = ['video_validation_0000690']
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
@@ -72,6 +88,16 @@ def main(args):
         utl.compute_result_multilabel(args.class_index,
                                       dec_score_metrics[step], dec_target_metrics[step],
                                       save_dir, result_file, ignore_class=[0,21], save=False, verbose=True)
+
+    writer = SummaryWriter()
+    # Log precision recall curve for encoder
+    enc_score_metrics = torch.tensor(enc_score_metrics)    # shape == (num_videos * num_frames_in_video, num_classes)
+    enc_pred_metrics = torch.max(enc_score_metrics, 1)[1]
+    for idx_class in range(len(args.class_index)):
+        if idx_class == 21:
+            continue  # ignore ambiguos class
+        add_pr_curve_tensorboard(writer, args.class_index[idx_class], idx_class,
+                                 enc_score_metrics, enc_pred_metrics)
 
 if __name__ == '__main__':
     main(parse_args())

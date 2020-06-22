@@ -7,33 +7,16 @@ import os.path as osp
 import os
 import sys
 import time
-import numpy as np
 
 import torch
 import torch.nn as nn
 from torch import optim
 from torch.utils.tensorboard import SummaryWriter
-import torch.utils.data as data
 
 import _init_paths
 import utils as utl
 from configs.thumos import parse_trn_args as parse_args
 from models import build_model
-
-# helper function
-def add_pr_curve_tensorboard(writer, class_name, class_index, test_probs, test_preds, global_step=0):
-    '''
-    Takes in a "class_index" and plots the corresponding
-    precision-recall curve
-    '''
-    tensorboard_preds = test_preds == class_index
-    tensorboard_probs = test_probs[:, class_index]
-
-    writer.add_pr_curve(class_name,
-                        tensorboard_preds,
-                        tensorboard_probs,
-                        global_step=global_step)
-    writer.close()
 
 def main(args):
     this_dir = osp.join(osp.dirname(__file__), '.')
@@ -212,18 +195,6 @@ def main(args):
                               dec_mAP['test'],
                               end - start)
         print(log)
-
-        # Log precision recall curve for encoder
-        enc_score_metrics = {phase: torch.tensor(enc_score_metrics[phase])   # shape == (len(dataset[phase0]) * enc_steps, num_classes)
-                             for phase in args.phases}
-        enc_pred_metrics = {phase: torch.max(enc_score_metrics[phase], 1)[1]
-                            for phase in args.phases}
-        for idx_class in range(len(args.class_index)):
-            if idx_class == 21:
-                continue        # ignore ambiguos class
-            for phase in args.phases:
-                add_pr_curve_tensorboard(writer, args.class_index[idx_class]+'_'+phase, idx_class,
-                                         enc_score_metrics[phase], enc_pred_metrics[phase])
 
         checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
         torch.save({
