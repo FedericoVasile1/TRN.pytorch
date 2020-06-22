@@ -3,6 +3,11 @@ import os.path as osp
 import sys
 import time
 import numpy as np
+import matplotlib.pyplot as plt
+
+from mlxtend.plotting import plot_confusion_matrix
+
+from sklearn.metrics import confusion_matrix
 
 import torch
 import torch.nn as nn
@@ -49,7 +54,6 @@ def main(args):
 
     softmax = nn.Softmax(dim=1).to(device)
 
-    args.test_session_set = ['video_validation_0000690']
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
@@ -98,6 +102,17 @@ def main(args):
             continue  # ignore ambiguos class
         add_pr_curve_tensorboard(writer, args.class_index[idx_class], idx_class,
                                  enc_score_metrics, enc_pred_metrics)
+
+    # Log confusion matrix for encoder
+    enc_target_metrics = torch.max(torch.tensor(enc_target_metrics), 1)[1]
+    class_names = args.class_index
+    conf_mat = confusion_matrix(enc_pred_metrics, enc_target_metrics)
+    fig, ax = plot_confusion_matrix(conf_mat=conf_mat,
+                                    colorbar=True,
+                                    show_absolute=False,
+                                    show_normed=True,
+                                    class_names=class_names)
+    plt.imshow()
 
 if __name__ == '__main__':
     main(parse_args())
