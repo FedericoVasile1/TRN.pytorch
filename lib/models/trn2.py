@@ -27,7 +27,7 @@ class TRN2V2(nn.Module):
 
         enc_h_n = torch.zeros(x.shape[0], self.hidden_size_enc, device=x.device, dtype=x.dtype)
         enc_c_n = torch.zeros(x.shape[0], self.hidden_size_enc, device=x.device, dtype=x.dtype)
-        for enc_step in range(x.shape[1]):
+        for enc_step in range(self.enc_steps):
             # decoder pass
             future_input = torch.zeros(x.shape[0], self.num_classes, device=x.device, dtype=x.dtype)
             dec_h_n = x[:, enc_step, :]   # the feature vector is the initial hidden state of the decoder
