@@ -133,7 +133,7 @@ class TRN2V2E2E(nn.Module):
 
             dec_scores[dec_step] = future_input
 
-        feat_vect_plus_future = torch.cat((camera_input, future_input), dim=1)  # shape == (batch_size, fusion_size)
+        feat_vect_plus_future = torch.cat((feat_vect, future_input), dim=1)  # shape == (1, fusion_size)
         enc_h_n, enc_c_n = self.enc(feat_vect_plus_future, (enc_h_n, enc_c_n))
         enc_score = self.classifier(enc_h_n)
 
