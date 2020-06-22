@@ -66,6 +66,7 @@ def main(args):
                     if camera_input is None:
                         camera_input = torch.zeros(CHUNK_SIZE, frame.shape[0], frame.shape[1], frame.shape[2], dtype=torch.float32)
                     camera_input[idx_frame - start_f] = frame
+                camera_input = camera_input.permute(1, 0, 2, 3)
 
                 # same to what is done during the training pipeline, every enc_steps the encoder states will be zeroed
                 if l % args.enc_steps == 0:

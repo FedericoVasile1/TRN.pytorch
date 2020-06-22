@@ -118,3 +118,23 @@ class TRN2V2E2E(nn.Module):
             enc_scores[:, enc_step, :] = out
 
         return enc_scores, dec_scores
+
+    def step(self, camera_input, enc_h_n, enc_c_n):     # camera_input.shape == (1, C, chunk_size, H, W)
+        enc_score = torch.zeros(1, self.num_classes, dtype=camera_input.dtype)
+        dec_scores = torch.zeros(self.dec_steps, 1, self.num_classes, dtype=camera_input.dtype)
+
+        future_input = torch.zeros(camera_input.shape[0], self.num_classes, device=camera_input.device, dtype=camera_input.dtype)
+        feat_vect = self.feat_extr(camera_input)
+        dec_h_n = feat_vect
+        dec_c_n = torch.zeros_like(dec_h_n).to(device=camera_input.device, dtype=camera_input.dtype)
+        for dec_step in range(self.dec_steps):
+            dec_h_n, dec_c_n = self.dec(future_input, (dec_h_n, dec_c_n))
+            future_input = self.dec_transf(dec_h_n)
+
+            dec_scores[dec_step] = future_input
+
+        feat_vect_plus_future = torch.cat((camera_input, future_input), dim=1)  # shape == (batch_size, fusion_size)
+        enc_h_n, enc_c_n = self.enc(feat_vect_plus_future, (enc_h_n, enc_c_n))
+        enc_score = self.classifier(enc_h_n)
+
+        return enc_score, dec_scores, enc_h_n, enc_c_n
