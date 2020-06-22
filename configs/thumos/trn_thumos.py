@@ -16,4 +16,5 @@ def parse_trn_args():
     parser.add_argument('--downsample_backgr', action='store_true')
     parser.add_argument('--neurons', default=4096, type=int)
     parser.add_argument('--feat_vect_dim', default=512, type=int)
+    parser.add_argument('--E2E', action='store_true')
     return build_data_info(parser.parse_args())
