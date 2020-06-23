@@ -1,6 +1,7 @@
 '''
 PYTHONPATH=/Users/federicovasile/Documents/Tirocinio/trn_repo/TRN.pytorch python tools/trn2_thumos/train.py --epochs 10 --enc_steps 8 --dec_steps 2 --hidden_size 16 --neurons 8 --feat_vect_dim 512 --data_info data/small_data_info.json --model TRN2V2
 PYTHONPATH=~/trn_repo_dataset/TRN.pytorch python3 tools/trn2_thumos/train.py --epochs 16 --hidden_size 512 --model TRN2V2 --camera_feature resnet3d_112x112 --feat_vect_dim 512
+
 PYTHONPATH=/Users/federicovasile/Documents/Tirocinio/trn_repo/TRN.pytorch python tools/trn2_thumos/train.py --epochs 10 --enc_steps 8 --dec_steps 2 --hidden_size 16 --neurons 8 --feat_vect_dim 512 --data_info data/small_data_info.json --model TRN2V2 --E2E --camera_feature video_frames_24fps
 '''
 import os.path as osp

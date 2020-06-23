@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 
-# to be used in tools/trn_thumos/train.py
+''' 
+To be used in tools/trn_thumos/train.py, so this class has been adapted for the originally trn-made training pipeline
+'''
 class LSTMmodel(nn.Module):
     def __init__(self, args):
         super(LSTMmodel, self).__init__()
@@ -45,7 +47,9 @@ class LSTMmodel(nn.Module):
         junk2 = [torch.zeros(1, 22) for dec_step in range(self.dec_steps)]
         return junk, h_n, c_n, out, junk2
 
-# to be used in tools/lstm_thumos/train.py
+''' 
+To be used in tools/lstm_thumos/train.py, so this class has its own training pipeline made especially for LSTM
+'''
 class LSTMmodelV2(nn.Module):
     def __init__(self, args):
         super(LSTMmodelV2, self).__init__()

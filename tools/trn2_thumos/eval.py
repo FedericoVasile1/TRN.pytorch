@@ -1,12 +1,14 @@
+'''
+PYTHONPATH=/Users/federicovasile/Documents/Tirocinio/trn_repo/TRN.pytorch python tools/trn2_thumos/eval.py --epochs 1 --enc_steps 8 --dec_steps 2 --hidden_size 16 --neurons 8 --feat_vect_dim 512 --data_info data/small_data_info.json --model TRN2V2 --checkpoint tools/trn2_thumos/checkpoints/inputs-camera-epoch-1.pth
+'''
+
 import os
 import os.path as osp
 import sys
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-
 from mlxtend.plotting import plot_confusion_matrix
-
 from sklearn.metrics import confusion_matrix
 
 import torch
@@ -33,7 +35,6 @@ def add_pr_curve_tensorboard(writer, class_name, class_index, test_probs, test_p
                         tensorboard_preds,
                         tensorboard_probs,
                         global_step=global_step)
-    writer.close()
 
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -102,6 +103,7 @@ def main(args):
             continue  # ignore ambiguos class
         add_pr_curve_tensorboard(writer, args.class_index[idx_class], idx_class,
                                  enc_score_metrics, enc_pred_metrics)
+    writer.close()
 
     # Log confusion matrix for encoder
     enc_target_metrics = torch.max(torch.tensor(enc_target_metrics), 1)[1]
@@ -109,10 +111,10 @@ def main(args):
     conf_mat = confusion_matrix(enc_pred_metrics, enc_target_metrics)
     fig, ax = plot_confusion_matrix(conf_mat=conf_mat,
                                     colorbar=True,
-                                    show_absolute=False,
+                                    show_absolute=True,
                                     show_normed=True,
                                     class_names=class_names)
-    plt.imshow()
+    plt.savefig('conf_mat.jpg')
 
 if __name__ == '__main__':
     main(parse_args())

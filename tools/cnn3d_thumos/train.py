@@ -1,6 +1,7 @@
 '''
 PYTHONPATH=/Users/federicovasile/Documents/Tirocinio/trn_repo/TRN.pytorch python tools/cnn3d_thumos/train.py --epochs 1 --data_info data/small_data_info.json --model CNN3D
-'''
+ PYTHONPATH=~/trn_repo_dataset/TRN.pytorch python3 tools/cnn3d_thumos/train.py --epochs 16 --model CNN3D --batch_size 128
+ '''
 import os.path as osp
 import os
 import sys
