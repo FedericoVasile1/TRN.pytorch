@@ -6,9 +6,12 @@ import os
 import os.path as osp
 import sys
 import time
+from datetime import datetime
 import numpy as np
+import pandas as pd
+import seaborn as sn
 import matplotlib.pyplot as plt
-from mlxtend.plotting import plot_confusion_matrix
+plt.switch_backend('agg')
 from sklearn.metrics import confusion_matrix
 
 import torch
@@ -107,14 +110,18 @@ def main(args):
 
     # Log confusion matrix for encoder
     enc_target_metrics = torch.max(torch.tensor(enc_target_metrics), 1)[1]
-    class_names = args.class_index
     conf_mat = confusion_matrix(enc_pred_metrics, enc_target_metrics)
-    fig, ax = plot_confusion_matrix(conf_mat=conf_mat,
-                                    colorbar=True,
-                                    show_absolute=True,
-                                    show_normed=True,
-                                    class_names=class_names)
-    plt.savefig('conf_mat.jpg')
+    args.class_index.pop(5)
+    df_cm = pd.DataFrame(conf_mat,
+                         index=[i for i in args.class_index],
+                         columns=[i for i in args.class_index])
+    fig = plt.figure(figsize=(10, 7))
+    sn.heatmap(df_cm, annot=True, linewidths=.2)
+    plt.xlabel('Actual class')
+    plt.ylabel('Predicted class')
+    timestamp = str(datetime.now())[:-7]
+    writer.add_figure(timestamp+'_conf-mat.jpg', fig)
+    writer.close()
 
 if __name__ == '__main__':
     main(parse_args())
