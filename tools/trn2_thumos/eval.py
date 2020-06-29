@@ -108,19 +108,30 @@ def main(args):
                                  enc_score_metrics, enc_pred_metrics)
     writer.close()
 
-    # Log confusion matrix for encoder
     enc_target_metrics = torch.max(torch.tensor(enc_target_metrics), 1)[1]
-    conf_mat = confusion_matrix(enc_pred_metrics, enc_target_metrics)
     args.class_index.pop(5)
+    # Log unnormalized confusion matrix for encoder
+    conf_mat = confusion_matrix(enc_pred_metrics, enc_target_metrics)
     df_cm = pd.DataFrame(conf_mat,
                          index=[i for i in args.class_index],
                          columns=[i for i in args.class_index])
-    fig = plt.figure(figsize=(10, 7))
-    sn.heatmap(df_cm, annot=True, linewidths=.2)
+    fig = plt.figure(figsize=(26, 26))
+    sn.heatmap(df_cm, annot=True, linewidths=.2, fmt="d")
     plt.xlabel('Actual class')
     plt.ylabel('Predicted class')
     timestamp = str(datetime.now())[:-7]
-    writer.add_figure(timestamp+'_conf-mat.jpg', fig)
+    writer.add_figure(timestamp+'_conf-mat_unnorm.jpg', fig)
+    # Log normalized confusion matrix for encoder
+    conf_mat_norm = conf_mat.astype('float') / conf_mat.sum(axis=1)[:, np.newaxis]
+    df_cm = pd.DataFrame(conf_mat_norm,
+                         index=[i for i in args.class_index],
+                         columns=[i for i in args.class_index])
+    fig = plt.figure(figsize=(26, 26))
+    sn.heatmap(df_cm, annot=True, linewidths=.2)
+    plt.xlabel('Actual class')
+    plt.ylabel('Predicted class')
+    writer.add_figure(timestamp + '_conf-mat_norm.jpg', fig)
+
     writer.close()
 
 if __name__ == '__main__':
