@@ -26,17 +26,19 @@ from models import build_model
 def to_device(x, device):
     return x.unsqueeze(0).to(device)
 
-def add_pr_curve_tensorboard(writer, class_name, class_index, test_probs, test_preds, global_step=0):
+def add_pr_curve_tensorboard(writer, class_name, class_index, labels, probs_predicted, global_step=0):
     '''
     Takes in a "class_index" and plots the corresponding
     precision-recall curve
     '''
-    tensorboard_preds = test_preds == class_index
-    tensorboard_probs = test_probs[:, class_index]
+    # Labels from all classes must be binarize to the only label of the current class
+    class_labels = labels == class_index
+    # For each sample, take only the probability of the current class
+    class_probs_predicted = probs_predicted[:, class_index]
 
     writer.add_pr_curve(class_name,
-                        tensorboard_preds,
-                        tensorboard_probs,
+                        class_labels,
+                        class_probs_predicted,
                         global_step=global_step)
 
 def main(args):
@@ -88,7 +90,7 @@ def main(args):
     result_file  = osp.basename(args.checkpoint).replace('.pth', '.json')
     # Compute result for encoder
     utl.compute_result_multilabel(args.class_index,
-                                  enc_score_metrics, enc_target_metrics,
+                                  np.copy(enc_score_metrics), np.copy(enc_target_metrics),
                                   save_dir, result_file, ignore_class=[0,21], save=True, verbose=True)
 
     # Compute result for decoder
@@ -98,27 +100,34 @@ def main(args):
                                       save_dir, result_file, ignore_class=[0,21], save=False, verbose=True)
 
     writer = SummaryWriter()
+    enc_score_metrics = np.array(enc_score_metrics)
+    # Assign cliff diving (5) as diving (8)
+    switch_index = np.where(enc_score_metrics[:, 5] > enc_score_metrics[:, 8])[0]
+    enc_score_metrics[switch_index, 8] = enc_score_metrics[switch_index, 5]
+    # Remove cliff diving (5) class
+    args.class_index.pop(5)
+    # Prepare variables
+    enc_score_metrics = torch.tensor(enc_score_metrics)  # shape == (num_videos * num_frames_in_video, num_classes)
+    enc_target_metrics = torch.tensor(enc_target_metrics)  # shape == (num_videos * num_frames_in_video)
     # Log precision recall curve for encoder
-    enc_score_metrics = torch.tensor(enc_score_metrics)    # shape == (num_videos * num_frames_in_video, num_classes)
-    enc_pred_metrics = torch.max(enc_score_metrics, 1)[1]
     for idx_class in range(len(args.class_index)):
         if idx_class == 21:
             continue  # ignore ambiguos class
         add_pr_curve_tensorboard(writer, args.class_index[idx_class], idx_class,
-                                 enc_score_metrics, enc_pred_metrics)
+                                 enc_target_metrics, enc_score_metrics)
     writer.close()
 
-    enc_target_metrics = torch.max(torch.tensor(enc_target_metrics), 1)[1]
-    args.class_index.pop(5)
+    # For each sample, takes the predicted class based on his scores
+    enc_pred_metrics = torch.max(enc_score_metrics, 1)[1]
     # Log unnormalized confusion matrix for encoder
-    conf_mat = confusion_matrix(enc_pred_metrics, enc_target_metrics)
+    conf_mat = confusion_matrix(enc_target_metrics, enc_pred_metrics)
     df_cm = pd.DataFrame(conf_mat,
                          index=[i for i in args.class_index],
                          columns=[i for i in args.class_index])
     fig = plt.figure(figsize=(26, 26))
     sn.heatmap(df_cm, annot=True, linewidths=.2, fmt="d")
-    plt.xlabel('Actual class')
-    plt.ylabel('Predicted class')
+    plt.ylabel('Actual class')
+    plt.xlabel('Predicted class')
     timestamp = str(datetime.now())[:-7]
     writer.add_figure(timestamp+'_conf-mat_unnorm.jpg', fig)
     # Log normalized confusion matrix for encoder
@@ -128,8 +137,8 @@ def main(args):
                          columns=[i for i in args.class_index])
     fig = plt.figure(figsize=(26, 26))
     sn.heatmap(df_cm, annot=True, linewidths=.2)
-    plt.xlabel('Actual class')
-    plt.ylabel('Predicted class')
+    plt.ylabel('Actual class')
+    plt.xlabel('Predicted class')
     writer.add_figure(timestamp + '_conf-mat_norm.jpg', fig)
 
     writer.close()
