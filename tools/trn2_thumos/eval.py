@@ -108,7 +108,7 @@ def main(args):
     args.class_index.pop(5)
     # Prepare variables
     enc_score_metrics = torch.tensor(enc_score_metrics)  # shape == (num_videos * num_frames_in_video, num_classes)
-    enc_target_metrics = torch.tensor(enc_target_metrics)  # shape == (num_videos * num_frames_in_video)
+    enc_target_metrics = torch.max(torch.tensor(enc_target_metrics), 1)[1]  # shape == (num_videos * num_frames_in_video)
     # Log precision recall curve for encoder
     for idx_class in range(len(args.class_index)):
         if idx_class == 21:
