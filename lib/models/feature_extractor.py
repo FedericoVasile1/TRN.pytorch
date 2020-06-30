@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torchvision import models
 
 class Flatten(nn.Module):
     def __init__(self):
@@ -69,6 +70,13 @@ class THUMOSFeatureExtractor(nn.Module):
 
         FEAT_VECT_DIM = args.feat_vect_dim
 
+        self.feature_extractor = None
+        if args.camera_feature == 'video_frames_24fps':
+            self.feature_extractor = models.vgg16(pretrained=True)
+            self.feature_extractor.classifier = self.feature_extractor.classifier[:2]
+            for param in self.feature_extractor.parameters():
+                param.requires_grad = False
+
         self.input_linear = nn.Sequential(
             nn.Linear(FEAT_VECT_DIM , self.fusion_size),
             nn.ReLU(inplace=True),
@@ -81,6 +89,8 @@ class THUMOSFeatureExtractor(nn.Module):
             fusion_input = camera_input
         elif self.with_motion:
             fusion_input = motion_input
+        if self.feature_extractor is not None:
+            fusion_input = self.feature_extractor(fusion_input)
         return self.input_linear(fusion_input)
 
 _FEATURE_EXTRACTORS = {

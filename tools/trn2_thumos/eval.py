@@ -111,7 +111,7 @@ def main(args):
     enc_target_metrics = torch.max(torch.tensor(enc_target_metrics), 1)[1]  # shape == (num_videos * num_frames_in_video)
     # Log precision recall curve for encoder
     for idx_class in range(len(args.class_index)):
-        if idx_class == 21:
+        if idx_class == 20:
             continue  # ignore ambiguos class
         add_pr_curve_tensorboard(writer, args.class_index[idx_class], idx_class,
                                  enc_target_metrics, enc_score_metrics)
