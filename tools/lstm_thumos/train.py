@@ -1,7 +1,3 @@
-'''
-python tools/lstm_thumos/train.py --epochs 10 --enc_steps 2 --dec_steps 2 --hidden_size 32 --neurons 12 --feat_vect_dim 2048 --data_info data/small_data_info.json --model LSTM
-python3 tools/lstm_thumos/train.py --epochs 5 --enc_steps 64 --dec_steps 8 --hidden_size 2048 --neurons 128 --model TRN
-'''
 import os.path as osp
 import os
 import sys

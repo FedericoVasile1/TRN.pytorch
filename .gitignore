@@ -33,3 +33,4 @@ runs
 .DS_Store
 */*/.DS_Store
 *.jpg
+conv.py
