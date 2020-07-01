@@ -56,7 +56,6 @@ class LSTMmodelV2(nn.Module):
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.enc_steps = args.enc_steps
-        self.dec_steps = args.dec_steps
         self.future_size = args.neurons
 
         FEAT_VECT_DIM = args.feat_vect_dim
@@ -81,7 +80,7 @@ class LSTMmodelV2(nn.Module):
             out = self.classifier(h_n)  # self.classifier(h_n).shape == (batch_size, num_classes)
 
             scores[:, step, :] = out
-        return scores.to(x.device)
+        return scores
 
     def step(self, camera_input, h_n, c_n):
         out = self.lin_transf(camera_input)
