@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
-import os.path as osp
-
 class Flatten(nn.Module):
     def __init__(self):
         super(Flatten, self).__init__()
@@ -75,8 +73,6 @@ class THUMOSFeatureExtractor(nn.Module):
         self.feature_extractor = None
         if args.camera_feature == 'video_frames_24fps':
             self.feature_extractor = models.vgg16(pretrained=True)
-            caffe_model = torch.load(osp.join(args.data_root, 'vgg16-00b39a1b.pth'))
-            self.feature_extractor.load_state_dict(caffe_model)
             self.feature_extractor.classifier = self.feature_extractor.classifier[:2]
             for param in self.feature_extractor.parameters():
                 param.requires_grad = False

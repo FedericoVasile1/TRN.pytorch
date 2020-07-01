@@ -109,6 +109,7 @@ class TRNTHUMOSDataLayerVGG(data.Dataset):
         self.training = phase=='train'
         self.transform = transforms.Compose([
             transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ])
 
         self.SAMPLE_FRAMES = 6
@@ -159,10 +160,6 @@ class TRNTHUMOSDataLayerVGG(data.Dataset):
             idx_frame = count * self.SAMPLE_FRAMES + (self.SAMPLE_FRAMES // 2)
             frame = Image.open(osp.join(self.data_root, self.camera_feature, session, str(idx_frame+1) + '.jpg')).convert('RGB')
             frame = self.transform(frame).to(dtype=torch.float32)
-            frame *= 255
-            permute = [2, 1, 0]
-            frame = frame[permute, :, :]
-            frame = transforms.Normalize(mean=[103.939, 116.779, 123.68], std=[1.0, 1.0, 1.0])(frame)
             if camera_inputs is None:
                 camera_inputs = torch.zeros((end - start, frame.shape[0], frame.shape[1], frame.shape[2]),
                                             dtype=torch.float32)
