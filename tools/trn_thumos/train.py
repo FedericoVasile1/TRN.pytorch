@@ -47,6 +47,13 @@ def main(args):
     batch_idx_train = 1
     batch_idx_test = 1
 
+    with torch.set_grad_enabled(False):
+        temp = utl.build_data_loader(args, 'train')
+        dataiter = iter(temp)
+        camera_inputs, motion_inputs, _, _ = dataiter.next()
+        writer.add_graph(model, (camera_inputs.to(device), motion_inputs.to(device)))
+        writer.close()
+
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
         if epoch == 21:
             args.lr = args.lr * 0.1
