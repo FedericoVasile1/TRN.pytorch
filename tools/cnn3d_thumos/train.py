@@ -1,6 +1,6 @@
 '''
 PYTHONPATH=/Users/federicovasile/Documents/Tirocinio/trn_repo/TRN.pytorch python tools/cnn3d_thumos/train.py --epochs 1 --data_info data/small_data_info.json --model CNN3D
- PYTHONPATH=~/trn_repo_dataset/TRN.pytorch python3 tools/cnn3d_thumos/train.py --epochs 16 --model CNN3D --batch_size 128
+PYTHONPATH=~/trn_repo_dataset/TRN.pytorch python3 tools/cnn3d_thumos/train.py --epochs 16 --model CNN3D --batch_size 128
  '''
 import os.path as osp
 import os
@@ -26,8 +26,6 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     utl.set_seed(int(args.seed))
 
-    if args.model != 'CNN3D':
-        raise Exception('wrong model name, this pipeline is only for Cnn3D class')
     model = build_model(args)
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint, map_location=torch.device('cpu'))
@@ -54,6 +52,7 @@ def main(args):
         writer.close()
 
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
+        args.batch_size = args.batch_size - args.enc_steps
         data_loaders = {
             phase: utl.build_data_loader(args, phase)
             for phase in args.phases
@@ -74,9 +73,12 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (camera_inputs, targets) in enumerate(data_loaders[phase], start=1):
-                    # camera.inputs.shape == (batch_size, C, chunk_size, H, W)
-                    # targets.shape == (batch_size, num_classes)
+                for batch_idx, (camera_inputs, _, targets, _) in enumerate(data_loaders[phase], start=1):
+                    # camera.inputs.shape == (batch_size, enc_steps, C, chunk_size, H, W)
+                    # targets.shape == (batch_size, enc_steps, num_classes)
+                    camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2], camera_inputs.shape[3],
+                                                       camera_inputs.shape[4], camera_inputs.shape[5])
+                    targets = targets.view(-1, targets.shape[2])
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
                     if training:
@@ -103,10 +105,10 @@ def main(args):
                     target_metrics[phase].extend(targets)
 
                     if training:
-                        writer.add_scalar('Loss_iter/train_enc', loss.item(), batch_idx_train)
+                        writer.add_scalar('Loss_iter/train', loss.item(), batch_idx_train)
                         batch_idx_train += 1
                     else:
-                        writer.add_scalar('Loss_iter/val_enc', loss.item(), batch_idx_test)
+                        writer.add_scalar('Loss_iter/val', loss.item(), batch_idx_test)
                         batch_idx_test += 1
 
                     print('[{:5s}] Epoch: {:2}  Iteration: {:3}  Loss: {:.5f}'.format(phase,
@@ -115,7 +117,7 @@ def main(args):
                                                                                       loss.item()))
         end = time.time()
 
-        writer.add_scalars('Loss_epoch/train_val_enc',
+        writer.add_scalars('Loss_epoch/train_val',
                            {phase: avg_losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
                            epoch)
 
@@ -130,7 +132,7 @@ def main(args):
             save=True,
         ) for phase in args.phases}
 
-        writer.add_scalars('mAP_epoch/train_val_enc', {phase: mAP[phase] for phase in args.phases}, epoch)
+        writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
 
         log = 'Epoch: {:2} | [train] avg_loss: {:.5f}  mAP: {:.4f}  |'
         log += ' [test] avg_loss: {:.5f}  mAP: {:.4f}|\n'

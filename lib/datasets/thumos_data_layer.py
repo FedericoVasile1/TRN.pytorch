@@ -1,14 +1,14 @@
 import os.path as osp
+import numpy as np
 
 import torch
 import torch.utils.data as data
-import numpy as np
 
 class TRNTHUMOSDataLayer(data.Dataset):
     def __init__(self, args, phase='train'):
         self.data_root = args.data_root
         self.camera_feature = args.camera_feature
-        self.motion_feature = args.motion_feature
+        self.motion_feature = args.motion_feature       # optical flow will not be used in our case
         self.sessions = getattr(args, phase+'_session_set')
         self.enc_steps = args.enc_steps
         self.dec_steps = args.dec_steps
@@ -53,9 +53,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
         camera_inputs = np.load(
             osp.join(self.data_root, self.camera_feature, session+'.npy'), mmap_mode='r')[start:end]
         camera_inputs = torch.as_tensor(camera_inputs.astype(np.float32))
-        motion_inputs = np.load(
-            osp.join(self.data_root, self.motion_feature, session+'.npy'), mmap_mode='r')[start:end]
-        motion_inputs = torch.as_tensor(motion_inputs.astype(np.float32))
+        motion_inputs = np.zeros((1, 1))     # zeros because optical flow will not be used
         enc_target = torch.as_tensor(enc_target.astype(np.float32))
         dec_target = torch.as_tensor(dec_target.astype(np.float32))
 

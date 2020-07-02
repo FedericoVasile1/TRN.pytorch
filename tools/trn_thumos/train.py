@@ -14,6 +14,9 @@ from configs.thumos import parse_trn_args as parse_args
 from models import build_model
 
 def main(args):
+    if args.camera_feature == 'video_frames_24fps' and args.feature_extractor == '':
+        raise Exception('The camera_feature option requires that a feature_extractor must be specified')
+
     this_dir = osp.join(osp.dirname(__file__), '.')
     save_dir = osp.join(this_dir, 'checkpoints')
     if not osp.isdir(save_dir):

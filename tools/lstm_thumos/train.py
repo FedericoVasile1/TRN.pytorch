@@ -22,8 +22,6 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     utl.set_seed(int(args.seed))
 
-    if args.model != 'LSTMV2':
-        raise Exception('wrong model name, this pipeline is only for LSTMmodelV2 class')
     model = build_model(args)
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint, map_location=torch.device('cpu'))

@@ -22,8 +22,6 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     utl.set_seed(int(args.seed))
 
-    if args.model != 'TRN2V2':
-        raise Exception('wrong model name, this pipeline is only for TRN2V2 class')
     model = build_model(args)
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint, map_location=torch.device('cpu'))
@@ -76,8 +74,9 @@ def main(args):
                 for batch_idx, (camera_inputs, motion_inputs, enc_target, dec_target) \
                         in enumerate(data_loaders[phase], start=1):
                     batch_size = camera_inputs.shape[0]
-                    # NB: if args.E2E then camera_inputs.shape == (batch_size, enc_steps, C, chunk_size, H, W)
-                    #                 else camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
+                    # NB: if from frames and 3d then camera_inputs.shape == (batch_size, enc_steps, C, chunk_size, H, W)
+                    #     if from frames and 2d then camera_inputs.shape == (batch_size, enc_steps, C, chunk_size, H, W)
+                    #     if from features then camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
                     camera_inputs = camera_inputs.to(device)
                     if training:
                         optimizer.zero_grad()

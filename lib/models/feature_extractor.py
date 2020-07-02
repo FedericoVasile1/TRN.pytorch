@@ -9,92 +9,47 @@ class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.shape[0], -1)
 
-class HDDFeatureExtractor(nn.Module):
-    def __init__(self, args):
-        super(HDDFeatureExtractor, self).__init__()
-
-        if args.inputs in ['camera', 'sensor', 'multimodal']:
-            self.with_camera = 'sensor' not in args.inputs
-            self.with_sensor = 'camera' not in args.inputs
-        else:
-            raise(RuntimeError('Unknown inputs of {}'.format(args.inputs)))
-
-        if self.with_camera and self.with_sensor:
-            self.fusion_size = 1280 + 20
-        elif self.with_camera:
-            self.fusion_size = 1280
-        elif self.with_sensor:
-            self.fusion_size = 20
-
-        self.camera_linear = nn.Sequential(
-            nn.Conv2d(1536, 20, kernel_size=1),
-            nn.ReLU(inplace=True),
-            Flatten(),
-        )
-
-        self.sensor_linear = nn.Sequential(
-            nn.Linear(8, 20),
-            nn.ReLU(inplace=True),
-        )
-
-    def forward(self, camera_input, sensor_input):
-        if self.with_camera:
-            camera_input = self.camera_linear(camera_input)
-        if self.with_sensor:
-            sensor_input = self.sensor_linear(sensor_input)
-
-        if self.with_camera and self.with_sensor:
-            fusion_input = torch.cat((camera_input, sensor_input), 1)
-        elif self.with_camera:
-            fusion_input = camera_input
-        elif self.with_sensor:
-            fusion_input = sensor_input
-        return fusion_input
-
 class THUMOSFeatureExtractor(nn.Module):
     def __init__(self, args):
         super(THUMOSFeatureExtractor, self).__init__()
+        if args.inputs != 'camera':
+            raise (RuntimeError('Unknown inputs of {}'.format(args.inputs)))
 
-        if args.inputs in ['camera', 'motion', 'multistream']:
-            self.with_camera = 'motion' not in args.inputs
-            self.with_motion = 'camera' not in args.inputs
-        else:
-            raise(RuntimeError('Unknown inputs of {}'.format(args.inputs)))
+        self.fusion_size = args.neurons
 
-        if self.with_camera and self.with_motion:
-            self.fusion_size = 2048 + 1024
-        elif self.with_camera:
-            self.fusion_size = args.neurons
-        elif self.with_motion:
-            self.fusion_size = 1024
-
-        FEAT_VECT_DIM = args.feat_vect_dim
+        if args.camera_feature != 'video_frames_24fps':
+            if args.feat_vect_dim == -1:
+                raise Exception('Specify the dimension of the feature vector via feat_vect_dim option')
+            self.feat_vect_dim = args.feat_vect_dim
 
         self.feature_extractor = None
         if args.camera_feature == 'video_frames_24fps':
-            self.feature_extractor = models.vgg16(pretrained=True)
-            self.feature_extractor.classifier = self.feature_extractor.classifier[:2]
-            for param in self.feature_extractor.parameters():
-                param.requires_grad = False
+            if args.feature_extractor == 'VGG16':
+                self.feature_extractor = models.vgg16(pretrained=True)
+                self.feature_extractor.classifier = self.feature_extractor.classifier[:2]
+                self.feat_vect_dim = self.feature_extractor.classifier.out_features
+                for param in self.feature_extractor.parameters():
+                    param.requires_grad = False
+            elif args.feature_extractor == 'RESNET2+1D':
+                self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
+                self.feature_extractor.fc = nn.Identity()
+                self.feat_vect_dim = self.feature_extractor.fc.out_features
+                for param in self.feature_extractor.parameters():
+                    param.requires_grad = False
+            else:
+                raise Exception('Feature extractor model not supported: '+args.feature_extractor)
 
         self.input_linear = nn.Sequential(
-            nn.Linear(FEAT_VECT_DIM , self.fusion_size),
+            nn.Linear(self.feat_vect_dim , self.fusion_size),
             nn.ReLU(inplace=True),
         )
 
     def forward(self, camera_input, motion_input):
-        if self.with_camera and self.with_motion:
-            fusion_input = torch.cat((camera_input, motion_input), 1)
-        elif self.with_camera:
-            fusion_input = camera_input
-        elif self.with_motion:
-            fusion_input = motion_input
         if self.feature_extractor is not None:
-            fusion_input = self.feature_extractor(fusion_input)
-        return self.input_linear(fusion_input)
+            camera_input = self.feature_extractor(camera_input)
+        return self.input_linear(camera_input)
 
 _FEATURE_EXTRACTORS = {
-    'HDD': HDDFeatureExtractor,
     'THUMOS': THUMOSFeatureExtractor,
 }
 
