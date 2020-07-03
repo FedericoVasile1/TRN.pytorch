@@ -37,7 +37,7 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
         #  is the label of the central frame of the chunk.
         # In case of 2D this means that for each chunk only the central frame of the chunk is taken and fed into
         #  the 2D model to generate the feature vector.
-        self.CHUNK_SIZE = 6
+        self.CHUNK_SIZE = args.CHUNK_SIZE
 
         self.inputs = []
         if not self.training:

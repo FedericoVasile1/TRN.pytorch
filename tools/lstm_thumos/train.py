@@ -85,11 +85,15 @@ def main(args):
 
                     score = score.to(device)
                     target = enc_target.to(device)
-                    # sum losses along all timesteps
-                    loss = criterion(score[:, 0], target[:, 0].max(axis=1)[1])
-                    for step in range(1, camera_inputs.shape[1]):
-                        loss += criterion(score[:, step], target[:, step].max(axis=1)[1])
-                    loss /= camera_inputs.shape[1]
+                    if 'ORACLE' in args.model:
+                        target = target[:, args.enc_steps//2, :]   # take the central label as label of the series of frames
+                        loss = criterion(score, target.max(axis=1)[1])
+                    else:
+                        # sum losses along all timesteps
+                        loss = criterion(score[:, 0], target[:, 0].max(axis=1)[1])
+                        for step in range(1, camera_inputs.shape[1]):
+                            loss += criterion(score[:, step], target[:, step].max(axis=1)[1])
+                        loss /= camera_inputs.shape[1]
 
                     losses[phase] += loss.item() * batch_size
 
