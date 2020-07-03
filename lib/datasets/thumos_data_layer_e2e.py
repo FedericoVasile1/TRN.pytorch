@@ -23,21 +23,21 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
                 transforms.Normalize([0.43216, 0.394666, 0.37645], [0.22803, 0.22145, 0.216989])
             ])
 
-            self.__getitem__ = self.getitem_3D
+            self.is_3D = True
         else:
             self.transform = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ])
 
-            self.__getitem__ = self.getitem_2D
+            self.is_3D = False
 
         # In case of 3D this means that a chunk of CHUNK_SIZE consecutive frames will be fed to the 3D model that will
         #  give us the corresponding feature vector as output. Furthermore, the label associated to the feature vector
         #  is the label of the central frame of the chunk.
         # In case of 2D this means that for each chunk only the central frame of the chunk is taken and fed into
         #  the 2D model to generate the feature vector.
-        self.CHUNK_SIZE = args.CHUNK_SIZE
+        self.CHUNK_SIZE = args.chunk_size
 
         self.inputs = []
         if not self.training:
@@ -79,6 +79,12 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
                 # 0 -> [0, 1, 2]
                 target_matrix[i,j] = target_vector[i+j,:]
         return target_matrix
+
+    def __getitem__(self, index):
+        if self.is_3D:
+            return self.getitem_3D(index)
+        else:
+            return self.getitem_2D(index)
 
     def getitem_2D(self, index):
         session, start, end, enc_target, dec_target = self.inputs[index]

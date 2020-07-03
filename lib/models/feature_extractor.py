@@ -26,7 +26,7 @@ class THUMOSFeatureExtractor(nn.Module):
             if args.feature_extractor == 'VGG16':
                 self.feature_extractor = models.vgg16(pretrained=True)
                 self.feature_extractor.classifier = self.feature_extractor.classifier[:2]
-                self.feat_vect_dim = self.feature_extractor.classifier.out_features
+                self.feat_vect_dim = self.feature_extractor.classifier[0].out_features
                 for param in self.feature_extractor.parameters():
                     param.requires_grad = False
             elif args.feature_extractor == 'RESNET2+1D':

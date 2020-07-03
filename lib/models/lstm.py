@@ -9,16 +9,16 @@ class LSTMmodel(nn.Module):
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.enc_steps = args.enc_steps
-        self.future_size = args.neurons
 
         self.feature_extractor = build_feature_extractor(args)
 
         self.drop = nn.Dropout(args.dropout)
-        self.lstm = nn.LSTMCell(args.neurons, self.hidden_size)
+        self.lstm = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
         if 'ORACLE' in args.model:
             self.forward = self.oracle_forward
+            self.step = self.oracle_step
         else:
             self.forward = self.base_forward
             self.step = self.base_step
@@ -55,3 +55,7 @@ class LSTMmodel(nn.Module):
 
         scores = self.classifier(h_n)  # scores.shape == (batch_size, num_classes)
         return scores
+
+    def oracle_step(self, x):
+        #TODO: is needed or not?
+        pass
