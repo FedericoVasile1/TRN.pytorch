@@ -17,7 +17,13 @@ class LSTMmodel(nn.Module):
         self.lstm = nn.LSTMCell(args.neurons, self.hidden_size)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
-    def forward(self, x):
+        if 'ORACLE' in args.model:
+            self.forward = self.oracle_forward
+        else:
+            self.forward = self.base_forward
+            self.step = self.base_step
+
+    def base_forward(self, x):
         # x.shape == (batch_size, enc_steps, feat_vect_dim)
         h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
         c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
@@ -31,8 +37,21 @@ class LSTMmodel(nn.Module):
             scores[:, step, :] = out
         return scores
 
-    def step(self, camera_input, h_n, c_n):
+    def base_step(self, camera_input, h_n, c_n):
         out = self.feature_extractor(camera_input, torch.zeros(1))
         h_n, c_n = self.lstm(out, (h_n, c_n))
         out = self.classifier(h_n)
         return out, h_n, c_n
+
+    def oracle_forward(self, x):
+        # x.shape == (batch_size, enc_steps, feat_vect_dim)
+        h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
+        c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
+        scores = torch.zeros(x.shape[0], self.num_classes, dtype=x.dtype)
+        for step in range(self.enc_steps):
+            x_t = x[:, step]
+            out = self.feature_extractor(x_t, torch.zeros(1))  # second input is optical flow, in our case will not be used
+            h_n, c_n = self.lstm(self.drop(out), (h_n, c_n))
+
+        scores = self.classifier(h_n)  # scores.shape == (batch_size, num_classes)
+        return scores

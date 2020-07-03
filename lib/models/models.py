@@ -6,6 +6,7 @@ from .cnn3d import CNN3D
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
     'LSTM': LSTMmodel,
+    'ORACLELSTM': LSTMmodel,
     'MYTRN': MyTRN,
     'RESNET2+1D': CNN3D,
 }
