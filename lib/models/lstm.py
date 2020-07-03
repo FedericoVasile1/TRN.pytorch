@@ -35,4 +35,4 @@ class LSTMmodel(nn.Module):
         out = self.feature_extractor(camera_input, torch.zeros(1))
         h_n, c_n = self.lstm(out, (h_n, c_n))
         out = self.classifier(h_n)
-        return h_n, c_n, out
+        return out, h_n, c_n

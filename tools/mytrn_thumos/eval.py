@@ -44,8 +44,9 @@ def add_pr_curve_tensorboard(writer, class_name, class_index, labels, probs_pred
                         class_probs_predicted,
                         global_step=global_step)
 
-def show_video_predictions(args, camera_inputs, session, enc_score_metrics):
+def show_video_predictions(args, camera_inputs, session, enc_score_metrics, enc_target_metrics):
     enc_pred_metrics = torch.max(torch.tensor(enc_score_metrics), 1)[1]
+    enc_target_metrics = torch.max(torch.tensor(enc_target_metrics), 1)[1]
 
     for idx in range(camera_inputs.shape[0]):
         idx_frame = idx * 6 + 3  # because features are extracted by taking the central frame every 6 frames
@@ -55,15 +56,18 @@ def show_video_predictions(args, camera_inputs, session, enc_score_metrics):
         # Convert RGB to BGR
         open_cv_frame = open_cv_frame[:, :, ::-1].copy()
 
-        open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 50,0,0,0, borderType=cv2.BORDER_CONSTANT, value=0)
-        label = args.class_index[enc_pred_metrics[idx]]
-        cv2.putText(open_cv_frame, label, (0, 20), cv2.FONT_HERSHEY_SIMPLEX,
+        open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 70,0,0,0, borderType=cv2.BORDER_CONSTANT, value=0)
+        pred_label = args.class_index[enc_pred_metrics[idx]]
+        target_label = args.class_index[enc_target_metrics[idx]]
+        cv2.putText(open_cv_frame, pred_label, (0, 20), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8, (0, 255, 0) if pred_label == target_label else (0, 0, 255), 2)
+        cv2.putText(open_cv_frame, target_label, (0, 40), cv2.FONT_HERSHEY_SIMPLEX,
                     0.8, (255, 255, 255), 2)
         cv2.putText(open_cv_frame, str(idx_frame + 1), (180, 20), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6, (255, 255, 255), 2)
+                    0.4, (255, 255, 255), 2)
         # [ (idx_frame + 1) / 24 ]    => 24 because frames has been extracted at 24 fps
         cv2.putText(open_cv_frame, '{:.2f}s'.format((idx_frame + 1) / 24), (250, 20), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6, (255, 255, 255), 2)
+                    0.4, (255, 255, 255), 2)
 
         # display the frame to screen
         cv2.imshow(session, open_cv_frame)
@@ -122,8 +126,9 @@ def main(args):
         print('Processed session {}, {:2} of {}, running time {:.2f} sec'.format(
             session, session_idx, len(args.test_session_set), end - start))
 
-        show_video_predictions(args, camera_inputs, session, enc_score_metrics[count_frames:count_frames + target.shape[0]])
-        count_frames += target.shape[0]
+        if args.show_predictions:
+            show_video_predictions(args, camera_inputs, session, enc_score_metrics[count_frames:count_frames + target.shape[0]])
+            count_frames += target.shape[0]
 
     save_dir = osp.dirname(args.checkpoint)
     result_file  = osp.basename(args.checkpoint).replace('.pth', '.json')
