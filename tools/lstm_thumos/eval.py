@@ -56,18 +56,18 @@ def show_video_predictions(args, camera_inputs, session, enc_score_metrics, enc_
         # Convert RGB to BGR
         open_cv_frame = open_cv_frame[:, :, ::-1].copy()
 
-        open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 70,0,0,0, borderType=cv2.BORDER_CONSTANT, value=0)
+        open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 60,0,0,0, borderType=cv2.BORDER_CONSTANT, value=0)
         pred_label = args.class_index[enc_pred_metrics[idx]]
         target_label = args.class_index[enc_target_metrics[idx]]
         cv2.putText(open_cv_frame, pred_label, (0, 20), cv2.FONT_HERSHEY_SIMPLEX,
                     0.8, (0, 255, 0) if pred_label == target_label else (0, 0, 255), 2)
-        cv2.putText(open_cv_frame, target_label, (0, 40), cv2.FONT_HERSHEY_SIMPLEX,
+        cv2.putText(open_cv_frame, target_label, (0, 50), cv2.FONT_HERSHEY_SIMPLEX,
                     0.8, (255, 255, 255), 2)
-        cv2.putText(open_cv_frame, str(idx_frame + 1), (180, 20), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.4, (255, 255, 255), 2)
+        cv2.putText(open_cv_frame, str(idx_frame + 1), (250, 40), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (255, 255, 255), 2)
         # [ (idx_frame + 1) / 24 ]    => 24 because frames has been extracted at 24 fps
         cv2.putText(open_cv_frame, '{:.2f}s'.format((idx_frame + 1) / 24), (250, 20), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.4, (255, 255, 255), 2)
+                    0.5, (255, 255, 255), 2)
 
         # display the frame to screen
         cv2.imshow(session, open_cv_frame)
