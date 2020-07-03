@@ -17,4 +17,5 @@ def parse_trn_args():
     parser.add_argument('--neurons', default=128, type=int)
     parser.add_argument('--feat_vect_dim', default=-1, type=int)
     parser.add_argument('--feature_extractor', default='', type=str)
+    parser.add_argument('--put_linear', action='store_true')
     return build_data_info(parser.parse_args())

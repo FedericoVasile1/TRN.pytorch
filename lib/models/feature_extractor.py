@@ -15,15 +15,14 @@ class THUMOSFeatureExtractor(nn.Module):
         if args.inputs != 'camera':
             raise (RuntimeError('Unknown inputs of {}'.format(args.inputs)))
 
-        self.fusion_size = args.neurons
-
         if args.camera_feature != 'video_frames_24fps':
+            # starting from features extracted
             if args.feat_vect_dim == -1:
                 raise Exception('Specify the dimension of the feature vector via feat_vect_dim option')
             self.feat_vect_dim = args.feat_vect_dim
-
-        self.feature_extractor = None
-        if args.camera_feature == 'video_frames_24fps':
+            self.feature_extractor = None
+        else:
+            # starting from frames
             if args.feature_extractor == 'VGG16':
                 self.feature_extractor = models.vgg16(pretrained=True)
                 self.feature_extractor.classifier = self.feature_extractor.classifier[:2]
@@ -39,10 +38,15 @@ class THUMOSFeatureExtractor(nn.Module):
             else:
                 raise Exception('Feature extractor model not supported: '+args.feature_extractor)
 
-        self.input_linear = nn.Sequential(
-            nn.Linear(self.feat_vect_dim , self.fusion_size),
-            nn.ReLU(inplace=True),
-        )
+        if args.put_linear:
+            self.fusion_size = args.neurons
+            self.input_linear = nn.Sequential(
+                nn.Linear(self.feat_vect_dim , self.fusion_size),
+                nn.ReLU(inplace=True),
+            )
+        else:
+            self.fusion_size = self.feat_vect_dim
+            self.input_linear = nn.Identity()
 
     def forward(self, camera_input, motion_input):
         if self.feature_extractor is not None:

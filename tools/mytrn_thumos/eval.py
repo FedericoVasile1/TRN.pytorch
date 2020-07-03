@@ -159,6 +159,8 @@ def main(args):
     # For each sample, takes the predicted class based on his scores
     enc_pred_metrics = torch.max(enc_score_metrics, 1)[1]
 
+    args.class_index.pop(5)
+
     # Log unnormalized confusion matrix for encoder
     conf_mat = confusion_matrix(enc_target_metrics, enc_pred_metrics)
     df_cm = pd.DataFrame(conf_mat,
@@ -174,8 +176,8 @@ def main(args):
     # Log normalized confusion matrix for encoder
     conf_mat_norm = conf_mat.astype('float') / conf_mat.sum(axis=1)[:, np.newaxis]
     df_cm = pd.DataFrame(conf_mat_norm,
-                         index=[i for i in args.class_index[:3]],
-                         columns=[i for i in args.class_index[:3]])
+                         index=[i for i in args.class_index],
+                         columns=[i for i in args.class_index])
     fig = plt.figure(figsize=(26, 26))
     sn.heatmap(df_cm, annot=True, linewidths=.2)
     plt.ylabel('Actual class')
