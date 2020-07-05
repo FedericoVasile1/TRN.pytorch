@@ -56,6 +56,9 @@ class LSTMmodel(nn.Module):
         scores = self.classifier(h_n)  # scores.shape == (batch_size, num_classes)
         return scores
 
-    def oracle_step(self, x):
-        #TODO: is needed or not?
-        pass
+    def oracle_step(self, x, h_n, c_n):
+        score = torch.zeros(x.shape[0], self.num_classes, dtype=x.dtype)
+        out = self.feature_extractor(x, torch.zeros(1))
+        h_n, c_n = self.lstm(self.drop(out), (h_n, c_n))
+        score = self.classifier(h_n)
+        return score, h_n, c_n

@@ -81,8 +81,8 @@ def main(args):
                         optimizer.zero_grad()
 
                     # forward pass
-                    score = model(camera_inputs)        # score.shape == (batch_size, enc_steps, num_classes)
-
+                    score = model(camera_inputs)        # if ORACLE: score.shape == (batch_size, num_classes)
+                                                        #      else: score.shape == (batch_size, enc_steps, num_classes)
                     score = score.to(device)
                     target = enc_target.to(device)
                     if 'ORACLE' in args.model:
