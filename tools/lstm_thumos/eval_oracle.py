@@ -113,10 +113,10 @@ def main(args):
                 if l % args.enc_steps == (args.enc_steps - 1):
                     enc_score, _, _ = model.step(camera_input, enc_h_n, enc_c_n)   # last step, so take the prediction
 
-                    for i in args.enc_steps:
+                    for i in range(args.enc_steps):
                         enc_score_metrics.append(softmax(torch.tensor(enc_score)).cpu().numpy()[0])
                         enc_target_metrics.append(target[count])
-                        count += args.enc_steps
+                    count += args.enc_steps
                 else:
                     _, enc_h_n, enc_c_n = model.step(camera_input, enc_h_n, enc_c_n)  # intermediate step, so only update weights
 

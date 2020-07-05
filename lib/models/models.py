@@ -2,6 +2,7 @@ from .generalized_trn import GeneralizedTRN
 from .lstm import LSTMmodel
 from .mytrn import MyTRN
 from .cnn3d import CNN3D
+from .fc_actiondetector import FC_AC
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -9,6 +10,7 @@ _META_ARCHITECTURES = {
     'ORACLELSTM': LSTMmodel,
     'MYTRN': MyTRN,
     'RESNET2+1D': CNN3D,
+    'FC_AC': FC_AC,
 }
 
 def build_model(args):

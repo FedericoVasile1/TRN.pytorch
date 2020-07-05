@@ -31,8 +31,8 @@ class THUMOSFeatureExtractor(nn.Module):
                     param.requires_grad = False
             elif args.feature_extractor == 'RESNET2+1D':
                 self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
+                self.feat_vect_dim = self.feature_extractor.fc.in_features
                 self.feature_extractor.fc = nn.Identity()
-                self.feat_vect_dim = self.feature_extractor.fc.out_features
                 for param in self.feature_extractor.parameters():
                     param.requires_grad = False
             else:
