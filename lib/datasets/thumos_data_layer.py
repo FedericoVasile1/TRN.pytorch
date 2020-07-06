@@ -13,7 +13,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
         self.enc_steps = args.enc_steps
         self.dec_steps = args.dec_steps
         self.training = phase=='train'
-        self.mytrn = args.model=='MYTRN'
+        self.mytrn = args.model=='MYTRN' or args.model=='FUTURELSTM'
 
         self.inputs = []
         if not self.training:
@@ -45,7 +45,10 @@ class TRNTHUMOSDataLayer(data.Dataset):
                 # 0 -> [1, 2, 3]
                 # target_matrix[i,j] = target_vector[i+j+1,:]
                 # 0 -> [0, 1, 2]
-                target_matrix[i,j] = target_vector[i+j,:]
+                if self.mytrn:
+                    target_matrix[i, j] = target_vector[i+j+1, :]
+                else:
+                    target_matrix[i,j] = target_vector[i+j,:]
         return target_matrix
 
     def __getitem__(self, index):
