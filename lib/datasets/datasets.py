@@ -13,6 +13,7 @@ _DATA_LAYERS = {
     'RESNET2+1DTHUMOSE2E': TRNTHUMOSDataLayerE2E,
     'FC_ACTHUMOS': TRNTHUMOSDataLayer,
     'FUTURELSTMTHUMOS': TRNTHUMOSDataLayer,
+    'DISCRIMINATORLSTMTHUMOS': TRNTHUMOSDataLayer,
 }
 
 def build_dataset(args, phase):
