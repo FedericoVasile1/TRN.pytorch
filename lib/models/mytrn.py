@@ -4,11 +4,17 @@ from torchvision import models
 
 from .feature_extractor import build_feature_extractor
 
+def fc_relu(in_features, out_features, inplace=True):
+    return nn.Sequential(
+        nn.Linear(in_features, out_features),
+        nn.ReLU(inplace=inplace),
+    )
+
 class MyTRN(nn.Module):
     def __init__(self, args):
         super(MyTRN, self).__init__()
         self.hidden_size_enc = args.hidden_size
-        self.hidden_size_dec = args.hidden_size
+        self.hidden_size_dec = args.hidden_size_dec
         self.num_classes = args.num_classes
         self.enc_steps = args.enc_steps
         self.dec_steps = args.dec_steps
@@ -24,7 +30,9 @@ class MyTRN(nn.Module):
         self.dec_drop = nn.Dropout(args.dropout)
         self.dec = nn.LSTMCell(self.future_size, self.hidden_size_dec)
         self.dec_classifier = nn.Linear(self.hidden_size_dec, self.num_classes)
-        self.hidden_to_future = nn.Linear(self.hidden_size_dec, self.future_size)
+        self.hidden_to_future = fc_relu(self.hidden_size_dec, self.future_size)
+        self.hiddenenc_to_hiddendec = fc_relu(self.hidden_size_enc, self.hidden_size_dec)
+        self.cellenc_to_celldec = fc_relu(self.hidden_size_enc, self.hidden_size_dec)
 
     def forward(self, x): # x.shape == (batch_size, enc_steps, feat_vect_dim)
         batch_size = x.shape[0]
@@ -33,7 +41,7 @@ class MyTRN(nn.Module):
 
         enc_h_n = torch.zeros(batch_size, self.hidden_size_enc, device=x.device, dtype=x.dtype)
         enc_c_n = torch.zeros(batch_size, self.hidden_size_enc, device=x.device, dtype=x.dtype)
-        future_input = torch.zeros(batch_size, self.future_size)
+        future_input = torch.zeros(batch_size, self.future_size, device=x.device)
         for enc_step in range(self.enc_steps):
             feat_vects = self.feature_extractor(x[:, enc_step], torch.zeros(1))
             feat_vects_plus_future = torch.cat((feat_vects, future_input), dim=1)
@@ -41,9 +49,9 @@ class MyTRN(nn.Module):
             out = self.enc_classifier(enc_h_n)
             enc_scores[:, enc_step, :] = out
 
-            dec_h_n = enc_h_n
-            dec_c_n = enc_c_n
-            future_input = torch.zeros(batch_size, self.future_size)
+            dec_h_n = self.hiddenenc_to_hiddendec(enc_h_n)
+            dec_c_n = self.cellenc_to_celldec(enc_c_n)
+            future_input = torch.zeros(batch_size, self.future_size, device=x.device)
             for dec_step in range(self.dec_steps):
                 dec_h_n, dec_c_n = self.dec(self.dec_drop(future_input), (dec_h_n, dec_c_n))
                 out = self.dec_classifier(dec_h_n)
