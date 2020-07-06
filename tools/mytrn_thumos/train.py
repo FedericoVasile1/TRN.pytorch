@@ -125,15 +125,8 @@ def main(args):
                     enc_score_metrics[phase].extend(enc_scores)
                     enc_target_metrics[phase].extend(enc_target)
                     # Prepare metrics for decoder
-                    if True:
-                        dec_scores = dec_scores.view(-1, args.feat_vect_dim)
-                        dec_target = dec_target.view(-1, args.feat_vect_dim)
-                    else:
-                        dec_scores = dec_scores.view(-1, args.num_classes)
-                        dec_target = dec_target.view(-1, args.num_classes)
-                    print(dec_scores)
-                    print(dec_target)
-                    break
+                    dec_scores = dec_scores.view(-1, args.num_classes)
+                    dec_target = dec_target.view(-1, args.num_classes)
                     dec_scores = softmax(dec_scores).cpu().detach().numpy()
                     dec_target = dec_target.cpu().detach().numpy()
                     dec_score_metrics[phase].extend(dec_scores)
@@ -183,7 +176,6 @@ def main(args):
             ignore_class=[0, 21],
             save=True,
         ) for phase in args.phases}
-        print(dec_mAP)
 
         writer.add_scalars('mAP_epoch/train_val_enc', {phase: enc_mAP[phase] for phase in args.phases}, epoch)
         writer.add_scalars('mAP_epoch/train_val_dec', {phase: dec_mAP[phase] for phase in args.phases}, epoch)

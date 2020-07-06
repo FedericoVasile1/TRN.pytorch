@@ -13,7 +13,6 @@ class TRNTHUMOSDataLayer(data.Dataset):
         self.enc_steps = args.enc_steps
         self.dec_steps = args.dec_steps
         self.training = phase=='train'
-        self.mytrn = args.model=='MYTRN' or args.model=='FUTURELSTM'
 
         self.inputs = []
         if not self.training:
@@ -45,10 +44,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
                 # 0 -> [1, 2, 3]
                 # target_matrix[i,j] = target_vector[i+j+1,:]
                 # 0 -> [0, 1, 2]
-                if self.mytrn:
-                    target_matrix[i, j] = target_vector[i+j+1, :]
-                else:
-                    target_matrix[i,j] = target_vector[i+j,:]
+                target_matrix[i,j] = target_vector[i+j,:]
         return target_matrix
 
     def __getitem__(self, index):
@@ -61,13 +57,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
         motion_inputs = np.zeros((1, 1))     # zeros because optical flow will not be used
         enc_target = torch.as_tensor(enc_target.astype(np.float32))
         dec_target = torch.as_tensor(dec_target.astype(np.float32))
-
-        if self.mytrn:
-            dec_target = self.get_dec_target(feature_vectors[start:end + self.dec_steps])
-            dec_target = torch.as_tensor(dec_target.astype(np.float32))
-            dec_target = dec_target.view(-1, feature_vectors.shape[-1])
-        else:
-            dec_target = dec_target.view(-1, enc_target.shape[-1])
+        dec_target = dec_target.view(-1, enc_target.shape[-1])
 
         return camera_inputs, motion_inputs, enc_target, dec_target
 
