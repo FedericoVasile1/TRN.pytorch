@@ -8,17 +8,18 @@ class MyTRN(nn.Module):
     def __init__(self, args):
         super(MyTRN, self).__init__()
         self.hidden_size_enc = args.hidden_size
+        self.hidden_size_dec = args.hidden_size_dec
         self.num_classes = args.num_classes
         self.enc_steps = args.enc_steps
         self.dec_steps = args.dec_steps
-        self.future_size = self.num_classes
 
         self.feature_extractor = build_feature_extractor(args)
-        self.fusion_size = self.feature_extractor.fusion_size + self.num_classes
+        self.future_size = self.feature_extractor.fusion_size
+        self.fusion_size = self.future_size * 2
 
         self.dec_drop = nn.Dropout(args.dropout)
-        self.dec = nn.LSTMCell(self.num_classes, self.feature_extractor.fusion_size)
-        self.dec_transf = nn.Linear(self.feature_extractor.fusion_size, self.num_classes)
+        self.dec = nn.LSTMCell(self.future_size, self.hidden_size_dec)
+        self.dec_transf = nn.Linear(self.hidden_size_dec, self.future_size)
 
         self.enc_drop = nn.Dropout(args.dropout)
         self.enc = nn.LSTMCell(self.fusion_size, self.hidden_size_enc)
@@ -26,16 +27,16 @@ class MyTRN(nn.Module):
 
     def forward(self, x):  # x.shape == (batch_size, enc_steps, C, chunk_size, H, W)
         enc_scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
-        dec_scores = torch.zeros(x.shape[0], x.shape[1], self.dec_steps, self.num_classes, dtype=x.dtype)
+        dec_scores = torch.zeros(x.shape[0], x.shape[1], self.dec_steps, self.future_size, dtype=x.dtype)
 
         enc_h_n = torch.zeros(x.shape[0], self.hidden_size_enc, device=x.device, dtype=x.dtype)
         enc_c_n = torch.zeros(x.shape[0], self.hidden_size_enc, device=x.device, dtype=x.dtype)
         for enc_step in range(self.enc_steps):
             # decoder pass
-            future_input = torch.zeros(x.shape[0], self.num_classes, device=x.device, dtype=x.dtype)
+            dec_h_n = torch.zeros(x.shape[0], self.hidden_size_dec, device=x.device, dtype=x.dtype)
+            dec_c_n = torch.zeros(x.shape[0], self.hidden_size_dec, device=x.device, dtype=x.dtype)
             feat_vects = self.feature_extractor(x[:, enc_step], torch.zeros(1))
-            dec_h_n = feat_vects       # the feature vector is the initial hidden state of the decoder
-            dec_c_n = torch.zeros_like(dec_h_n).to(device=x.device, dtype=x.dtype)
+            future_input = feat_vects
             for dec_step in range(self.dec_steps):
                 dec_h_n, dec_c_n = self.dec(self.dec_drop(future_input), (dec_h_n, dec_c_n))
                 future_input = self.dec_transf(dec_h_n)
@@ -53,12 +54,12 @@ class MyTRN(nn.Module):
 
     def step(self, camera_input, enc_h_n, enc_c_n):     # camera_input.shape == (1, C, chunk_size, H, W)
         enc_score = torch.zeros(1, self.num_classes, dtype=camera_input.dtype)
-        dec_scores = torch.zeros(self.dec_steps, 1, self.num_classes, dtype=camera_input.dtype)
+        dec_scores = torch.zeros(self.dec_steps, 1, self.future_size, dtype=camera_input.dtype)
 
-        future_input = torch.zeros(camera_input.shape[0], self.num_classes, device=camera_input.device, dtype=camera_input.dtype)
+        dec_h_n = torch.zeros(camera_input.shape[0], self.hidden_size_dec, device=camera_input.device, dtype=camera_input.dtype)
+        dec_c_n = torch.zeros(camera_input.shape[0], self.hidden_size_dec, device=camera_input.device, dtype=camera_input.dtype)
         feat_vect = self.feature_extractor(camera_input, torch.zeros(1))
-        dec_h_n = feat_vect
-        dec_c_n = torch.zeros_like(dec_h_n).to(device=camera_input.device, dtype=camera_input.dtype)
+        future_input = feat_vect
         for dec_step in range(self.dec_steps):
             dec_h_n, dec_c_n = self.dec(future_input, (dec_h_n, dec_c_n))
             future_input = self.dec_transf(dec_h_n)

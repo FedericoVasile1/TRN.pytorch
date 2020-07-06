@@ -139,7 +139,7 @@ def main(args):
                            epoch)
 
         accuracy = {phase: compute_perclass_accuracy(score_metrics[phase], target_metrics[phase]) for phase in args.phases}
-        print(accuracy)
+
         writer.add_scalars('back_acc_epoch/train_val', {phase: accuracy[phase][0] for phase in args.phases}, epoch)
         writer.add_scalars('action_acc_epoch/train_val', {phase: accuracy[phase][1] for phase in args.phases}, epoch)
 

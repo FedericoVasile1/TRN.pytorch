@@ -125,8 +125,12 @@ def main(args):
                     enc_score_metrics[phase].extend(enc_scores)
                     enc_target_metrics[phase].extend(enc_target)
                     # Prepare metrics for decoder
-                    dec_scores = dec_scores.view(-1, args.num_classes)
-                    dec_target = dec_target.view(-1, args.num_classes)
+                    if True:
+                        dec_scores = dec_scores.view(-1, args.feat_vect_dim)
+                        dec_target = dec_target.view(-1, args.feat_vect_dim)
+                    else:
+                        dec_scores = dec_scores.view(-1, args.num_classes)
+                        dec_target = dec_target.view(-1, args.num_classes)
                     dec_scores = softmax(dec_scores).cpu().detach().numpy()
                     dec_target = dec_target.cpu().detach().numpy()
                     dec_score_metrics[phase].extend(dec_scores)
