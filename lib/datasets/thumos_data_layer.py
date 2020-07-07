@@ -54,7 +54,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
             osp.join(self.data_root, self.camera_feature, session+'.npy'), mmap_mode='r')
         camera_inputs = feature_vectors[start:end]
         camera_inputs = torch.as_tensor(camera_inputs.astype(np.float32))
-        motion_inputs = np.zeros((1, 1))     # zeros because optical flow will not be used
+        motion_inputs = np.zeros((self.enc_steps, 1))     # zeros because optical flow will not be used
         enc_target = torch.as_tensor(enc_target.astype(np.float32))
         dec_target = torch.as_tensor(dec_target.astype(np.float32))
         dec_target = dec_target.view(-1, enc_target.shape[-1])

@@ -80,7 +80,7 @@ def main(args):
                         in enumerate(data_loaders[phase], start=1):
                     batch_size = camera_inputs.shape[0]
                     # NB: if from frames and 3d then camera_inputs.shape == (batch_size, enc_steps, C, chunk_size, H, W)
-                    #     if from frames and 2d then camera_inputs.shape == (batch_size, enc_steps, C, chunk_size, H, W)
+                    #     if from frames and 2d then camera_inputs.shape == (batch_size, enc_steps, C, H, W)
                     #     if from features then camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
                     camera_inputs = camera_inputs.to(device)
                     if training:

@@ -117,8 +117,7 @@ def main(args):
             target = np.argmax(target, axis=1)
             target[target != 0] = 1  # now, at a given index, we have the true class of the sample at that index
             # re-convert tensor to one-hot encoding tensor
-            appo = np.eye(args.num_classes)
-            target = appo[target]
+            target = torch.nn.functional.one_hot(target)
 
             for l in range(target.shape[0]):
                 if l % args.enc_steps == 0:

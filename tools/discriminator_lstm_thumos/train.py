@@ -89,8 +89,7 @@ def main(args):
                     target = torch.max(enc_target, dim=2)[1]
                     target[target != 0] = 1     # now, at a given index, we have the true class of the sample at that index
                     # re-convert tensor to one-hot encoding tensor
-                    appo = torch.eye(args.num_classes)
-                    target = appo[target]
+                    target = torch.nn.functional.one_hot(target)
 
                     if training:
                         optimizer.zero_grad()
