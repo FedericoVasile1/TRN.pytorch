@@ -15,6 +15,7 @@ from models import build_model
 
 def main(args):
     args.num_classes = 2
+    args.class_index = ['Background', 'Action']
 
     this_dir = osp.join(osp.dirname(__file__), '.')
     save_dir = osp.join(this_dir, 'checkpoints')
@@ -77,12 +78,19 @@ def main(args):
             with torch.set_grad_enabled(training):
                 for batch_idx, (camera_inputs, _, enc_target, _) \
                         in enumerate(data_loaders[phase], start=1):
+                    # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
+                    # enc_target.shape == (batch_size, enc_steps, num_classes)
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
 
                     # convert ground truth to only 0 and 1 values (0 means background, 1 means action)
-                    target = torch.max(enc_target, 1)[1]
-                    target[target != 0] = 1
+                    #  (notice that target is a one-hot encodeing tensor, so at the end it should
+                    #   be such)
+                    target = torch.max(enc_target, dim=2)[1]
+                    target[target != 0] = 1     # now, at a given index, we have the true class of the sample at that index
+                    # re-convert tensor to one-hot encoding tensor
+                    appo = torch.eye(args.num_classes)
+                    target = appo[target]
 
                     if training:
                         optimizer.zero_grad()
@@ -91,7 +99,7 @@ def main(args):
                     score = model(camera_inputs)        # score.shape == (batch_size, enc_steps, num_classes)
 
                     score = score.to(device)
-                    target = enc_target.to(device)
+                    target = target.to(device)
                     # sum losses along all timesteps
                     loss = criterion(score[:, 0], target[:, 0].max(axis=1)[1])
                     for step in range(1, camera_inputs.shape[1]):
@@ -129,7 +137,6 @@ def main(args):
                            {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
                            epoch)
 
-        '''
         result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
         mAP = {phase: utl.compute_result_multilabel(
             args.class_index,
@@ -137,21 +144,21 @@ def main(args):
             target_metrics[phase],
             save_dir,
             result_file[phase],
-            ignore_class=[0, 21],
+            ignore_class=[],
+            switch=False,
             save=True,
         ) for phase in args.phases}
 
         writer.add_scalars('mAP_epoch/train_val_enc', {phase: mAP[phase] for phase in args.phases}, epoch)
-        '''
 
         log = 'Epoch: {:2} | [train] enc_avg_loss: {:.5f}  enc_mAP: {:.4f} |'
         log += ' [test] enc_avg_loss: {:.5f}  enc_mAP: {:.4f}  |\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
                               losses['train'] / len(data_loaders['train'].dataset),
-                              0,
+                              mAP['train'],
                               losses['test'] / len(data_loaders['test'].dataset),
-                              0,
+                              mAP['test'],
                               end - start)
         print(log)
 

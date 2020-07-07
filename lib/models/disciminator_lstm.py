@@ -14,7 +14,7 @@ class DiscriminatorLSTM(nn.Module):
     def __init__(self, args):
         super(DiscriminatorLSTM, self).__init__()
         self.hidden_size = args.hidden_size
-        self.num_classes = 2   # action and background
+        self.num_classes = args.num_classes   # == 2, i.e. action and background
         self.enc_steps = args.enc_steps
 
         self.feature_extractor = build_feature_extractor(args)
@@ -32,7 +32,13 @@ class DiscriminatorLSTM(nn.Module):
             x_t = x[:, step]
             out = self.feature_extractor(x_t, torch.zeros(1))  # second input is optical flow, in our case will not be used
             h_n, c_n = self.lstm(self.drop(out), (h_n, c_n))
-            out = self.classifier(h_n)  # self.classifier(h_n).shape == (batch_size, num_classes)
+            out = self.classifier(h_n)  # out.shape == (batch_size, num_classes)
 
             scores[:, step, :] = out
         return scores
+
+    def step(self, x, h_n, c_n):
+        out = self.feature_extractor(x, torch.zeros(1))
+        h_n, c_n = self.lstm(out, (h_n, c_n))
+        out = self.classifier(h_n)
+        return out, h_n, c_n

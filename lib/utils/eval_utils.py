@@ -40,8 +40,12 @@ def compute_result_multilabel(class_index, score_metrics, target_metrics, save_d
         switch_index = np.where(score_metrics[:, 5] > score_metrics[:, 8])[0]
         score_metrics[switch_index, 8] = score_metrics[switch_index, 5]
 
-    # Remove ambiguous (21)
-    valid_index = np.where(target_metrics[:, 21]!=1)[0]
+    if ignore_class == [] and not switch:
+        # this is  only for DISCRIMINATORLSTM model
+        valid_index = list(range(target_metrics.shape[0]))      # indexes all valid
+    else:
+        # Remove ambiguous (21)
+        valid_index = np.where(target_metrics[:, 21] != 1)[0]
 
     # Compute AP
     result['AP'] = OrderedDict()
