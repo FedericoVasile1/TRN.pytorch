@@ -56,22 +56,28 @@ def show_video_predictions(args, camera_inputs, session, enc_score_metrics, enc_
         # Convert RGB to BGR
         open_cv_frame = open_cv_frame[:, :, ::-1].copy()
 
-        open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 60,0,0,0, borderType=cv2.BORDER_CONSTANT, value=0)
+        open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 60, 0, 0, 0, borderType=cv2.BORDER_CONSTANT, value=0)
         pred_label = args.class_index[enc_pred_metrics[idx]]
         target_label = args.class_index[enc_target_metrics[idx]]
+
         cv2.putText(open_cv_frame, pred_label, (0, 20), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8, (0, 255, 0) if pred_label == target_label else (0, 0, 255), 2)
+                    0.8, (0, 255, 0) if pred_label == target_label else (0, 0, 255), 1)
         cv2.putText(open_cv_frame, target_label, (0, 50), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8, (255, 255, 255), 2)
-        cv2.putText(open_cv_frame, str(idx_frame + 1), (250, 40), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5, (255, 255, 255), 2)
+                    0.8, (255, 255, 255), 1)
+        cv2.putText(open_cv_frame,
+                    'prob:{:.2f}'.format(torch.tensor(enc_score_metrics)[idx, enc_pred_metrics[idx]].item()),
+                    (210, 20), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (0, 255, 0) if pred_label == target_label else (0, 0, 255), 1)
+
         # [ (idx_frame + 1) / 24 ]    => 24 because frames has been extracted at 24 fps
-        cv2.putText(open_cv_frame, '{:.2f}s'.format((idx_frame + 1) / 24), (250, 20), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5, (255, 255, 255), 2)
+        cv2.putText(open_cv_frame, '{:.2f}s'.format((idx_frame + 1) / 24), (275, 40), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.3, (255, 255, 255), 1)
+        cv2.putText(open_cv_frame, str(idx_frame + 1), (275, 50), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.3, (255, 255, 255), 1)
 
         # display the frame to screen
         cv2.imshow(session, open_cv_frame)
-        key = cv2.waitKey(int(41.6*6))  # time is in milliseconds
+        key = cv2.waitKey(int(41.6 * 6))  # time is in milliseconds
         if key == ord('q'):
             # quit
             cv2.destroyAllWindows()
@@ -117,7 +123,7 @@ def main(args):
             target = np.argmax(target, axis=1)
             target[target != 0] = 1  # now, at a given index, we have the true class of the sample at that index
             # re-convert tensor to one-hot encoding tensor
-            target = torch.nn.functional.one_hot(target)
+            target = torch.nn.functional.one_hot(torch.tensor(target)).numpy()
 
             for l in range(target.shape[0]):
                 if l % args.enc_steps == 0:
