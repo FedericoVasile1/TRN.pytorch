@@ -16,7 +16,7 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
         self.dec_steps = args.dec_steps
         self.training = phase=='train'
 
-        if args.feature_extractor == 'RESNET2+1D' or args.model == 'RESNET2+1D':  # at the momento this is the only 3d model supported
+        if args.feature_extractor == 'RESNET2+1D' or args.model == 'RESNET2+1D' or args.model == 'DISCRIMINATORCNN3D':
             self.transform = transforms.Compose([
                 transforms.Resize((112, 112)),    # preferable size for resnet(2+1)D model
                 transforms.ToTensor(),

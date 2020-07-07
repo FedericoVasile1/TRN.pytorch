@@ -10,7 +10,7 @@ class DiscriminatorCNN3D(nn.Module):
         if args.camera_feature != 'video_frames_24fps':
             raise Exception('Wrong camera_feature option')
 
-        if args.model == 'RESNET2+1D':
+        if args.model == 'DISCRIMINATORCNN3D':
             self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
             # freeze all but last(i.e. layer4) conv layers
             for param in self.feature_extractor.parameters():

@@ -52,6 +52,8 @@ def main(args):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
         camera_inputs, _, _, _ = dataiter.next()
+        camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2], camera_inputs.shape[3],
+                                           camera_inputs.shape[4], camera_inputs.shape[5])
         writer.add_graph(model, camera_inputs.to(device))
         writer.close()
 
@@ -91,7 +93,7 @@ def main(args):
                     # convert ground truth to only 0 and 1 values (0 means background, 1 means action)
                     #  (notice that target is a one-hot encoding tensor, so at the end it should
                     #   be such)
-                    target = torch.max(enc_target, dim=2)[1]
+                    target = torch.max(enc_target, dim=1)[1]
                     target[target != 0] = 1     # now, at a given index, we have the true class of the sample at that index
                     # re-convert tensor to one-hot encoding tensor
                     target = torch.nn.functional.one_hot(target)
