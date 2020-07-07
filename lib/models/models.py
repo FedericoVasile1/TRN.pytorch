@@ -12,7 +12,6 @@ _META_ARCHITECTURES = {
     'ORACLELSTM': LSTMmodel,
     'MYTRN': MyTRN,
     'RESNET2+1D': CNN3D,
-    'FC_AC': FC_AC,
     'FUTURELSTM': FutureLSTM,
     'DISCRIMINATORLSTM': DiscriminatorLSTM,
 }
