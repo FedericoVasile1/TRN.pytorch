@@ -80,16 +80,17 @@ def main(args):
             with torch.set_grad_enabled(training):
                 for batch_idx, (camera_inputs, _, enc_target, _) \
                         in enumerate(data_loaders[phase], start=1):
-                    # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
+                    # camera_inputs.shape == (batch_size, enc_steps, 3, CHUNK_SIZE, 112, 112)
                     # enc_target.shape == (batch_size, enc_steps, num_classes)
 
-                    camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2])
+                    camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2], camera_inputs.shape[3],
+                                                       camera_inputs.shape[4], camera_inputs.shape[5])
                     enc_target = enc_target.view(-1, enc_target.shape[2])
 
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
 
-                    # convert background label to the label to the label
+                    # convert ground truth to only 0 and 1 values (0 means background, 1 means action)
                     #  (notice that target is a one-hot encoding tensor, so at the end it should
                     #   be such)
                     target = torch.max(enc_target, dim=1)[1]
