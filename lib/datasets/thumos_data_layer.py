@@ -13,19 +13,14 @@ class TRNTHUMOSDataLayer(data.Dataset):
         self.enc_steps = args.enc_steps
         self.dec_steps = args.dec_steps
         self.training = phase=='train'
-        self.model = args.model
 
         self.inputs = []
         if not self.training:
+            # validate only on a subset
             self.sessions = self.sessions[0:50]
             pass
         for session in self.sessions:
             target = np.load(osp.join(self.data_root, 'target', session+'.npy'))
-            if args.model == 'FCACTION':
-                valid_indexes = target[:, 0] == 0
-                target = target[valid_indexes]      # take only rows which label is not background
-                target = target[:, 1:]              # remove background column
-
             seed = np.random.randint(self.enc_steps) if self.training else 0
             for start, end in zip(
                 range(seed, target.shape[0] - self.dec_steps, self.enc_steps),

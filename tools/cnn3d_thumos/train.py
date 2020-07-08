@@ -18,6 +18,12 @@ from configs.thumos import parse_trn_args as parse_args
 from models import build_model
 
 def main(args):
+    # fix between batch_size and enc_steps, due to the way dataset class works
+    # e.g. args.batch_size input value is 64
+    args.enc_steps = args.batch_size / 2    # 32
+    args.batch_size = 2                     # 2
+    # now, since after we will fuse batch_size and enc_steps(i.e. batch_size * enc_steps) we will get back to 32 * 2 = 64
+
     this_dir = osp.join(osp.dirname(__file__), '.')
     save_dir = osp.join(this_dir, 'checkpoints')
     if not osp.isdir(save_dir):
@@ -44,13 +50,12 @@ def main(args):
     batch_idx_train = 1
     batch_idx_test = 1
 
-    args.batch_size /= args.enc_steps
-    args.batch_size = int(args.batch_size)
-
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
         camera_inputs, _ = dataiter.next()
+        camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2], camera_inputs.shape[3],
+                                           camera_inputs.shape[4], camera_inputs.shape[5])
         writer.add_graph(model, camera_inputs.to(device))
         writer.close()
 
@@ -78,9 +83,12 @@ def main(args):
                 for batch_idx, (camera_inputs, _, targets, _) in enumerate(data_loaders[phase], start=1):
                     # camera.inputs.shape == (batch_size, enc_steps, C, chunk_size, H, W)
                     # targets.shape == (batch_size, enc_steps, num_classes)
+
+                    # fuse batch_size and enc_steps
                     camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2], camera_inputs.shape[3],
                                                        camera_inputs.shape[4], camera_inputs.shape[5])
                     targets = targets.view(-1, targets.shape[2])
+
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
                     if training:
@@ -89,7 +97,6 @@ def main(args):
                     # forward pass
                     scores = model(camera_inputs)       # scores.shape == (batch_size, num_classes)
 
-                    # sum encoder losses along all timesteps
                     scores = scores.to(device)
                     targets = targets.to(device)
                     loss = criterion(scores, targets.max(axis=1)[1])
@@ -100,7 +107,7 @@ def main(args):
                         loss.backward()
                         optimizer.step()
 
-                    # Prepare metrics for encoder
+                    # Prepare metrics
                     scores = softmax(scores).cpu().detach().numpy()
                     targets = targets.cpu().detach().numpy()
                     score_metrics[phase].extend(scores)
@@ -120,7 +127,7 @@ def main(args):
         end = time.time()
 
         writer.add_scalars('Loss_epoch/train_val',
-                           {phase: avg_losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
+                           {phase: avg_losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},  # todo
                            epoch)
 
         result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
@@ -140,9 +147,9 @@ def main(args):
         log += ' [test] avg_loss: {:.5f}  mAP: {:.4f}|\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
-                              avg_losses['train'] / len(data_loaders['train'].dataset),
+                              avg_losses['train'] / len(data_loaders['train'].dataset),   # todo
                               mAP['train'],
-                              avg_losses['test'] / len(data_loaders['test'].dataset),
+                              avg_losses['test'] / len(data_loaders['test'].dataset),    # todo
                               mAP['test'],
                               end - start)
         print(log)

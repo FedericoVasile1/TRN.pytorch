@@ -20,9 +20,9 @@ class THUMOSFeatureExtractor(nn.Module):
             if args.feat_vect_dim == -1:
                 raise Exception('Specify the dimension of the feature vector via feat_vect_dim option')
             self.feat_vect_dim = args.feat_vect_dim
-            self.feature_extractor = None
+            self.feature_extractor = nn.Identity()   # no feature extractor needed
         else:
-            # starting from frames
+            # starting from frames, so choose a feature extractor
             if args.feature_extractor == 'VGG16':
                 self.feature_extractor = models.vgg16(pretrained=True)
                 self.feature_extractor.classifier = self.feature_extractor.classifier[:2]
@@ -49,9 +49,9 @@ class THUMOSFeatureExtractor(nn.Module):
             self.input_linear = nn.Identity()
 
     def forward(self, camera_input, motion_input):
-        if self.feature_extractor is not None:
-            camera_input = self.feature_extractor(camera_input)
-        return self.input_linear(camera_input)
+        camera_input = self.feature_extractor(camera_input)
+        camera_input = self.input_linear(camera_input)
+        return camera_input
 
 _FEATURE_EXTRACTORS = {
     'THUMOS': THUMOSFeatureExtractor,

@@ -14,6 +14,12 @@ from configs.thumos import parse_trn_args as parse_args
 from models import build_model
 
 def main(args):
+    # fix between batch_size and enc_steps, due to the way dataset class works
+    # e.g. args.batch_size input value is 64
+    args.enc_steps = args.batch_size / 2    # 32
+    args.batch_size = 2                     # 2
+    # now, since after we will fuse batch_size and enc_steps(i.e. batch_size * enc_steps) we will get back to 32 * 2 = 64
+
     args.num_classes = 2
     args.class_index = ['Background', 'Action']
 
@@ -78,25 +84,26 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (camera_inputs, _, enc_target, _) \
+                for batch_idx, (camera_inputs, _, targets, _) \
                         in enumerate(data_loaders[phase], start=1):
                     # camera_inputs.shape == (batch_size, enc_steps, 3, CHUNK_SIZE, 112, 112)
-                    # enc_target.shape == (batch_size, enc_steps, num_classes)
+                    # targets.shape == (batch_size, enc_steps, num_classes)
 
                     camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2], camera_inputs.shape[3],
                                                        camera_inputs.shape[4], camera_inputs.shape[5])
-                    enc_target = enc_target.view(-1, enc_target.shape[2])
+                    targets = targets.view(-1, targets.shape[2])
 
+                    # fuse batch_size and enc_steps
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
 
                     # convert ground truth to only 0 and 1 values (0 means background, 1 means action)
-                    #  (notice that target is a one-hot encoding tensor, so at the end it should
+                    #  (notice that targets is a one-hot encoding tensor, so at the end it should
                     #   be such)
-                    target = torch.max(enc_target, dim=1)[1]
-                    target[target != 0] = 1     # now, at a given index, we have the true class of the sample at that index
+                    targets = torch.max(targets, dim=1)[1]
+                    targets[targets != 0] = 1     # convert all actions index classes to a single 'action class'
                     # re-convert tensor to one-hot encoding tensor
-                    target = torch.nn.functional.one_hot(target)
+                    targets = torch.nn.functional.one_hot(targets)
 
                     if training:
                         optimizer.zero_grad()
@@ -105,8 +112,8 @@ def main(args):
                     score = model(camera_inputs)        # score.shape == (batch_size * enc_steps, num_classes)
 
                     score = score.to(device)
-                    target = target.to(device)
-                    loss = criterion(score, target.max(axis=1)[1])
+                    targets = targets.to(device)
+                    loss = criterion(score, targets.max(axis=1)[1])
 
                     losses[phase] += loss.item() * batch_size
 
@@ -115,12 +122,10 @@ def main(args):
                         optimizer.step()
 
                     # Prepare metrics
-                    score = score.view(-1, args.num_classes)
-                    target = target.view(-1, args.num_classes)
                     score = softmax(score).cpu().detach().numpy()
-                    target = target.cpu().detach().numpy()
+                    targets = targets.cpu().detach().numpy()
                     score_metrics[phase].extend(score)
-                    target_metrics[phase].extend(target)
+                    target_metrics[phase].extend(targets)
 
                     if training:
                         writer.add_scalar('Loss_iter/train_enc', loss.item(), batch_idx_train)
@@ -136,7 +141,7 @@ def main(args):
         end = time.time()
 
         writer.add_scalars('Loss_epoch/train_val_enc',
-                           {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
+                           {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},   # todo
                            epoch)
 
         result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
@@ -157,9 +162,9 @@ def main(args):
         log += ' [test] enc_avg_loss: {:.5f}  enc_mAP: {:.4f}  |\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
-                              losses['train'] / len(data_loaders['train'].dataset),
+                              losses['train'] / len(data_loaders['train'].dataset),     # todo
                               mAP['train'],
-                              losses['test'] / len(data_loaders['test'].dataset),
+                              losses['test'] / len(data_loaders['test'].dataset),       # todo
                               mAP['test'],
                               end - start)
         print(log)

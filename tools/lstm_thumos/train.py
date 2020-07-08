@@ -73,27 +73,25 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (camera_inputs, motion_inputs, enc_target, dec_target) \
-                        in enumerate(data_loaders[phase], start=1):
+                for batch_idx, (camera_inputs, _, enc_target, _) in enumerate(data_loaders[phase], start=1):
+                    # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
+                    # enc_target.shape == (batch_size, enc_steps, num_classes)
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
+
                     if training:
                         optimizer.zero_grad()
 
                     # forward pass
-                    score = model(camera_inputs)        # if ORACLE: score.shape == (batch_size, num_classes)
-                                                        #      else: score.shape == (batch_size, enc_steps, num_classes)
+                    score = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
+
                     score = score.to(device)
                     target = enc_target.to(device)
-                    if 'ORACLE' in args.model:
-                        target = target[:, args.enc_steps//2, :]   # take the central label as label of the series of frames
-                        loss = criterion(score, target.max(axis=1)[1])
-                    else:
-                        # sum losses along all timesteps
-                        loss = criterion(score[:, 0], target[:, 0].max(axis=1)[1])
-                        for step in range(1, camera_inputs.shape[1]):
-                            loss += criterion(score[:, step], target[:, step].max(axis=1)[1])
-                        loss /= camera_inputs.shape[1]
+                    # sum losses along all timesteps
+                    loss = criterion(score[:, 0], target[:, 0].max(axis=1)[1])
+                    for step in range(1, camera_inputs.shape[1]):
+                        loss += criterion(score[:, step], target[:, step].max(axis=1)[1])
+                    loss /= camera_inputs.shape[1]      # scale by enc_steps
 
                     losses[phase] += loss.item() * batch_size
 

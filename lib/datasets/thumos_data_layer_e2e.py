@@ -135,7 +135,7 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
         # switch channel with chunk_size (3d models want input in this way)
         camera_inputs = camera_inputs.permute(0, 2, 1, 3, 4)
 
-        return camera_inputs, motion_inputs, enc_target, dec_target.view(-1, enc_target.shape[-1])
+        return camera_inputs, motion_inputs, enc_target, dec_target
 
     def __len__(self):
         return len(self.inputs)

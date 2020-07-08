@@ -87,7 +87,7 @@ def main(args):
                     #  (notice that target is a one-hot encodeing tensor, so at the end it should
                     #   be such)
                     target = torch.max(enc_target, dim=2)[1]
-                    target[target != 0] = 1     # now, at a given index, we have the true class of the sample at that index
+                    target[target != 0] = 1     # convert all actions index classes to a single 'action class'
                     # re-convert tensor to one-hot encoding tensor
                     target = torch.nn.functional.one_hot(target)
 
@@ -103,7 +103,7 @@ def main(args):
                     loss = criterion(score[:, 0], target[:, 0].max(axis=1)[1])
                     for step in range(1, camera_inputs.shape[1]):
                         loss += criterion(score[:, step], target[:, step].max(axis=1)[1])
-                    loss /= camera_inputs.shape[1]
+                    loss /= camera_inputs.shape[1]      # scale by enc_steps
 
                     losses[phase] += loss.item() * batch_size
 
