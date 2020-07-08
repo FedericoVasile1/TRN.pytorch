@@ -3,8 +3,9 @@ from .lstm import LSTMmodel
 from .mytrn import MyTRN
 from .cnn3d import CNN3D
 from .futurelstm import FutureLSTM
-from .disciminator_lstm import DiscriminatorLSTM
+from .discriminator_lstm import DiscriminatorLSTM
 from .discriminator_cnn3d import DiscriminatorCNN3D
+from .fc_action import FC_Action
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -15,6 +16,7 @@ _META_ARCHITECTURES = {
     'FUTURELSTM': FutureLSTM,
     'DISCRIMINATORLSTM': DiscriminatorLSTM,
     'DISCRIMINATORCNN3D': DiscriminatorCNN3D,
+    'FCACTION': FC_Action,
 }
 
 def build_model(args):

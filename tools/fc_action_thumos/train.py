@@ -14,8 +14,10 @@ from configs.thumos import parse_trn_args as parse_args
 from models import build_model
 
 def main(args):
-    args.num_classes = 2
-    args.class_index = ['Background', 'Action']
+    # Remove background
+    args.num_classes -= 1
+    args.class_index.remove('Background')
+    assert args.num_classes == len(args.class_index)
 
     this_dir = osp.join(osp.dirname(__file__), '.')
     save_dir = osp.join(this_dir, 'checkpoints')
@@ -52,8 +54,7 @@ def main(args):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
         camera_inputs, _, _, _ = dataiter.next()
-        camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2], camera_inputs.shape[3],
-                                           camera_inputs.shape[4], camera_inputs.shape[5])
+        camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2])
         writer.add_graph(model, camera_inputs.to(device))
         writer.close()
 
@@ -84,18 +85,10 @@ def main(args):
                     # enc_target.shape == (batch_size, enc_steps, num_classes)
 
                     camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2])
-                    enc_target = enc_target.view(-1, enc_target.shape[2])
+                    target = enc_target.view(-1, enc_target.shape[2])
 
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
-
-                    # convert background label to the label to the label
-                    #  (notice that target is a one-hot encoding tensor, so at the end it should
-                    #   be such)
-                    target = torch.max(enc_target, dim=1)[1]
-                    target[target != 0] = 1     # now, at a given index, we have the true class of the sample at that index
-                    # re-convert tensor to one-hot encoding tensor
-                    target = torch.nn.functional.one_hot(target)
 
                     if training:
                         optimizer.zero_grad()
