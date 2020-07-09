@@ -103,7 +103,7 @@ def main(args):
                     targets = torch.max(targets, dim=1)[1]
                     targets[targets != 0] = 1     # convert all actions index classes to a single 'action class'
                     # re-convert tensor to one-hot encoding tensor
-                    targets = torch.nn.functional.one_hot(targets)
+                    targets = torch.nn.functional.one_hot(targets, num_classes=args.num_classes)
 
                     if training:
                         optimizer.zero_grad()
