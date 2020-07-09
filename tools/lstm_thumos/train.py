@@ -32,7 +32,11 @@ def main(args):
         model = nn.DataParallel(model)
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
+    weights = torch.ones(args.num_classes)
+    if args.downsample_backgr:
+        # trick to ignore background class
+        weights[0] = 0
+    criterion = nn.CrossEntropyLoss(weight=weights, ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

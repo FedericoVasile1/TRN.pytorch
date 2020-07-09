@@ -21,4 +21,5 @@ def parse_trn_args():
     parser.add_argument('--show_predictions', action='store_true')
     parser.add_argument('--chunk_size', default=6, type=int)
     parser.add_argument('--hidden_size_dec', default=-1, type=int)
+    parser.add_argument('--checkpoint_act', default='', type=str)
     return build_data_info(parser.parse_args())

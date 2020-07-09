@@ -4,6 +4,7 @@ from .mytrn import MyTRN
 from .cnn3d import CNN3D
 from .discriminator_lstm import DiscriminatorLSTM
 from .discriminator_cnn3d import DiscriminatorCNN3D
+from .discr_act_lstm import DiscrActLSTM
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -12,6 +13,7 @@ _META_ARCHITECTURES = {
     'RESNET2+1D': CNN3D,
     'DISCRIMINATORLSTM': DiscriminatorLSTM,
     'DISCRIMINATORCNN3D': DiscriminatorCNN3D,
+    'DISCRACTLSTM': DiscrActLSTM,
 }
 
 def build_model(args):
