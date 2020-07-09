@@ -17,8 +17,6 @@ class DiscriminatorCNN(nn.Module):
                     param.requires_grad = False
                 for param in self.feature_extractor.layer2.parameters():
                     param.requires_grad = False
-                    for param in self.feature_extractor.parameters():
-                        param.requires_grad = False
                 self.feature_extractor.fc = nn.Linear(self.feature_extractor.fc.in_features, args.num_classes)
             elif args.feature_extractor == 'VGG16':
                 self.feature_extractor = models.vgg16(pretrained=True)
