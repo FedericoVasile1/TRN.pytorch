@@ -37,6 +37,7 @@ class DiscrActLSTM(nn.Module):
                 self.is_first = False
             self.act_h_n, self.act_c_n = self.act(feat_vect, (self.act_h_n, self.act_c_n))
             out = self.act_classifier(self.act_h_n)
+            out[0, 0] = 0       # suppress background
         else:
             self.is_first = True
             out = self.backgr_vect
