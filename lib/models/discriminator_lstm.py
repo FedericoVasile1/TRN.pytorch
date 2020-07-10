@@ -16,32 +16,30 @@ class DiscriminatorLSTM(nn.Module):
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes   # == 2, i.e. action and background
         self.enc_steps = args.enc_steps
-        self.two_layers_lstm = args.two_layers_lstm
 
         self.feature_extractor = build_feature_extractor(args)
 
+        self.conv = nn.Sequential(
+            nn.Conv1d(1, 512, 1, stride=1),
+            nn.ReLU(inplace=True),
+            nn.Conv1d(512, 512, 1, stride=1),
+        )
         self.drop = nn.Dropout(args.dropout)
         self.lstm = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
-        if self.two_layers_lstm:
-            self.drop2 = nn.Dropout(args.dropout)
-            self.lstm2 = nn.LSTMCell(self.hidden_size, self.hidden_size)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
     def forward(self, x):
         # x.shape == (batch_size, enc_steps, feat_vect_dim)
         h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
         c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
-        if self.two_layers_lstm:
-            h_n_2 = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
-            c_n_2 = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
         for step in range(self.enc_steps):
             x_t = x[:, step]
             out = self.feature_extractor(x_t, torch.zeros(1))  # second input is optical flow, in our case will not be used
+            out = self.conv(out.unsqueeze(1))
+            out = out.mean(dim=2)
             h_n, c_n = self.lstm(self.drop(out), (h_n, c_n))
-            if self.two_layers_lstm:
-                h_n_2, c_n_2 = self.lstm2(self.drop2(h_n), (h_n_2, c_n_2))
-            out = self.classifier(h_n_2 if self.two_layers_lstm else h_n)  # out.shape == (batch_size, num_classes)
+            out = self.classifier(h_n)  # out.shape == (batch_size, num_classes)
 
             scores[:, step, :] = out
         return scores
