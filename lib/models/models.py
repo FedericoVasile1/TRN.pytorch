@@ -6,6 +6,7 @@ from .discriminator_lstm import DiscriminatorLSTM
 from .discriminator_cnn3d import DiscriminatorCNN3D
 from .discr_act_lstm import DiscrActLSTM
 from .discriminator_cnn import DiscriminatorCNN
+from .convlstm import ConvLSTM
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -16,6 +17,7 @@ _META_ARCHITECTURES = {
     'DISCRIMINATORCNN3D': DiscriminatorCNN3D,
     'DISCRACTLSTM': DiscrActLSTM,
     'DISCRIMINATORCNN': DiscriminatorCNN,
+    'CONVLSTM': ConvLSTM,
 }
 
 def build_model(args):
