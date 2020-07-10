@@ -55,8 +55,7 @@ class ConvLSTM(nn.Module):
     def __init__(self, args, input_channels=512, hidden_channels=[128, 64, 64, 32, 32], kernel_size=3):
         super(ConvLSTM, self).__init__()
         self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
-        self.feature_extractor.avgpool = nn.Identity()
-        self.feature_extractor.fc = nn.Identity()
+        self.feature_extractor = nn.Sequential(*list(self.feature_extractor.children())[:-2])  # drop avgpool and fc
         for param in self.feature_extractor.parameters():
             param.requires_grad = False
 
