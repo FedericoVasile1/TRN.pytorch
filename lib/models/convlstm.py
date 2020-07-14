@@ -51,11 +51,11 @@ class ConvLSTMCell(nn.Module):
         ch = co * torch.tanh(cc)
         return ch, cc
 
-    def init_hidden(self, batch_size, hidden, shape):
+    def init_hidden(self, batch_size, hidden, shape, device):
         if self.Wci is None:
-            self.Wci = Variable(torch.zeros(1, hidden, shape[0], shape[1]))
-            self.Wcf = Variable(torch.zeros(1, hidden, shape[0], shape[1]))
-            self.Wco = Variable(torch.zeros(1, hidden, shape[0], shape[1]))
+            self.Wci = Variable(torch.zeros(1, hidden, shape[0], shape[1])).to(device)
+            self.Wcf = Variable(torch.zeros(1, hidden, shape[0], shape[1])).to(device)
+            self.Wco = Variable(torch.zeros(1, hidden, shape[0], shape[1])).to(device)
         else:
             assert shape[0] == self.Wci.size()[2], 'Input Height Mismatched!'
             assert shape[1] == self.Wci.size()[3], 'Input Width Mismatched!'
@@ -68,7 +68,7 @@ At this moment, this model is designed to be trained only in a end to end way, i
 class ConvLSTM(nn.Module):
     # input_channels corresponds to the first input feature map
     # hidden state is a list of succeeding lstm layers.
-    def __init__(self, args, input_channels=-1, hidden_channels=[256, 128], kernel_size=3, step=8):
+    def __init__(self, args, input_channels=-1, hidden_channels=[256, 128], kernel_size=3, step=-1):
         super(ConvLSTM, self).__init__()
         if args.model != 'CONVLSTM':
             raise Exception('wrong model name, expected CONVLSTM, given ' + args.model)
@@ -84,7 +84,7 @@ class ConvLSTM(nn.Module):
         self.hidden_channels = hidden_channels
         self.kernel_size = kernel_size
         self.num_layers = len(hidden_channels)
-        self.step = step
+        self.step = args.enc_steps
 
         self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
         self.feature_extractor = nn.Sequential(
@@ -124,9 +124,9 @@ class ConvLSTM(nn.Module):
                 if step == 0:
                     bsize, _, height, width = x.size()
                     (h, c) = getattr(self, name).init_hidden(batch_size=bsize, hidden=self.hidden_channels[i],
-                                                             shape=(height, width))
-                    h = h.to(device)
-                    c = c.to(device)
+                                                             shape=(height, width), device=input.device)
+                    h = h.to(input.device)
+                    c = c.to(input.device)
                     internal_state.append((h, c))
 
                 # do forward
