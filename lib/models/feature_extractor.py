@@ -25,7 +25,7 @@ class THUMOSFeatureExtractor(nn.Module):
             # starting from frames, so choose a feature extractor
             if args.feature_extractor == 'VGG16':
                 self.feature_extractor = models.vgg16(pretrained=True)
-                self.feature_extractor.classifier = self.feature_extractor.classifier[:2]
+                self.feature_extractor.classifier = self.feature_extractor.classifier[:2]       # extract fc6 feature vector
                 self.feat_vect_dim = self.feature_extractor.classifier[0].out_features
                 for param in self.feature_extractor.parameters():
                     param.requires_grad = False

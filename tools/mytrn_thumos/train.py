@@ -32,7 +32,8 @@ def main(args):
         model = nn.DataParallel(model)
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
+    criterion_enc = nn.CrossEntropyLoss(ignore_index=21).to(device)
+    criterion_dec = nn.MSELoss(ignore_index=21).to(device)      # to measure the loss between predicted and target feature vector
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -62,7 +63,7 @@ def main(args):
         enc_score_metrics = {phase: [] for phase in args.phases}
         enc_target_metrics = {phase: [] for phase in args.phases}
         dec_avg_losses = {phase: 0.0 for phase in args.phases}
-        dec_score_metrics = {phase: [] for phase in args.phases}
+        #dec_score_metrics = {phase: [] for phase in args.phases}   # for decoder we are not doing classification, so this is no more needed
         dec_target_metrics = {phase: [] for phase in args.phases}
 
         start = time.time()
@@ -88,26 +89,27 @@ def main(args):
 
                     # forward pass
                     enc_scores, dec_scores = model(camera_inputs)   # enc_scores.shape == (batch_size, enc_steps, num_classes)
-                                                                    # dec_scores.shape == (batch_size, enc_steps, dec_steps, num_classes)
+                                                                    # dec_scores.shape == (batch_size, enc_steps, dec_steps, feat_vect_dim)
 
                     # sum encoder losses along all timesteps
                     enc_scores = enc_scores.to(device)
                     enc_target = enc_target.to(device)
-                    enc_loss = criterion(enc_scores[:, 0], enc_target[:, 0].max(axis=1)[1])
-                    for enc_step in range(1, camera_inputs.shape[1]):
-                        enc_loss += criterion(enc_scores[:, enc_step], enc_target[:, enc_step].max(axis=1)[1])
-                    enc_loss /= camera_inputs.shape[1]   # scale loss by enc_steps
+                    enc_loss = criterion_enc(enc_scores[:, 0], enc_target[:, 0].max(axis=1)[1])
+                    for enc_step in range(1, args.enc_steps):
+                        enc_loss += criterion_enc(enc_scores[:, enc_step], enc_target[:, enc_step].max(axis=1)[1])
+                    enc_loss /= args.enc_steps
 
                     # sum decoder losses along all timesteps
                     dec_scores = dec_scores.to(device)
-                    dec_target = dec_target.view(dec_target.shape[0], args.enc_steps, args.dec_steps, dec_target.shape[2]).to(device)
-                    for enc_step in range(camera_inputs.shape[1]):
-                        for dec_step in range(0, dec_scores.shape[2]):
+                    for enc_step in range(args.enc_steps):
+                        for dec_step in range(args.dec_steps):
                             if enc_step == dec_step == 0:
-                                dec_loss = criterion(dec_scores[:, enc_step, dec_step], dec_target[:, enc_step, dec_step].max(axis=1)[1])
+                                dec_loss = criterion_dec(dec_scores[:, enc_step, dec_step],
+                                                         dec_target[:, enc_step, dec_step])
                             else:
-                                dec_loss += criterion(dec_scores[:, enc_step, dec_step], dec_target[:, enc_step, dec_step].max(axis=1)[1])
-                    dec_loss /= (camera_inputs.shape[1] * dec_scores.shape[2])      # scale by enc_steps*dec_steps
+                                dec_loss += criterion_dec(dec_scores[:, enc_step, dec_step],
+                                                          dec_target[:, enc_step, dec_step])
+                    dec_loss /= (args.enc_steps * args.dec_steps)
 
                     enc_avg_losses[phase] += enc_loss.item() * batch_size
                     dec_avg_losses[phase] += dec_loss.item() * batch_size
@@ -125,11 +127,11 @@ def main(args):
                     enc_score_metrics[phase].extend(enc_scores)
                     enc_target_metrics[phase].extend(enc_target)
                     # Prepare metrics for decoder
-                    dec_scores = dec_scores.view(-1, args.num_classes)
-                    dec_target = dec_target.view(-1, args.num_classes)
+                    dec_scores = dec_scores.view(-1, args.feat_vect_dim)
+                    dec_target = dec_target.view(-1, args.feat_vect_dim)
                     dec_scores = softmax(dec_scores).cpu().detach().numpy()
                     dec_target = dec_target.cpu().detach().numpy()
-                    dec_score_metrics[phase].extend(dec_scores)
+                    #dec_score_metrics[phase].extend(dec_scores)
                     dec_target_metrics[phase].extend(dec_target)
 
                     if training:
@@ -166,6 +168,7 @@ def main(args):
             save=True,
         ) for phase in args.phases}
 
+        '''
         result_file = {phase: 'dec-phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
         dec_mAP = {phase: utl.compute_result_multilabel(
             args.class_index,
@@ -176,9 +179,10 @@ def main(args):
             ignore_class=[0, 21],
             save=True,
         ) for phase in args.phases}
+        '''
 
         writer.add_scalars('mAP_epoch/train_val_enc', {phase: enc_mAP[phase] for phase in args.phases}, epoch)
-        writer.add_scalars('mAP_epoch/train_val_dec', {phase: dec_mAP[phase] for phase in args.phases}, epoch)
+        #writer.add_scalars('mAP_epoch/train_val_dec', {phase: dec_mAP[phase] for phase in args.phases}, epoch)
 
         log = 'Epoch: {:2} | [train] enc_avg_loss: {:.5f}  dec_avg_loss: {:.5f}  enc_mAP: {:.4f}  dec_mAP: {:.4f} |'
         log += ' [test] enc_avg_loss: {:.5f}  dec_avg_loss: {:.5f}  enc_mAP: {:.4f}  dec_mAP: {:.4f} |\n'
@@ -187,11 +191,11 @@ def main(args):
                               enc_avg_losses['train'] / len(data_loaders['train'].dataset),
                               dec_avg_losses['train'] / len(data_loaders['train'].dataset),
                               enc_mAP['train'],
-                              dec_mAP['train'],
+                              0,#dec_mAP['train'],
                               enc_avg_losses['test'] / len(data_loaders['test'].dataset),
                               dec_avg_losses['test'] / len(data_loaders['test'].dataset),
                               enc_mAP['test'],
-                              dec_mAP['test'],
+                              0,#dec_mAP['test'],
                               end - start)
         print(log)
 

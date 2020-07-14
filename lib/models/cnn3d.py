@@ -10,7 +10,10 @@ class CNN3D(nn.Module):
 
         if args.model == 'RESNET2+1D':
             self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
-            self.feature_extractor.fc = nn.Linear(self.feature_extractor.fc.in_features, args.num_classes) # requires_grad == True by default
+            self.feature_extractor.fc = nn.Linear(self.feature_extractor.fc.in_features,
+                                                  args.num_classes) # requires_grad == True by default
+            for param in self.feature_extractor.layer1.parameters():        # TODO: figure out which part should be freezed
+                param.requires_grad = False
         else:
             raise Exception('Wrong model option, ' + args.model + ' model is not supported')
 

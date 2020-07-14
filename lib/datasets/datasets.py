@@ -1,4 +1,5 @@
 from .thumos_data_layer import TRNTHUMOSDataLayer
+from .thumos_data_layer2 import TRNTHUMOSDataLayer2
 from .thumos_data_layer_e2e import TRNTHUMOSDataLayerE2E
 
 _DATA_LAYERS = {
@@ -6,7 +7,8 @@ _DATA_LAYERS = {
     'TRNTHUMOSE2E': TRNTHUMOSDataLayerE2E,
     'LSTMTHUMOS': TRNTHUMOSDataLayer,
     'LSTMTHUMOSE2E': TRNTHUMOSDataLayerE2E,
-    'MYTRNTHUMOS': TRNTHUMOSDataLayer,
+    #'MYTRNTHUMOS': TRNTHUMOSDataLayer,
+    'MYTRNTHUMOS': TRNTHUMOSDataLayer2,
     'MYTRNTHUMOSE2E': TRNTHUMOSDataLayerE2E,
     'RESNET2+1DTHUMOSE2E': TRNTHUMOSDataLayerE2E,
     'DISCRIMINATORLSTMTHUMOS': TRNTHUMOSDataLayer,

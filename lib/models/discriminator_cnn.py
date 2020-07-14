@@ -13,14 +13,14 @@ class DiscriminatorCNN(nn.Module):
         if args.model == 'DISCRIMINATORCNN':
             if args.feature_extractor == 'RESNET18':
                 self.feature_extractor = models.resnet18(pretrained=True)
-                for param in self.feature_extractor.layer1.parameters():
+                for param in self.feature_extractor.layer1.parameters():         # TODO: figure out which part should be freezed
                     param.requires_grad = False
                 for param in self.feature_extractor.layer2.parameters():
                     param.requires_grad = False
                 self.feature_extractor.fc = nn.Linear(self.feature_extractor.fc.in_features, args.num_classes)
             elif args.feature_extractor == 'VGG16':
                 self.feature_extractor = models.vgg16(pretrained=True)
-                for param in self.feature_extractor.features[17:].parameters():
+                for param in self.feature_extractor.features[17:].parameters():  # TODO: figure out which part should be freezed
                     param.requires_grad = False
                 self.feature_extractor.classifier = nn.Sequential(
                     nn.Linear(25088, 4096),
@@ -31,6 +31,7 @@ class DiscriminatorCNN(nn.Module):
                     nn.Dropout(p=0.5),
                     nn.Linear(4096, args.num_classes)
                 )
+            # TODO add resnet50 model
             else:
                 raise Exception('Wrong feature_extractor option, ' + args.feature_extractor + ' is not supported')
         else:

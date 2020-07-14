@@ -74,7 +74,7 @@ def main(args):
 
             with torch.set_grad_enabled(training):
                 for batch_idx, (camera_inputs, _, enc_target, _) in enumerate(data_loaders[phase], start=1):
-                    # camera_inputs.shape == (batch_size, enc_steps, 512, 7, 7)
+                    # camera_inputs.shape == (batch_size, enc_steps, 3, chunk_size, 112, 112)
                     # enc_target.shape == (batch_size, enc_steps, num_classes)
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
@@ -83,7 +83,7 @@ def main(args):
                         optimizer.zero_grad()
 
                     # forward pass
-                    score, _ = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
+                    score = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
 
                     score = score.to(device)
                     target = enc_target.to(device)

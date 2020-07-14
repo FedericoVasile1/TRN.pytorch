@@ -12,6 +12,10 @@ class DiscriminatorCNN3D(nn.Module):
 
         if args.model == 'DISCRIMINATORCNN3D':
             self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
+            for param in self.feature_extractor.layer1.parameters():  # TODO: figure out which part should be freezed
+                param.requires_grad = False
+            for param in self.feature_extractor.layer2.parameters():
+                param.requires_grad = False
             self.feature_extractor.fc = nn.Linear(self.feature_extractor.fc.in_features,
                                                   args.num_classes)  # requires_grad == True by default
         else:

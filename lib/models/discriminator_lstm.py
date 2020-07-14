@@ -19,7 +19,7 @@ class DiscriminatorLSTM(nn.Module):
 
         self.feature_extractor = build_feature_extractor(args)
 
-        self.conv = nn.Sequential(
+        self.conv = nn.Sequential(              # TODO: it did not obtain good performance, change it
             nn.Conv1d(1, 512, 1, stride=1),
             nn.ReLU(inplace=True),
             nn.Conv1d(512, 512, 1, stride=1),
@@ -38,8 +38,8 @@ class DiscriminatorLSTM(nn.Module):
             out = self.feature_extractor(x_t, torch.zeros(1))  # second input is optical flow, in our case will not be used
             out = self.conv(out.unsqueeze(1))
             out = out.mean(dim=2)
-            h_n, c_n = self.lstm(self.drop(out), (h_n, c_n))
-            out = self.classifier(h_n)  # out.shape == (batch_size, num_classes)
+            h_n, c_n = self.lstm(out, (h_n, c_n))
+            out = self.classifier(self.drop(h_n))  # out.shape == (batch_size, num_classes)
 
             scores[:, step, :] = out
         return scores
