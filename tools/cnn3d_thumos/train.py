@@ -20,7 +20,7 @@ from models import build_model
 def main(args):
     # fix between batch_size and enc_steps, due to the way dataset class works
     # e.g. args.batch_size input value is 64
-    args.enc_steps = args.batch_size / 2    # 32
+    args.enc_steps = args.batch_size // 2    # 32
     args.batch_size = 2                     # 2
     # now, since after we will fuse batch_size and enc_steps(i.e. batch_size * enc_steps) we will get back to 32 * 2 = 64
 
