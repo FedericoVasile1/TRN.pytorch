@@ -13,6 +13,20 @@ import utils as utl
 from configs.thumos import parse_trn_args as parse_args
 from models import build_model
 
+def count_diffs(x):
+    diff_x = x[1:] - x[:-1]
+    return (diff_x != 0).sum()
+
+def loss_diffs(x, batch_size, num_classes):
+    # x.shape == (batch_size, enc_steps, num_classes)
+    loss = 0.0#torch.zeros(1, dtype=x.dtype, device=x.device)
+    for idx_batch in range(batch_size):
+        for idx_class in range(num_classes):
+            loss += count_diffs(x[idx_batch, :, idx_class])
+    loss /= (batch_size * num_classes)
+
+    return loss
+
 def main(args):
     this_dir = osp.join(osp.dirname(__file__), '.')
     save_dir = osp.join(this_dir, 'checkpoints')
@@ -95,6 +109,11 @@ def main(args):
 
                     losses[phase] += loss.item() * batch_size
 
+                    if args.loss_diffs:
+                        if args.alpha == -1:
+                            raise Exception('With loss diffs you must provide also alpha hyperparameter')
+                        loss += (args.alpha * loss_diffs(score, batch_size, args.num_classes))
+
                     if training:
                         loss.backward()
                         optimizer.step()
@@ -157,3 +176,6 @@ def main(args):
 
 if __name__ == '__main__':
     main(parse_args())
+    #a = torch.ones(4, 8, 2)
+    #a[0, 1, 0] = 9
+    #print(type(loss_diffs(a, 4, 2)))
