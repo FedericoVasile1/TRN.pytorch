@@ -62,7 +62,6 @@ class TRNTHUMOSDataLayer2(data.Dataset):
         motion_inputs = np.zeros((self.enc_steps, 1))     # zeros because optical flow will not be used
         enc_target = torch.as_tensor(enc_target.astype(np.float32))
         dec_target = torch.as_tensor(dec_target.astype(np.float32))
-        dec_target = dec_target.view(-1, enc_target.shape[-1])
 
         return camera_inputs, motion_inputs, enc_target, dec_target
 

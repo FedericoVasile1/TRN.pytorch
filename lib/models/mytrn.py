@@ -41,7 +41,7 @@ class MyTRN(nn.Module):
             dec_h_n = torch.zeros(batch_size, self.hidden_size_dec, device=x.device, dtype=x.dtype)
             dec_c_n = torch.zeros(batch_size, self.hidden_size_dec, device=x.device, dtype=x.dtype)
             input = feat_vects
-            out_buf = torch.zeros(self.feature_extractor.fusion_size, dtype=x.dtype)
+            out_buf = torch.zeros(batch_size, self.feature_extractor.fusion_size, dtype=x.dtype, device=x.device)
             for dec_step in range(self.dec_steps):
                 dec_h_n, dec_c_n = self.dec(input, (dec_h_n, dec_c_n))
                 out = self.dec_classifier(self.drop(dec_h_n))
@@ -52,8 +52,8 @@ class MyTRN(nn.Module):
 
             enc_h_n = out / self.dec_steps
             enc_c_n = torch.zeros(batch_size, self.feature_extractor.fusion_size, device=x.device, dtype=x.dtype)
-            enc_h_n, enc_c_n = self.enc(self.enc_drop(feat_vects), (enc_h_n, enc_c_n))
-            preds = self.enc_classifier(enc_h_n)
+            enc_h_n, enc_c_n = self.enc(feat_vects, (enc_h_n, enc_c_n))
+            preds = self.enc_classifier(self.enc_drop(enc_h_n))
             enc_scores[:, enc_step, :] = preds
 
         return enc_scores, dec_scores

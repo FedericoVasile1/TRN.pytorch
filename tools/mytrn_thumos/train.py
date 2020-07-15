@@ -33,7 +33,7 @@ def main(args):
     model = model.to(device)
 
     criterion_enc = nn.CrossEntropyLoss(ignore_index=21).to(device)
-    criterion_dec = nn.MSELoss(ignore_index=21).to(device)      # to measure the loss between predicted and target feature vector
+    criterion_dec = nn.MSELoss().to(device)      # to measure the loss between predicted and target feature vector
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -101,6 +101,7 @@ def main(args):
 
                     # sum decoder losses along all timesteps
                     dec_scores = dec_scores.to(device)
+                    dec_target = dec_target.to(device)
                     for enc_step in range(args.enc_steps):
                         for dec_step in range(args.dec_steps):
                             if enc_step == dec_step == 0:
