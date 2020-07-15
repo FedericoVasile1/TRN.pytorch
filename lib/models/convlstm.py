@@ -90,7 +90,7 @@ class ConvLSTM(nn.Module):
         >> h = last_states[0][0]  # 0 for layer index, 0 for h index
     """
 
-    def __init__(self, args, input_dim=512, hidden_dim=16, kernel_size=3, num_layers=1,
+    def __init__(self, args, input_dim=512, hidden_dim=16, kernel_size=(3, 3), num_layers=1,
                  batch_first=True, bias=True, return_all_layers=False):
         super(ConvLSTM, self).__init__()
         hidden_dim = args.hidden_size
@@ -105,13 +105,13 @@ class ConvLSTM(nn.Module):
 
         self.num_classes = args.num_classes
         self.input_dim = input_dim
-        #self.hidden_dim = hidden_dim
-        self.hidden_dim = args.hidden_size
+        self.hidden_dim = hidden_dim
         self.kernel_size = kernel_size
         self.num_layers = num_layers
         self.batch_first = batch_first
         self.bias = bias
         self.return_all_layers = return_all_layers
+        self.steps = args.enc_steps
 
         self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
         self.feature_extractor = nn.Sequential(*list(self.feature_extractor.children())[:-2])   # drop adaptiveavgpool and classifier
@@ -134,7 +134,7 @@ class ConvLSTM(nn.Module):
         #  our ConvLSTM preserves spatial dimensions)
         self.classifier = nn.Sequential(
             Flatten(),      # TODO try also other variants, such as global average pooling
-            nn.Linear(hidden_dim * 7 * 7, self.num_classes),
+            nn.Linear(hidden_dim[-1] * 7 * 7, self.num_classes),
         )
 
     def forward(self, input_tensor, hidden_state=None):
@@ -153,7 +153,7 @@ class ConvLSTM(nn.Module):
             # (t, b, c, h, w) -> (b, t, c, h, w)
             input_tensor = input_tensor.permute(1, 0, 2, 3, 4)
 
-        b, _, _, h, w = input_tensor.size()
+        b, _, _, _, h, w = input_tensor.size()
 
         # Implement stateful ConvLSTM
         if hidden_state is not None:
@@ -174,7 +174,7 @@ class ConvLSTM(nn.Module):
         for layer_idx in range(self.num_layers):
             h, c = hidden_state[layer_idx]
             output_inner = []
-            for t in range(seq_len):
+            for t in range(self.steps):
                 input_t = cur_layer_input[:, t, :, :, :, :]
 
                 input_t = self.feature_extractor(input_t).squeeze(2)
