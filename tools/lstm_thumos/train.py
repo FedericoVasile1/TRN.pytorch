@@ -19,7 +19,7 @@ def count_diffs(x):
 
 def loss_diffs(x, batch_size, num_classes):
     # x.shape == (batch_size, enc_steps, num_classes)
-    loss = 0.0#torch.zeros(1, dtype=x.dtype, device=x.device)
+    loss = 0.0
     for idx_batch in range(batch_size):
         for idx_class in range(num_classes):
             loss += count_diffs(x[idx_batch, :, idx_class])
