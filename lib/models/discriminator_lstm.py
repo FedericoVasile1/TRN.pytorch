@@ -4,12 +4,6 @@ from torchvision import models
 
 from .feature_extractor import build_feature_extractor
 
-def fc_relu(in_features, out_features, inplace=True):
-    return nn.Sequential(
-        nn.Linear(in_features, out_features),
-        nn.ReLU(inplace=inplace),
-    )
-
 class DiscriminatorLSTM(nn.Module):
     def __init__(self, args):
         super(DiscriminatorLSTM, self).__init__()
@@ -19,11 +13,6 @@ class DiscriminatorLSTM(nn.Module):
 
         self.feature_extractor = build_feature_extractor(args)
 
-        self.conv = nn.Sequential(              # TODO: it did not obtain good performance, change it
-            nn.Conv1d(1, 512, 1, stride=1),
-            nn.ReLU(inplace=True),
-            nn.Conv1d(512, 512, 1, stride=1),
-        )
         self.drop = nn.Dropout(args.dropout)
         self.lstm = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
@@ -36,8 +25,6 @@ class DiscriminatorLSTM(nn.Module):
         for step in range(self.enc_steps):
             x_t = x[:, step]
             out = self.feature_extractor(x_t, torch.zeros(1))  # second input is optical flow, in our case will not be used
-            out = self.conv(out.unsqueeze(1))
-            out = out.mean(dim=2)
             h_n, c_n = self.lstm(out, (h_n, c_n))
             out = self.classifier(self.drop(h_n))  # out.shape == (batch_size, num_classes)
 

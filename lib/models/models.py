@@ -18,6 +18,7 @@ _META_ARCHITECTURES = {
     'DISCRACTLSTM': DiscrActLSTM,
     'DISCRIMINATORCNN': DiscriminatorCNN,
     'CONVLSTM': ConvLSTM,
+    'DISCRIMINATORCONVLSTM': ConvLSTM,
 }
 
 def build_model(args):
