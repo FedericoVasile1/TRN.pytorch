@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 from .feature_extractor import build_feature_extractor
 
@@ -18,7 +19,7 @@ class DiscrActLSTM2(nn.Module):
         self.is_first = True
 
         self.backgr_vect = torch.zeros(1, self.num_classes)   # (batch_size, num_classes)
-        self.backgr_vect[0, 0] = 1
+        self.backgr_vect[0, 0] = 100.0
 
         self.feature_extractor = build_feature_extractor(args)
 
@@ -35,7 +36,7 @@ class DiscrActLSTM2(nn.Module):
 
         if out[0, 1].item() > 0.5:
             out = torch.zeros_like(self.backgr_vect)
-            out[target] = 1.0
+            out[0, np.argmax(target)] = 100.0
         else:
             self.is_first = True
             out = self.backgr_vect
