@@ -5,6 +5,7 @@ from .cnn3d import CNN3D
 from .discriminator_lstm import DiscriminatorLSTM
 from .discriminator_cnn3d import DiscriminatorCNN3D
 from .discr_act_lstm import DiscrActLSTM
+from .discr_act_2_lstm import DiscrActLSTM2
 from .discriminator_cnn import DiscriminatorCNN
 from .convlstm import ConvLSTM
 
@@ -16,6 +17,7 @@ _META_ARCHITECTURES = {
     'DISCRIMINATORLSTM': DiscriminatorLSTM,
     'DISCRIMINATORCNN3D': DiscriminatorCNN3D,
     'DISCRACTLSTM': DiscrActLSTM,
+    'DISCRACTLSTM2': DiscrActLSTM2,
     'DISCRIMINATORCNN': DiscriminatorCNN,
     'CONVLSTM': ConvLSTM,
     'DISCRIMINATORCONVLSTM': ConvLSTM,

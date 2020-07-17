@@ -6,9 +6,9 @@ from .feature_extractor import build_feature_extractor
 '''
 Actually this model is only for evaluation. The two submodules(discrimiantor and action) must be trained separately
 '''
-class DiscrActLSTM(nn.Module):
+class DiscrActLSTM2(nn.Module):
     def __init__(self, args):
-        super(DiscrActLSTM, self).__init__()
+        super(DiscrActLSTM2, self).__init__()
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.enc_steps = args.enc_steps
