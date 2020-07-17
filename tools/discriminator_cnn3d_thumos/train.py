@@ -89,12 +89,12 @@ def main(args):
                     # camera_inputs.shape == (batch_size, enc_steps, 3, CHUNK_SIZE, 112, 112)
                     # targets.shape == (batch_size, enc_steps, num_classes)
 
+                    # fuse batch_size and enc_steps
                     camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2], camera_inputs.shape[3],
                                                        camera_inputs.shape[4], camera_inputs.shape[5])
                     targets = targets.view(-1, targets.shape[2])
 
-                    # fuse batch_size and enc_steps
-                    batch_size = camera_inputs.shape[0]
+                    batch_size = camera_inputs.shape[0]         # now batch_size == args.batch_size
                     camera_inputs = camera_inputs.to(device)
 
                     # convert ground truth to only 0 and 1 values (0 means background, 1 means action)

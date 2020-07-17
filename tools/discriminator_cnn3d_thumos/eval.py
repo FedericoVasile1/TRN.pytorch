@@ -82,6 +82,14 @@ def main(args):
             # For each chunk, take only the central frame
             target = target[args.chunk_size // 2::args.chunk_size]
 
+            # convert ground truth to only 0 and 1 values (0 means background, 1 means action)
+            #  (notice that targets is a one-hot encoding tensor, so at the end it should
+            #   be such)
+            target = torch.max(target, dim=1)[1]
+            target[target != 0] = 1  # convert all actions index classes to a single 'action class'
+            # re-convert tensor to one-hot encoding tensor
+            target = torch.nn.functional.one_hot(target, num_classes=args.num_classes)
+
             batch_samples = None
             for count in range(len(target)):
                 idx_central_frame = count * args.chunk_size + (args.chunk_size // 2)
@@ -101,13 +109,24 @@ def main(args):
 
                 if count % args.batch_size == args.batch_size - 1:
                     # forward pass
+                    batch_samples = batch_samples.permute(0, 2, 1, 3, 4)
                     batch_samples = batch_samples.to(device)
                     scores = model.forward(batch_samples)
 
                     enc_score_metrics.append(softmax(scores).cpu().numpy()[0])
-                    enc_target_metrics.append(target[(count+1) - args.batch_size, count+1])
+                    enc_target_metrics.append(target[(count+1) - args.batch_size : count+1])
 
                     batch_samples = None
+        # do the last forward pass, because there will probably be the last batch with samples < batch_size
+        if batch_samples is not None:
+            # forward pass
+            batch_samples = batch_samples.permute(0, 2, 1, 3, 4)
+            batch_samples = batch_samples.to(device)
+            scores = model.forward(batch_samples)
+
+            enc_score_metrics.append(softmax(scores).cpu().numpy()[0])
+            enc_target_metrics.append(target[count - batch_samples.shape[0] : count])
+
         end = time.time()
 
         print('Processed session {}, {:2} of {}, running time {:.2f} sec'.format(
