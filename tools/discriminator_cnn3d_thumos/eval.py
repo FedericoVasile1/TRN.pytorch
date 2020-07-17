@@ -113,8 +113,10 @@ def main(args):
                     batch_samples = batch_samples.to(device)
                     scores = model.forward(batch_samples)
 
-                    enc_score_metrics.append(softmax(scores).cpu().detach().numpy()[0])
-                    enc_target_metrics.append(target[(count+1) - args.batch_size : count+1])
+                    scores = softmax(scores).cpu().numpy()
+                    for i in range(scores.shape[0]):
+                        enc_score_metrics.append(scores[0])
+                        enc_target_metrics.append(target[(count+1) - args.batch_size + i])
 
                     batch_samples = None
         # do the last forward pass, because there will probably be the last batch with samples < batch_size
@@ -124,8 +126,10 @@ def main(args):
             batch_samples = batch_samples.to(device)
             scores = model.forward(batch_samples)
 
-            enc_score_metrics.append(softmax(scores).cpu().numpy()[0])
-            enc_target_metrics.append(target[count - batch_samples.shape[0] : count])
+            scores = softmax(scores).cpu().numpy()
+            for i in range(scores.shape[0]):
+                enc_score_metrics.append(scores[0])
+                enc_target_metrics.append(target[count - batch_samples.shape[0] : count])
 
         end = time.time()
 
