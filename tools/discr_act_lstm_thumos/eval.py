@@ -105,7 +105,7 @@ def main(args):
                     enc_c_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
 
                 camera_input = to_device(camera_inputs[l], device)
-                enc_score, enc_h_n, enc_c_n = model.step(camera_input, enc_h_n, enc_c_n)
+                enc_score, enc_h_n, enc_c_n = model.step(camera_input, enc_h_n, enc_c_n, target[l])
 
                 enc_score_metrics.append(softmax(enc_score).cpu().numpy()[0])
                 enc_target_metrics.append(target[l])

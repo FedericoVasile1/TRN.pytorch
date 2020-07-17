@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 from .feature_extractor import build_feature_extractor
 
@@ -30,7 +31,7 @@ class DiscrActLSTM(nn.Module):
         self.act = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
         self.act_classifier = nn.Linear(self.hidden_size, self.num_classes)
 
-    def step(self, camera_input, discr_h_n, discr_c_n):
+    def step(self, camera_input, discr_h_n, discr_c_n, target):
         feat_vect = self.feature_extractor(camera_input, torch.zeros(1))
 
         discr_h_n, discr_c_n = self.discr(feat_vect, (discr_h_n, discr_c_n))
@@ -44,6 +45,8 @@ class DiscrActLSTM(nn.Module):
                 self.is_first = False
             self.act_h_n, self.act_c_n = self.act(feat_vect, (self.act_h_n, self.act_c_n))
             out = self.act_classifier(self.act_h_n)
+            if np.argmax(target) != out.argmax().item():
+                print('target: ', np.argmax(target), 'pred: ', out.argmax().item())
             out[0, 0] = 0       # suppress background because here the action lstm is forced to predict an action class
         else:
             self.is_first = True
