@@ -35,8 +35,12 @@ class DiscrActLSTM2(nn.Module):
         assert out.shape == torch.Size([1, 2]), 'size mismatch, wrong input to step function'
 
         if out.argmax().item() == 1:
-            out = torch.zeros_like(self.backgr_vect)
-            out[0, np.argmax(target)] = 100.0
+            if np.argmax(target) != 0:
+                out = torch.zeros_like(self.backgr_vect)
+                out[0, np.argmax(target)] = 100.0
+            else:
+                out = torch.zeros_like(self.backgr_vect)
+                out[0, 1] = 100.0
         else:
             self.is_first = True
             out = self.backgr_vect
