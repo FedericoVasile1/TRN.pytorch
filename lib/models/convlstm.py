@@ -11,7 +11,6 @@ class Flatten(nn.Module):
         return x.view(x.shape[0], -1)
 
 class ConvLSTMCell(nn.Module):
-
     def __init__(self, input_dim, hidden_dim, kernel_size, bias):
         """
         Initialize ConvLSTM cell.
@@ -20,7 +19,7 @@ class ConvLSTMCell(nn.Module):
         input_dim: int
             Number of channels of input tensor.
         hidden_dim: int
-            Number of channels of hidden state.
+            Number of channels of hidden state(i.e. number of filters of the conv layer).
         kernel_size: (int, int)
             Size of the convolutional kernel.
         bias: bool
@@ -36,13 +35,14 @@ class ConvLSTMCell(nn.Module):
         self.bias = bias
 
         self.conv = nn.Conv2d(in_channels=self.input_dim + self.hidden_dim,     # we will concat input and hidden state
-                              out_channels=4 * self.hidden_dim,
+                              out_channels=4 * self.hidden_dim,      # 4 gates
                               kernel_size=self.kernel_size,
                               padding=self.padding,
                               stride=1,
                               bias=self.bias)
 
     def forward(self, input_tensor, cur_state):
+        # input_tensor.shape == (batch_size, 512, 7, 7)
         h_cur, c_cur = cur_state
 
         combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
@@ -64,38 +64,21 @@ class ConvLSTMCell(nn.Module):
         return (torch.zeros(batch_size, self.hidden_dim, height, width, device=self.conv.weight.device),
                 torch.zeros(batch_size, self.hidden_dim, height, width, device=self.conv.weight.device))
 
-
 class ConvLSTM(nn.Module):
     """
     Parameters:
         input_dim: Number of channels in input
-        hidden_dim: Number of hidden channels
+        hidden_dim: Number of hidden channels(i.e. number of filters for the conv layer)
         kernel_size: Size of kernel in convolutions
-        num_layers: Number of LSTM layers stacked on each other
-        batch_first: Whether or not dimension 0 is the batch or not
+        num_layers: Number of Conv-LSTM layers stacked on each other
         bias: Bias or no bias in Convolution
-        return_all_layers: Return the list of computations for all layers
-        Note: Will do same padding.
-    Input:
-        A tensor of size B, T, C, H, W or T, B, C, H, W
-    Output:
-        A tuple of two lists of length num_layers (or length 1 if return_all_layers is False).
-            0 - layer_output_list is the list of lists of length T of each output
-            1 - last_state_list is the list of last states
-                    each element of the list is a tuple (h, c) for hidden state and memory
-    Example:
-        >> x = torch.rand((32, 10, 64, 128, 128))
-        >> convlstm = ConvLSTM(64, 16, 3, 1, True, True, False)
-        >> _, last_states = convlstm(x)
-        >> h = last_states[0][0]  # 0 for layer index, 0 for h index
     """
-
-    def __init__(self, args, input_dim=512, hidden_dim=16, kernel_size=(3, 3), num_layers=1,
-                 batch_first=True, bias=True, return_all_layers=False):
+    def __init__(self, args, input_dim=-1, hidden_dim=-1, kernel_size=(3, 3), num_layers=1, bias=True):
         super(ConvLSTM, self).__init__()
-        hidden_dim = args.hidden_size
 
         self._check_kernel_size_consistency(kernel_size)
+
+        hidden_dim = args.hidden_size
 
         # Make sure that both `kernel_size` and `hidden_dim` are lists having len == num_layers
         kernel_size = self._extend_for_multilayer(kernel_size, num_layers)
@@ -104,13 +87,12 @@ class ConvLSTM(nn.Module):
             raise ValueError('Inconsistent list length.')
 
         self.num_classes = args.num_classes
-        self.input_dim = input_dim
+        self.input_dim = 512        # HARD-CODED: resnet2+1d models returns feature maps of shape (512, 7, 7)
+        self.H, self.W = (7, 7)     # HARD-CODED
         self.hidden_dim = hidden_dim
         self.kernel_size = kernel_size
         self.num_layers = num_layers
-        self.batch_first = batch_first
         self.bias = bias
-        self.return_all_layers = return_all_layers
         self.steps = args.enc_steps
 
         self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
@@ -129,70 +111,41 @@ class ConvLSTM(nn.Module):
 
         self.cell_list = nn.ModuleList(cell_list)
 
-        # 7x7 HARD-CODED: spatial dimensions of the feature
-        #  maps as output of resnet2+1d model. (Remember that
-        #  our ConvLSTM preserves spatial dimensions)
         self.classifier = nn.Sequential(
             Flatten(),      # TODO try also other variants, such as global average pooling
-            nn.Linear(hidden_dim[-1] * 7 * 7, self.num_classes),
+            nn.Linear(hidden_dim[-1] * self.H * self.W, self.num_classes),
         )
 
-    def forward(self, input_tensor, hidden_state=None):
+    def forward(self, input_tensor):
         """
         Parameters
         ----------
-        input_tensor: todo
-            5-D Tensor either of shape (t, b, c, h, w) or (b, t, c, h, w)
-        hidden_state: todo
-            None. todo implement stateful
+        input_tensor: 6-D Tensor either of shape (batch_size, enc_steps, 3, chunk_size, 112, 112)
+
         Returns
         -------
-        last_state_list, layer_output
+        scores: 3-D Tensor of shape (batch_size, enc_steps, num_classes)  containing score classes
         """
-        if not self.batch_first:
-            # (t, b, c, h, w) -> (b, t, c, h, w)
-            input_tensor = input_tensor.permute(1, 0, 2, 3, 4)
+        batch_size = input_tensor.shape[0]
+        scores = torch.zeros(batch_size, self.steps, self.num_classes)
 
-        b, _, _, _, h, w = input_tensor.size()
+        # Since the init is done in forward. Can send image size here
+        hidden_state = self._init_hidden(batch_size=batch_size, image_size=(self.H, self.W))
 
-        # Implement stateful ConvLSTM
-        if hidden_state is not None:
-            raise NotImplementedError()
-        else:
-            # Since the init is done in forward. Can send image size here
-            hidden_state = self._init_hidden(batch_size=b,
-                                             image_size=(h, w))
+        for step in range(self.steps):
+            input_t = input_tensor[:, step]                     # input_t.shape == (batch_size, 3, chunk_size, 112, 112)
 
-        layer_output_list = []
-        last_state_list = []
+            feature_maps = self.feature_extractor(input_t)      # feature_maps.shape == (batch_size, 512, 1, 7, 7)
+            feature_maps = feature_maps.squeeze(2)
 
-        seq_len = input_tensor.size(1)
-        cur_layer_input = input_tensor
-        scores = torch.zeros(cur_layer_input.shape[0], cur_layer_input.shape[1], self.num_classes)
+            for layer_idx in range(self.num_layers):
+                h, c = hidden_state[layer_idx]
+                # forward pass in convlstm cell
+                h, c = self.cell_list[layer_idx](input_tensor=feature_maps, cur_state=[h, c])
+                hidden_state[layer_idx] = (h, c)
+                feature_maps = h
 
-        # TODO this is wrong; num_layers loop and seq_len loop must be reversed
-        for layer_idx in range(self.num_layers):
-            h, c = hidden_state[layer_idx]
-            output_inner = []
-            for t in range(self.steps):
-                input_t = cur_layer_input[:, t, :, :, :, :]
-
-                input_t = self.feature_extractor(input_t).squeeze(2)
-                h, c = self.cell_list[layer_idx](input_tensor=input_t,
-                                                 cur_state=[h, c])
-                scores[:, t] = self.classifier(h)
-
-                output_inner.append(h)
-
-            layer_output = torch.stack(output_inner, dim=1)
-            cur_layer_input = layer_output
-
-            layer_output_list.append(layer_output)
-            last_state_list.append([h, c])
-
-        if not self.return_all_layers:
-            layer_output_list = layer_output_list[-1:]
-            last_state_list = last_state_list[-1:]
+            scores[:, step] = self.classifier(h)
 
         return scores
 
@@ -213,11 +166,3 @@ class ConvLSTM(nn.Module):
         if not isinstance(param, list):
             param = [param] * num_layers
         return param
-
-if __name__ == '__main__':
-    input = torch.ones(4, 2, 512, 7, 7)
-
-    x = torch.rand((32, 10, 64, 128, 128))
-    convlstm = ConvLSTM(512, 16, (3, 3), 1, True, True, True)
-    scores = convlstm(input)
-    print(scores.shape)
