@@ -41,7 +41,7 @@ def compute_result_multilabel(class_index, score_metrics, target_metrics, save_d
         score_metrics[switch_index, 8] = score_metrics[switch_index, 5]
 
     if ignore_class == [] and not switch:
-        # this is  only for DISCRIMINATOR model
+        # this is only for DISCRIMINATOR model
         valid_index = list(range(target_metrics.shape[0]))      # indexes all valid
     else:
         # Remove ambiguous (21)

@@ -97,7 +97,7 @@ def main(args):
                     score = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
 
                     score = score.to(device)
-                    target = enc_target.to(device)
+                    target = target.to(device)
                     # sum losses along all timesteps
                     loss = criterion(score[:, 0], target[:, 0].max(axis=1)[1])
                     for step in range(1, camera_inputs.shape[1]):
