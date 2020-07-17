@@ -113,7 +113,7 @@ def main(args):
                     batch_samples = batch_samples.to(device)
                     scores = model.forward(batch_samples)
 
-                    scores = softmax(scores).cpu().numpy()
+                    scores = softmax(scores).cpu().detach().numpy()
                     for i in range(scores.shape[0]):
                         enc_score_metrics.append(scores[i])
                         enc_target_metrics.append(target[(count+1) - args.batch_size + i])
@@ -126,7 +126,7 @@ def main(args):
             batch_samples = batch_samples.to(device)
             scores = model.forward(batch_samples)
 
-            scores = softmax(scores).cpu().numpy()
+            scores = softmax(scores).cpu().detach().numpy()
             for i in range(scores.shape[0]):
                 enc_score_metrics.append(scores[i])
                 enc_target_metrics.append(target[count - batch_samples.shape[0] + i])
