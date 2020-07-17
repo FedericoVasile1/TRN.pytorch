@@ -34,7 +34,7 @@ class DiscrActLSTM2(nn.Module):
         out = self.discr_classifier(discr_h_n)   # out.shape == (batch_size, num_classes) == (1, 2)
         assert out.shape == torch.Size([1, 2]), 'size mismatch, wrong input to step function'
 
-        if out[0, 1].item() > 0.5:
+        if out.argmax().item() == 1:
             out = torch.zeros_like(self.backgr_vect)
             out[0, np.argmax(target)] = 100.0
         else:

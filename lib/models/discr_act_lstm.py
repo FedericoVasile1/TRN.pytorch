@@ -18,7 +18,7 @@ class DiscrActLSTM(nn.Module):
         self.is_first = True
 
         self.backgr_vect = torch.zeros(1, self.num_classes)   # (batch_size, num_classes)
-        self.backgr_vect[0, 0] = 1
+        self.backgr_vect[0, 0] = 100.0
 
         self.feature_extractor = build_feature_extractor(args)
 
@@ -37,7 +37,7 @@ class DiscrActLSTM(nn.Module):
         out = self.discr_classifier(discr_h_n)   # out.shape == (batch_size, num_classes) == (1, 2)
         assert out.shape == torch.Size([1, 2]), 'size mismatch, wrong input to step function'
 
-        if out[0, 1].item() > 0.5:
+        if out.argmax().item() == 1:
             if self.is_first:
                 self.act_h_n = torch.zeros(1, self.hidden_size, device=camera_input.device, dtype=camera_input.dtype)
                 self.act_c_n = torch.zeros(1, self.hidden_size, device=camera_input.device, dtype=camera_input.dtype)
