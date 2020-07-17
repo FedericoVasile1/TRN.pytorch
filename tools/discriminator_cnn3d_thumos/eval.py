@@ -115,7 +115,7 @@ def main(args):
 
                     scores = softmax(scores).cpu().numpy()
                     for i in range(scores.shape[0]):
-                        enc_score_metrics.append(scores[0])
+                        enc_score_metrics.append(scores[i])
                         enc_target_metrics.append(target[(count+1) - args.batch_size + i])
 
                     batch_samples = None
@@ -128,8 +128,8 @@ def main(args):
 
             scores = softmax(scores).cpu().numpy()
             for i in range(scores.shape[0]):
-                enc_score_metrics.append(scores[0])
-                enc_target_metrics.append(target[count - batch_samples.shape[0] : count])
+                enc_score_metrics.append(scores[i])
+                enc_target_metrics.append(target[count - batch_samples.shape[0] + i])
 
         end = time.time()
 
