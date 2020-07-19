@@ -8,6 +8,8 @@ from .discr_act_lstm import DiscrActLSTM
 from .discr_act_2_lstm import DiscrActLSTM2
 from .discriminator_cnn import DiscriminatorCNN
 from .convlstm import ConvLSTM
+from .cnn import CNN
+from .fc import FC
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -21,6 +23,8 @@ _META_ARCHITECTURES = {
     'DISCRIMINATORCNN': DiscriminatorCNN,
     'CONVLSTM': ConvLSTM,
     'DISCRIMINATORCONVLSTM': ConvLSTM,
+    'CNN': CNN,
+    'FC': FC,
 }
 
 def build_model(args):
