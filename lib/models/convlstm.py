@@ -73,12 +73,12 @@ class ConvLSTM(nn.Module):
         num_layers: Number of Conv-LSTM layers stacked on each other
         bias: Bias or no bias in Convolution
     """
-    def __init__(self, args, input_dim=-1, hidden_dim=-1, kernel_size=(3, 3), num_layers=1, bias=True):
+    def __init__(self, args, input_dim=-1, hidden_dim=64, kernel_size=(3, 3), num_layers=1, bias=True):
         super(ConvLSTM, self).__init__()
 
         self._check_kernel_size_consistency(kernel_size)
 
-        hidden_dim = args.hidden_size
+        #hidden_dim = args.hidden_size
 
         # Make sure that both `kernel_size` and `hidden_dim` are lists having len == num_layers
         kernel_size = self._extend_for_multilayer(kernel_size, num_layers)
@@ -148,6 +148,19 @@ class ConvLSTM(nn.Module):
             scores[:, step] = self.classifier(h)
 
         return scores
+
+    def step(self, input_tensor, h, c):
+        # input_tensor.shape == (batch_size, C, chunk_size, 112, 112)
+        batch_size = input_tensor.shape[0]
+        scores = torch.zeros(batch_size, self.num_classes)
+
+        feature_maps = self.feature_extractor(input_tensor)
+        feature_maps = feature_maps.squeeze(2)
+
+        h, c = self.cell_list[0](input_tensor=feature_maps, cur_state=[h, c])
+        scores = self.classifier(h)
+
+        return scores, h, c
 
     def _init_hidden(self, batch_size, image_size):
         init_states = []
