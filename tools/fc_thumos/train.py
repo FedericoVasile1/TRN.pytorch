@@ -165,3 +165,6 @@ def main(args):
             'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
         }, osp.join(save_dir, checkpoint_file))
+
+if __name__ == '__main__':
+    main(parse_args())
