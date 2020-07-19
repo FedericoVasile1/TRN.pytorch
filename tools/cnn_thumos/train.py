@@ -134,7 +134,8 @@ def main(args):
         end = time.time()
 
         writer.add_scalars('Loss_epoch/train_val_enc',
-                           {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
+                           {phase: losses[phase] / (len(data_loaders[phase].dataset) * args.enc_steps)
+                            for phase in args.phases},
                            epoch)
 
         result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
@@ -154,9 +155,9 @@ def main(args):
         log += ' [test] enc_avg_loss: {:.5f}  enc_mAP: {:.4f}  |\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
-                              losses['train'] / len(data_loaders['train'].dataset),
+                              losses['train'] / (len(data_loaders['train'].dataset) * args.enc_steps),
                               mAP['train'],
-                              losses['test'] / len(data_loaders['test'].dataset),
+                              losses['test'] / (len(data_loaders['test'].dataset) * args.enc_steps),
                               mAP['test'],
                               end - start)
         print(log)
