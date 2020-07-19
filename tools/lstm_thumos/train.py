@@ -46,7 +46,12 @@ def main(args):
         model = nn.DataParallel(model)
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
+    weights = torch.ones(args.num_classes)
+    if args.downsample_backgr:
+        # trick to ignore multiple class
+        weights[0] = 0  # ignore background class
+        weights[21] = 0  # ignore ambiguous class
+    criterion = nn.CrossEntropyLoss(weight=weights, ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -176,6 +181,3 @@ def main(args):
 
 if __name__ == '__main__':
     main(parse_args())
-    #a = torch.ones(4, 8, 2)
-    #a[0, 1, 0] = 9
-    #print(type(loss_diffs(a, 4, 2)))
