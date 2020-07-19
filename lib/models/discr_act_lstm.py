@@ -45,9 +45,9 @@ class DiscrActLSTM(nn.Module):
                 self.is_first = False
             self.act_h_n, self.act_c_n = self.act(feat_vect, (self.act_h_n, self.act_c_n))
             out = self.act_classifier(self.act_h_n)
-            if np.argmax(target) != out.argmax().item():
+            if np.argmax(target) != out.argmax().item() and np.argmax(target) != 0:
                 print('target: ', np.argmax(target), 'pred: ', out.argmax().item())
-            out[0, 0] = 0       # suppress background because here the action lstm is forced to predict an action class
+            out[0, 0] = out.min() - 100.0       # suppress background because here the action lstm is forced to predict an action class
         else:
             self.is_first = True
             out = self.backgr_vect
