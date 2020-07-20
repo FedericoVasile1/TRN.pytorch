@@ -13,13 +13,6 @@ class DiscrActLSTM2(nn.Module):
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.enc_steps = args.enc_steps
-        self.act_h_n = None
-        self.act_c_n = None
-
-        self.is_first = True
-
-        self.backgr_vect = torch.zeros(1, self.num_classes)   # (batch_size, num_classes)
-        self.backgr_vect[0, 0] = 100.0
 
         self.feature_extractor = build_feature_extractor(args)
 
@@ -36,7 +29,7 @@ class DiscrActLSTM2(nn.Module):
 
         if out.argmax().item() == 1:
             if np.argmax(target) != 0:
-                out = torch.zeros_like(self.backgr_vect)
+                out = torch.zeros_like(1, 22)
                 out[0, np.argmax(target)] = 100.0
             else:
                 out = torch.zeros_like(self.backgr_vect)

@@ -35,8 +35,8 @@ class DiscrActLSTM(nn.Module):
         act_h_n, act_c_n = self.act(feat_vect, (act_h_n, act_c_n))
 
         if out.argmax().item() == 1:
-            out = self.act_classifier(self.act_h_n)
-            out[:, 0] = out.min(dim=1) - 100.0       # suppress background because here the action lstm is forced to predict an action class
+            out = self.act_classifier(act_h_n)
+            out[:, 0] = out.min(dim=1)[0] - 100.0       # suppress background because here the action lstm is forced to predict an action class
         else:
             out = torch.cat([out, torch.zeros(out.shape[0], self.num_classes - 2).to(out.device)], 1)
 
