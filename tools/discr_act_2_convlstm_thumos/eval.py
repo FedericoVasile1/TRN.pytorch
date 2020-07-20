@@ -46,9 +46,6 @@ def add_pr_curve_tensorboard(writer, class_name, class_index, labels, probs_pred
                         global_step=global_step)
 
 def main(args):
-    args.num_classes = 2
-    args.class_index = ['Background', 'Action']
-
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
