@@ -24,10 +24,11 @@ class DiscrActConvLSTM2(nn.Module):
 
     def step(self, camera_input, h, c, target):
         # camera_input.shape == (batch_size, 3, chunk_size, 112, 112)
-        out = self.discr.step(camera_input, (h, c))
+        out, h, c = self.discr.step(camera_input, (h, c))
         assert out.shape[1] == 2, 'size mismatch, provided wrong input to step function'
 
-        batch_size = camera_input.shape[0].clone()
+        batch_size = camera_input.shape[0]
+        out = torch.cat([out, torch.zeros(batch_size, self.num_classes - 2), 1])
 
         for idx_sample in range(batch_size):
             if out[idx_sample].argmax().item() == 1:
