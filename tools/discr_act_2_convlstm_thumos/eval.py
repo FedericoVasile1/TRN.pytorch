@@ -60,7 +60,7 @@ def main(args):
     else:
         raise(RuntimeError('Cannot find the checkpoint {} or {}'.format(args.checkpoint, args.checkpoint_act)))
     model = build_model(args).to(device)
-    model.load_state_dict(checkpoint['model_state_dict'])
+    model.discr.load_state_dict(checkpoint['model_state_dict'])
     model.train(False)
 
     softmax = nn.Softmax(dim=1).to(device)
@@ -72,6 +72,7 @@ def main(args):
     ])
 
     count_frames = 0
+    count_steps = 0
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
@@ -102,13 +103,15 @@ def main(args):
                     batch_samples[count % args.batch_size, idx_frame - start_f] = frame
 
                 if count % args.batch_size == args.batch_size - 1:
-                    if count % args.enc_steps == 0:
+                    if count_steps % args.enc_steps == 0:
                         h, c = (torch.zeros(args.batch_size, args.hidden_size, 7, 7, device=device),
                                 torch.zeros(args.batch_size, args.hidden_size, 7, 7, device=device))
                     # forward pass
                     batch_samples = batch_samples.permute(0, 2, 1, 3, 4)
                     batch_samples = batch_samples.to(device)
-                    scores, h, c = model.step(batch_samples, h, c)
+                    scores, h, c = model.step(batch_samples, h, c, target[(count + 1) - args.batch_size:(count+1)])
+
+                    count_steps += 1
 
                     scores = softmax(scores).cpu().detach().numpy()
                     for i in range(scores.shape[0]):
@@ -121,10 +124,11 @@ def main(args):
             # forward pass
             batch_samples = batch_samples.permute(0, 2, 1, 3, 4)
             batch_samples = batch_samples.to(device)
-            scores, _, _ = model.forward(batch_samples, h[:batch_samples.shape[0]], c[:batch_samples.shape[0]])
+            scores, _, _ = model.step(batch_samples, h[:batch_samples.shape[0]], c[:batch_samples.shape[0]],
+                                      target[count - batch_samples.shape[0]:count])
 
             scores = softmax(scores).cpu().detach().numpy()
-            for i in range(scores.shape[0]):
+            for i in range(batch_samples.shape[0]):
                 enc_score_metrics.append(scores[i])
                 enc_target_metrics.append(target[count - batch_samples.shape[0] + i])
 

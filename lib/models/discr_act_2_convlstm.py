@@ -27,15 +27,18 @@ class DiscrActConvLSTM2(nn.Module):
         out = self.discr.step(camera_input, (h, c))
         assert out.shape[1] == 2, 'size mismatch, provided wrong input to step function'
 
-        if out.argmax().item() == 1:
-            if np.argmax(target) != 0:
-                out = torch.zeros_like(self.backgr_vect)
-                out[0, np.argmax(target)] = 100.0
+        batch_size = camera_input.shape[0].clone()
+
+        for idx_sample in range(batch_size):
+            if out[idx_sample].argmax().item() == 1:
+                if np.argmax(target[idx_sample]) != 0:
+                    out[idx_sample] = torch.zeros_like(self.backgr_vect)
+                    out[idx_sample, np.argmax(target[idx_sample])] = 100.0
+                else:
+                    out[idx_sample] = torch.zeros_like(self.backgr_vect)
+                    out[idx_sample, 1] = 100.0
             else:
-                out = torch.zeros_like(self.backgr_vect)
-                out[0, 1] = 100.0
-        else:
-            self.is_first = True
-            out = self.backgr_vect
+                self.is_first = True
+                out[idx_sample] = self.backgr_vect
 
         return out, h, c
