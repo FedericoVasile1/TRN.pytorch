@@ -17,7 +17,9 @@ class DiscrActConvLSTM2(nn.Module):
         self.backgr_vect[0, 0] = 100.0
 
         # The discriminator convlstm discriminate between background and action
+        args.num_classes = 2
         self.discr = ConvLSTM(args)
+        args.num_classes = 22
 
     def forward(self, x):
         pass

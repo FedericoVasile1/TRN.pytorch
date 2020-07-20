@@ -101,13 +101,19 @@ def main(args):
 
             for l in range(target.shape[0]):
                 if l % args.enc_steps == 0:
-                    enc_h_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
-                    enc_c_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
+                    discr_h_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
+                    discr_c_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
+                    act_h_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
+                    act_c_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
 
                 camera_input = to_device(camera_inputs[l], device)
-                enc_score, enc_h_n, enc_c_n = model.step(camera_input, enc_h_n, enc_c_n, target[l])
+                score, discr_h_n, discr_c_n, act_h_n, act_c_n = model.step(camera_input,
+                                                                           discr_h_n,
+                                                                           discr_c_n,
+                                                                           act_h_n,
+                                                                           act_c_n)
 
-                enc_score_metrics.append(softmax(enc_score).cpu().numpy()[0])
+                enc_score_metrics.append(softmax(score).cpu().numpy()[0])
                 enc_target_metrics.append(target[l])
 
         end = time.time()

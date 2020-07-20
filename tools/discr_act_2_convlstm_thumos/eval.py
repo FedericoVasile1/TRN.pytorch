@@ -69,10 +69,10 @@ def main(args):
     ])
 
     count_frames = 0
-    count_steps = 0
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
+            count_steps = 0
 
             target = np.load(osp.join(args.data_root, 'target_frames_24fps', session + '.npy'))
             # round to multiple of CHUNK_SIZE
