@@ -68,7 +68,6 @@ def main(args):
 
     softmax = nn.Softmax(dim=1).to(device)
 
-
     transform = transforms.Compose([
         transforms.Resize((112, 112)),  # preferable size for resnet(2+1)D model
         transforms.ToTensor(),
