@@ -17,7 +17,8 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
         self.training = phase=='train'
 
         if args.feature_extractor == 'RESNET2+1D' or args.model == 'RESNET2+1D' or args.model == 'DISCRIMINATORCNN3D'\
-                or args.model == 'CONVLSTM' or args.model == 'DISCRIMINATORCONVLSTM':
+                or (args.model == 'CONVLSTM' and args.feature_extractor == 'RESNET2+1D') \
+                or (args.model == 'DISCRIMINATORCONVLSTM' and args.feature_extractor == 'RESNET2+1D'):
             self.transform = transforms.Compose([
                 transforms.Resize((112, 112)),    # preferable size for resnet(2+1)D model
                 transforms.ToTensor(),
@@ -27,7 +28,7 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
             self.is_3D = True
         else:
             self.transform = transforms.Compose([
-                transforms.Resize((224, 224)),
+                #transforms.Resize((224, 224)),
                 transforms.ToTensor(),
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ])

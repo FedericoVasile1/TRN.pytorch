@@ -10,6 +10,13 @@ class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.shape[0], -1)
 
+class SqueezeChunk(nn.Module):
+    def __init__(self):
+        super(SqueezeChunk, self).__init__()
+
+    def forward(self, x):
+        return x.squeeze(2)
+
 class ConvLSTMCell(nn.Module):
     def __init__(self, input_dim, hidden_dim, kernel_size, bias):
         """
@@ -73,7 +80,7 @@ class ConvLSTM(nn.Module):
         num_layers: Number of Conv-LSTM layers stacked on each other
         bias: Bias or no bias in Convolution
     """
-    def __init__(self, args, input_dim=-1, hidden_dim=64, kernel_size=(3, 3), num_layers=1, bias=True):
+    def __init__(self, args, input_dim=-1, hidden_dim=[64], kernel_size=[(3, 3)], num_layers=1, bias=True):
         super(ConvLSTM, self).__init__()
 
         self._check_kernel_size_consistency(kernel_size)
@@ -87,18 +94,33 @@ class ConvLSTM(nn.Module):
             raise ValueError('Inconsistent list length.')
 
         self.num_classes = args.num_classes
-        self.input_dim = 512        # HARD-CODED: resnet2+1d models returns feature maps of shape (512, 7, 7)
-        self.H, self.W = (7, 7)     # HARD-CODED
         self.hidden_dim = hidden_dim
         self.kernel_size = kernel_size
         self.num_layers = num_layers
         self.bias = bias
         self.steps = args.enc_steps
 
-        self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
-        self.feature_extractor = nn.Sequential(*list(self.feature_extractor.children())[:-2])   # drop adaptiveavgpool and classifier
-        for param in self.feature_extractor.parameters():
-            param.requires_grad = False
+        if self.feature_extractor == 'RESNET2+1D':
+            if args.feat_vect_dim != 512:
+                raise Exception('Wrong feat_vect_dim option for RESNET2+1D feature_extractor')
+            self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
+            self.feature_extractor = nn.Sequential(
+                *list(self.feature_extractor.children())[:-2],      # drop adaptiveavgpool and classifier
+                SqueezeChunk(),
+            )
+            for param in self.feature_extractor.parameters():
+                param.requires_grad = False
+
+            # HARD-CODED: resnet2+1d models returns feature maps of shape (512, 7, 7)
+            self.input_dim = args.feat_vect_dim     # == 512
+            self.H, self.W = (7, 7)
+        elif self.feature_extractor == 'FRAMES':
+            self.feature_extractor == nn.Identity()
+
+            self.input_dim = 3      # number of channels of input images(i.e. RGB)
+            self.H, self.W = (180, 320)
+        else:
+            raise Exception('Wrong feature_extractor option')
 
         cell_list = []
         for i in range(0, self.num_layers):
@@ -120,7 +142,9 @@ class ConvLSTM(nn.Module):
         """
         Parameters
         ----------
-        input_tensor: 6-D Tensor either of shape (batch_size, enc_steps, 3, chunk_size, 112, 112)
+        input_tensor: 6-D Tensor either of shape:
+          if feature_extractor == resnet2+1d  =>  (batch_size, enc_steps, 3, chunk_size, 112, 112)
+          if feature_extractor == frames      =>  (batch_size, enc_steps, 3, 224, 224)
 
         Returns
         -------
@@ -135,8 +159,7 @@ class ConvLSTM(nn.Module):
         for step in range(self.steps):
             input_t = input_tensor[:, step]                     # input_t.shape == (batch_size, 3, chunk_size, 112, 112)
 
-            feature_maps = self.feature_extractor(input_t)      # feature_maps.shape == (batch_size, 512, 1, 7, 7)
-            feature_maps = feature_maps.squeeze(2)
+            feature_maps = self.feature_extractor(input_t)      # feature_maps.shape == (batch_size, 512, 7, 7)
 
             for layer_idx in range(self.num_layers):
                 h, c = hidden_state[layer_idx]
@@ -149,18 +172,22 @@ class ConvLSTM(nn.Module):
 
         return scores
 
-    def step(self, input_tensor, h, c):
+    def step(self, input_tensor, hidden_state):
         # input_tensor.shape == (batch_size, C, chunk_size, 112, 112)
         batch_size = input_tensor.shape[0]
         scores = torch.zeros(batch_size, self.num_classes)
 
         feature_maps = self.feature_extractor(input_tensor)
-        feature_maps = feature_maps.squeeze(2)
 
-        h, c = self.cell_list[0](input_tensor=feature_maps, cur_state=[h, c])
+        for layer_idx in range(self.num_layers):
+            h, c = hidden_state[layer_idx]
+            h, c = self.cell_list[layer_idx](input_tensor=feature_maps, cur_state=[h, c])
+            hidden_state[layer_idx] = (h, c)
+            feature_maps = h
+
         scores = self.classifier(h)
 
-        return scores, h, c
+        return scores, hidden_state
 
     def _init_hidden(self, batch_size, image_size):
         init_states = []

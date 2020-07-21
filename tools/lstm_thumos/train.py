@@ -61,6 +61,11 @@ def main(args):
     softmax = nn.Softmax(dim=1).to(device)
 
     writer = SummaryWriter()
+    command = 'python ' + ' '.join(sys.argv)
+    f = open(writer.log_dir + '/run_command.txt', 'w+')
+    f.write(command)
+    f.close()
+
     batch_idx_train = 1
     batch_idx_test = 1
 

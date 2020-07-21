@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
+
 plt.switch_backend('agg')
 from sklearn.metrics import confusion_matrix
 
@@ -27,8 +28,10 @@ import utils as utl
 from configs.thumos import parse_trn_args as parse_args
 from models import build_model
 
+
 def to_device(x, device):
     return x.unsqueeze(0).to(device)
+
 
 def add_pr_curve_tensorboard(writer, class_name, class_index, labels, probs_predicted, global_step=0):
     '''
@@ -45,7 +48,11 @@ def add_pr_curve_tensorboard(writer, class_name, class_index, labels, probs_pred
                         class_probs_predicted,
                         global_step=global_step)
 
+
 def main(args):
+    if args.feature_extractor != 'FRAMES':
+        raise Exception('Wrong feature_extractor model')
+
     args.num_classes = 2
     args.class_index = ['Background', 'Action']
 
@@ -58,7 +65,7 @@ def main(args):
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint)
     else:
-        raise(RuntimeError('Cannot find the checkpoint {}'.format(args.checkpoint)))
+        raise (RuntimeError('Cannot find the checkpoint {}'.format(args.checkpoint)))
     model = build_model(args).to(device)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.train(False)
@@ -66,9 +73,9 @@ def main(args):
     softmax = nn.Softmax(dim=1).to(device)
 
     transform = transforms.Compose([
-        transforms.Resize((112, 112)),  # preferable size for resnet(2+1)D model
+        # transforms.Resize((224, 224)),
         transforms.ToTensor(),
-        transforms.Normalize([0.43216, 0.394666, 0.37645], [0.22803, 0.22145, 0.216989])
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
     ])
 
     count_frames = 0
@@ -76,7 +83,7 @@ def main(args):
         start = time.time()
         camera_input = None
         with torch.set_grad_enabled(False):
-            target = np.load(osp.join(args.data_root, 'target_frames_24fps', session+'.npy'))
+            target = np.load(osp.join(args.data_root, 'target_frames_24fps', session + '.npy'))
             # round to multiple of CHUNK_SIZE
             num_frames = target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
@@ -95,30 +102,17 @@ def main(args):
             for l in range(target.shape[0]):
                 # retrieve the index of the central frame of the chunk
                 idx_central_frame = l * args.chunk_size + (args.chunk_size // 2)
-                # now load all of the frames of the chunk
-                start_f = idx_central_frame - args.chunk_size // 2
-                end_f = idx_central_frame + args.chunk_size // 2
-                for idx_frame in range(start_f, end_f):
-                    frame = Image.open(
-                        osp.join(args.data_root, args.camera_feature, session, str(idx_frame + 1) + '.jpg')).convert(
-                        'RGB')
-                    frame = transform(frame).to(dtype=torch.float32)
-                    if camera_input is None:
-                        camera_input = torch.zeros(
-                            (1, args.chunk_size, frame.shape[0], frame.shape[1], frame.shape[2]),
-                            dtype=torch.float32)
-                    camera_input[0, idx_frame - start_f] = frame
+                frame = Image.open(osp.join(args.data_root, args.camera_feature, session,
+                                            str(idx_central_frame + 1) + '.jpg')).convert('RGB')
+                frame = transform(frame).to(dtype=torch.float32)
 
                 if l % args.enc_steps == 0:
-                    enc_h_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_input.dtype)
-                    enc_c_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_input.dtype)
+                    hidden_state = model._init_hidden(batch_size=1, image_size=(model.H, model.W))
 
-                camera_input = camera_input.permute(0, 2, 1, 3, 4).to(device)
-                enc_score, enc_h_n, enc_c_n = model.step(camera_input, enc_h_n, enc_c_n)
+                enc_score, hidden_state = model.step(to_device(frame), hidden_state)
 
                 enc_score_metrics.append(softmax(enc_score).cpu().numpy()[0])
                 enc_target_metrics.append(target[l])
-                camera_input = None
 
         end = time.time()
 
@@ -132,7 +126,7 @@ def main(args):
             count_frames += target.shape[0]
 
     save_dir = osp.dirname(args.checkpoint)
-    result_file  = osp.basename(args.checkpoint).replace('.pth', '.json')
+    result_file = osp.basename(args.checkpoint).replace('.pth', '.json')
     # Compute result for encoder
     utl.compute_result_multilabel(args.class_index,
                                   enc_score_metrics, enc_target_metrics,
@@ -143,7 +137,8 @@ def main(args):
     enc_score_metrics = np.array(enc_score_metrics)
     # Prepare variables
     enc_score_metrics = torch.tensor(enc_score_metrics)  # shape == (num_videos * num_frames_in_video, num_classes)
-    enc_target_metrics = torch.max(torch.tensor(enc_target_metrics), 1)[1]  # shape == (num_videos * num_frames_in_video)
+    enc_target_metrics = torch.max(torch.tensor(enc_target_metrics), 1)[
+        1]  # shape == (num_videos * num_frames_in_video)
 
     # Log precision recall curve for encoder
     for idx_class in range(len(args.class_index)):
@@ -164,7 +159,7 @@ def main(args):
     plt.ylabel('Actual class')
     plt.xlabel('Predicted class')
     timestamp = str(datetime.now())[:-7]
-    writer.add_figure(timestamp+'_conf-mat_unnorm.jpg', fig)
+    writer.add_figure(timestamp + '_conf-mat_unnorm.jpg', fig)
 
     # Log normalized confusion matrix for encoder
     conf_mat_norm = conf_mat.astype('float') / conf_mat.sum(axis=1)[:, np.newaxis]
@@ -178,6 +173,7 @@ def main(args):
     writer.add_figure(timestamp + '_conf-mat_norm.jpg', fig)
 
     writer.close()
+
 
 if __name__ == '__main__':
     main(parse_args())
