@@ -100,7 +100,7 @@ class ConvLSTM(nn.Module):
         self.bias = bias
         self.steps = args.enc_steps
 
-        if self.feature_extractor == 'RESNET2+1D':
+        if args.feature_extractor == 'RESNET2+1D':
             if args.feat_vect_dim != 512:
                 raise Exception('Wrong feat_vect_dim option for RESNET2+1D feature_extractor')
             self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
@@ -114,8 +114,8 @@ class ConvLSTM(nn.Module):
             # HARD-CODED: resnet2+1d models returns feature maps of shape (512, 7, 7)
             self.input_dim = args.feat_vect_dim     # == 512
             self.H, self.W = (7, 7)
-        elif self.feature_extractor == 'FRAMES':
-            self.feature_extractor == nn.Identity()
+        elif args.feature_extractor == 'FRAMES':
+            self.feature_extractor = nn.Identity()
 
             self.input_dim = 3      # number of channels of input images(i.e. RGB)
             self.H, self.W = (180, 320)
