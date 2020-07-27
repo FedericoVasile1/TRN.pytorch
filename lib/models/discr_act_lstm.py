@@ -72,6 +72,6 @@ class DiscrActLSTM(nn.Module):
             scores_act[:, step, :] = out_act
             scores[:, step, :] = out
 
-        return out, (out_discr, out_act)
+        return scores, scores_discr, scores_act
 
 

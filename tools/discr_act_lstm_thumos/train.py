@@ -98,7 +98,7 @@ def main(args):
                     target_discr = torch.max(enc_target, dim=2)[1]
                     target_discr[target_discr != 0] = 1  # convert all actions index classes to a single 'action class'
                     # re-convert tensor to one-hot encoding tensor
-                    target_discr = torch.nn.functional.one_hot(target_discr, num_classes=args.num_classes)
+                    target_discr = torch.nn.functional.one_hot(target_discr, num_classes=2)
 
                     if training:
                         optimizer.zero_grad()
@@ -195,7 +195,7 @@ def main(args):
         ) for phase in args.phases}
         result_file = {phase: 'phase-{}-epoch-{}-discr.json'.format(phase, epoch) for phase in args.phases}
         mAP_discr = {phase: utl.compute_result_multilabel(
-            args.class_index,
+            ['Background', 'Action'],
             score_metrics_discr[phase],
             target_metrics_discr[phase],
             save_dir,

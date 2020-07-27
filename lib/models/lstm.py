@@ -25,8 +25,9 @@ class LSTMmodel(nn.Module):
             x_t = x[:, step]
             out = self.feature_extractor(x_t, torch.zeros(1))  # second input is optical flow, in our case will not be used
             h_n, c_n = self.lstm(out, (h_n, c_n))
-            out = self.classifier(self.drop(h_n))  # out.shape == (batch_size, num_classes)
 
+        out = self.classifier(self.drop(h_n))  # out.shape == (batch_size, num_classes)
+        for step in range(self.enc_steps):
             scores[:, step, :] = out
         return scores
 

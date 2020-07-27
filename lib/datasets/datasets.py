@@ -20,6 +20,7 @@ _DATA_LAYERS = {
     'CNNTHUMOSE2E': TRNTHUMOSDataLayerE2E,
     'FCTHUMOS': TRNTHUMOSDataLayer,
     'DISCRACTCONVLSTM2E2E': TRNTHUMOSDataLayerE2E,
+    'DISCRACTLSTMTHUMOS': TRNTHUMOSDataLayer,
 }
 
 def build_dataset(args, phase):
