@@ -64,7 +64,8 @@ class DiscrActLSTM(nn.Module):
             act_h_n, act_c_n = self.act(x_t, (act_h_n, act_c_n))
             out_act = self.act_classifier(act_h_n)
 
-            out = self.discr_to_classes(out_discr)
+            #out = self.discr_to_classes(out_discr)
+            out = torch.cat((out_discr, out_discr[:, 1].expand(out_discr.shape[0], 20)), dim=1)
             out += out_act
             out = self.classifier(out)
 
