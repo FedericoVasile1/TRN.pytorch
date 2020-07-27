@@ -115,6 +115,7 @@ def main(args):
                 camera_input = camera_input.permute(0, 2, 1, 3, 4).to(device)
                 enc_score, enc_h_n, enc_c_n = model.step(camera_input, enc_h_n, enc_c_n)
 
+                camera_input = None
                 enc_score_metrics.append(softmax(enc_score).cpu().numpy()[0])
                 enc_target_metrics.append(target[l])
 

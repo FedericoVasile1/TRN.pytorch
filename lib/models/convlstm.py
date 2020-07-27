@@ -101,9 +101,8 @@ class ConvLSTM(nn.Module):
         self.steps = args.enc_steps
 
         if args.feature_extractor == 'RESNET2+1D':
-            if args.feat_vect_dim != 512:
-                raise Exception('Wrong feat_vect_dim option for RESNET2+1D feature_extractor')
             self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
+            num_out_feature_maps = self.feature_extractor.fc.in_features
             self.feature_extractor = nn.Sequential(
                 *list(self.feature_extractor.children())[:-2],      # drop adaptiveavgpool and classifier
                 SqueezeChunk(),
@@ -111,8 +110,8 @@ class ConvLSTM(nn.Module):
             for param in self.feature_extractor.parameters():
                 param.requires_grad = False
 
-            # HARD-CODED: resnet2+1d models returns feature maps of shape (512, 7, 7)
-            self.input_dim = args.feat_vect_dim     # == 512
+            # HARD-CODED: resnet2+1d model   returns feature maps of shape (512, 7, 7)
+            self.input_dim = num_out_feature_maps       # == 512
             self.H, self.W = (7, 7)
         elif args.feature_extractor == 'FRAMES':
             self.feature_extractor = nn.Identity()

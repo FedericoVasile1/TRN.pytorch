@@ -4,9 +4,6 @@ import numpy as np
 
 from .feature_extractor import build_feature_extractor
 
-'''
-Actually this model is only for evaluation. The two submodules(discrimiantor and action) must be trained separately
-'''
 class DiscrActLSTM(nn.Module):
     def __init__(self, args):
         super(DiscrActLSTM, self).__init__()
@@ -19,25 +16,62 @@ class DiscrActLSTM(nn.Module):
         # The discriminator lstm discriminate between background and action
         self.discr = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
         self.discr_classifier = nn.Linear(self.hidden_size, 2)  # 2 because background and action
+        self.discr_to_classes = nn.Sequential(
+            #nn.ReLU(),
+            nn.Linear(2, self.num_classes)
+        )
+
         # The action lstm predicts only when the discriminator has predicted action, so now it's up to the
         #  action lstm to predict the class of the action
         self.act = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
         self.act_classifier = nn.Linear(self.hidden_size, self.num_classes)
+
+        self.classifier = nn.Linear(self.num_classes, self.num_classes)
+
 
     def step(self, camera_input, discr_h_n, discr_c_n, act_h_n, act_c_n):
         # camera_input.shape == (batch_size, feat_vect_dim)
         feat_vect = self.feature_extractor(camera_input, torch.zeros(1))
 
         discr_h_n, discr_c_n = self.discr(feat_vect, (discr_h_n, discr_c_n))
-        out = self.discr_classifier(discr_h_n)   # out.shape == (batch_size, num_classes) == (1, 2)
-        #assert out.shape == torch.Size([1, 2]), 'size mismatch, wrong input to step function'
+        out_discr = self.discr_classifier(discr_h_n)   # out.shape == (batch_size, num_classes) == (1, 2)
 
         act_h_n, act_c_n = self.act(feat_vect, (act_h_n, act_c_n))
+        out_act = self.act_classifier(act_h_n)
 
-        if out.argmax().item() == 1:
-            out = self.act_classifier(act_h_n)
-            out[:, 0] = out.min(dim=1)[0] - 100.0       # suppress background because here the action lstm is forced to predict an action class
-        else:
-            out = torch.cat([out, torch.zeros(out.shape[0], self.num_classes - 2).to(out.device)], 1)
+        out = self.discr_to_classes(out_discr)
+        out += out_act
+        out = self.classifier(out)
 
         return out, discr_h_n, discr_c_n, act_h_n, act_c_n
+
+    def forward(self, x):
+        # x.shape == (batch_size, enc_steps, feat_vect_dim)
+        discr_h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
+        discr_c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
+        act_h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
+        act_c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device,dtype=x.dtype)
+        scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
+        scores_discr = torch.zeros(x.shape[0], x.shape[1], 2, dtype=x.dtype)
+        scores_act = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
+
+        for step in range(self.enc_steps):
+            x_t = x[:, step]
+            x_t = self.feature_extractor(x_t, torch.zeros(1))
+            discr_h_n, discr_c_n = self.discr(x_t, (discr_h_n, discr_c_n))
+            out_discr = self.discr_classifier(discr_h_n)
+
+            act_h_n, act_c_n = self.act(x_t, (act_h_n, act_c_n))
+            out_act = self.act_classifier(act_h_n)
+
+            out = self.discr_to_classes(out_discr)
+            out += out_act
+            out = self.classifier(out)
+
+            scores_discr[:, step, :] = out_discr
+            scores_act[:, step, :] = out_act
+            scores[:, step, :] = out
+
+        return out, (out_discr, out_act)
+
+
