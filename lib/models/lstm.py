@@ -3,6 +3,24 @@ import torch.nn as nn
 
 from .feature_extractor import build_feature_extractor
 
+def CausalConv1d(in_channels, out_channels, kernel_size, dilation=1, **kwargs):
+    pad = (kernel_size - 1) * dilation
+    return nn.Conv1d(in_channels, out_channels, kernel_size, padding=pad, dilation=dilation, **kwargs)
+
+def TCN():
+    model = nn.Sequential(
+        CausalConv1d(1, 1, 2, 1),
+        nn.ReLU(),
+        nn.Dropout(),
+        CausalConv1d(1, 1, 2, 2),
+        nn.ReLU(),
+        nn.Dropout(),
+        CausalConv1d(1, 1, 2, 4),
+        nn.ReLU(),
+        nn.Dropout(),
+    )
+    return model
+
 class LSTMmodel(nn.Module):
     def __init__(self, args):
         super(LSTMmodel, self).__init__()
@@ -12,8 +30,10 @@ class LSTMmodel(nn.Module):
 
         self.feature_extractor = build_feature_extractor(args)
 
+        self.tcn = TCN()
+
+        self.lstm = nn.LSTMCell(self.feature_extractor.fusion_size + 7, self.hidden_size)
         self.drop = nn.Dropout(args.dropout)
-        self.lstm = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
     def forward(self, x):
@@ -24,6 +44,9 @@ class LSTMmodel(nn.Module):
         for step in range(self.enc_steps):
             x_t = x[:, step]
             out = self.feature_extractor(x_t, torch.zeros(1))  # second input is optical flow, in our case will not be used
+
+            out = self.tcn(out.unsqueeze(1)).squeeze(1)
+
             h_n, c_n = self.lstm(out, (h_n, c_n))
             out = self.classifier(self.drop(h_n))  # out.shape == (batch_size, num_classes)
 

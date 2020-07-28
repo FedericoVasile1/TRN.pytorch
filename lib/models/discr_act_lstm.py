@@ -5,16 +5,6 @@ import numpy as np
 
 from .feature_extractor import build_feature_extractor
 
-class SoftArgmax(nn.Module):
-    def __init__(self):
-        super(SoftArgmax, self).__init__()
-
-    def forward(self, x):
-        # x.shape == (batch_size, num_features)
-        softmax_x = F.softmax(x, dim=1)
-        indices = torch.arange(x.max(dim=1)[0])
-        return (indices * softmax_x).sum(dim=1)
-
 class DiscrActLSTM(nn.Module):
     def __init__(self, args):
         super(DiscrActLSTM, self).__init__()
