@@ -131,8 +131,9 @@ def main(args):
                     losses_act[phase] += loss_act.item() * batch_size
 
                     if training:
-                        loss_discr.backward()
-                        loss_act.backward()
+                        #loss_discr.backward()
+                        #loss_act.backward()
+                        loss += loss_discr + loss_act
                         loss.backward()
                         optimizer.step()
 
