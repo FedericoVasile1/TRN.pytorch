@@ -22,6 +22,7 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     utl.set_seed(int(args.seed))
 
+    args.device = device
     model = build_model(args)
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint, map_location=torch.device('cpu'))
@@ -115,6 +116,8 @@ def main(args):
                         loss_le0 += criterion_le0(p0es[:, step], target[:, -1].max(axis=1)[1])
                     loss_le0 /= camera_inputs.shape[1]  # scale by enc_steps
 
+                    xtes = xtes.to(device)
+                    x0es = x0es.to(device)
                     loss_lc = criterion_lc(xtes, x0es, target)
 
                     loss = loss_la + 1.0 * ((loss_let + loss_le0) + loss_lc)

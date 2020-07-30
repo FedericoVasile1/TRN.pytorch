@@ -92,13 +92,13 @@ class IDUCell(nn.Module):
         return hts, ptes, p0es, xtes, x0es
 
 class IDU(nn.Module):
-    def __init__(self, args, device='cpu'):
+    def __init__(self, args):
         super(IDU, self).__init__()
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.steps = args.enc_steps
 
-        self.iducell = IDUCell(args.feat_vect_dim, args.hidden_size, args.num_classes, args.enc_steps, device)
+        self.iducell = IDUCell(args.feat_vect_dim, args.hidden_size, args.num_classes, args.enc_steps, args.device)
         self.classifier = nn.Linear(args.hidden_size, args.num_classes)
 
     def forward(self, x):
@@ -106,7 +106,7 @@ class IDU(nn.Module):
         scores = torch.zeros(x.shape[0], self.steps, self.num_classes)
         h0 = torch.zeros(x.shape[0], self.hidden_size, dtype=x.dtype, device=x.device)
         hts, ptes, p0es, xtes, x0es = self.iducell(x, h0)
-        scores[:, 0] = self.classifier(hts[:, -1])
+        scores[:, 0] = self.classifier(hts[:, -1].to(x.device))
         for i in range(1, self.steps):
             scores[:, i] = scores[:, 0]
         return scores, ptes, p0es, xtes, x0es
