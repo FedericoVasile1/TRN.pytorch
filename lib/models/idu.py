@@ -6,30 +6,30 @@ import torch.nn.functional as F
 import math
 
 class IDUCell(nn.Module):
-    def __init__(self, input_size, hidden_size, num_classes, steps):
+    def __init__(self, input_size, hidden_size, num_classes, steps, device, dtype=torch.float32):
         super(IDUCell, self).__init__()
         self.num_classes = num_classes
         self.steps = steps
 
-        self.Wxe = Parameter(torch.randn(input_size, hidden_size)).div(math.sqrt(input_size))
-        self.bxe = Parameter(torch.zeros(hidden_size))
-        self.Wep = Parameter(torch.randn(hidden_size, num_classes)).div(math.sqrt(hidden_size))
-        self.bep = Parameter(torch.zeros(num_classes))
+        self.Wxe = Parameter(torch.randn(input_size, hidden_size, dtype=dtype, device=device).div(math.sqrt(input_size)))
+        self.bxe = Parameter(torch.zeros(hidden_size, dtype=dtype, device=device))
+        self.Wep = Parameter(torch.randn(hidden_size, num_classes, dtype=dtype, device=device).div(math.sqrt(hidden_size)))
+        self.bep = Parameter(torch.zeros(num_classes, dtype=dtype, device=device))
 
-        self.Whr = Parameter(torch.randn(hidden_size, hidden_size)).div(math.sqrt(hidden_size))
-        self.bhr = Parameter(torch.zeros(hidden_size))
-        self.Wx0r = Parameter(torch.randn(hidden_size, hidden_size)).div(math.sqrt(hidden_size))
-        self.bx0r = Parameter(torch.zeros(hidden_size))
+        self.Whr = Parameter(torch.randn(hidden_size, hidden_size, dtype=dtype, device=device).div(math.sqrt(hidden_size)))
+        self.bhr = Parameter(torch.zeros(hidden_size, dtype=dtype, device=device))
+        self.Wx0r = Parameter(torch.randn(hidden_size, hidden_size, dtype=dtype, device=device).div(math.sqrt(hidden_size)))
+        self.bx0r = Parameter(torch.zeros(hidden_size, dtype=dtype, device=device))
 
-        self.Wxtz = Parameter(torch.randn(hidden_size, hidden_size)).div(math.sqrt(hidden_size))
-        self.bxtz = Parameter(torch.zeros(hidden_size))
-        self.Wx0z = Parameter(torch.randn(hidden_size, hidden_size)).div(math.sqrt(hidden_size))
-        self.bx0z = Parameter(torch.zeros(hidden_size))
+        self.Wxtz = Parameter(torch.randn(hidden_size, hidden_size, dtype=dtype, device=device).div(math.sqrt(hidden_size)))
+        self.bxtz = Parameter(torch.zeros(hidden_size, dtype=dtype, device=device))
+        self.Wx0z = Parameter(torch.randn(hidden_size, hidden_size, dtype=dtype, device=device).div(math.sqrt(hidden_size)))
+        self.bx0z = Parameter(torch.zeros(hidden_size, dtype=dtype, device=device))
 
-        self.Wxth1 = Parameter(torch.randn(hidden_size, hidden_size)).div(math.sqrt(hidden_size))
-        self.bxth1 = Parameter(torch.zeros(hidden_size))
-        self.Wh1h1 = Parameter(torch.randn(hidden_size, hidden_size)).div(math.sqrt(hidden_size))
-        self.bh1h1 = Parameter(torch.zeros(hidden_size))
+        self.Wxth1 = Parameter(torch.randn(hidden_size, hidden_size, dtype=dtype, device=device).div(math.sqrt(hidden_size)))
+        self.bxth1 = Parameter(torch.zeros(hidden_size, dtype=dtype, device=device))
+        self.Wh1h1 = Parameter(torch.randn(hidden_size, hidden_size, dtype=dtype, device=device).div(math.sqrt(hidden_size)))
+        self.bh1h1 = Parameter(torch.zeros(hidden_size, dtype=dtype, device=device))
 
     def step(self, xt, x0, prev_h):
         '''
@@ -92,16 +92,21 @@ class IDUCell(nn.Module):
         return hts, ptes, p0es, xtes, x0es
 
 class IDU(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args, device='cpu'):
         super(IDU, self).__init__()
         self.hidden_size = args.hidden_size
+        self.num_classes = args.num_classes
+        self.steps = args.enc_steps
 
-        self.iducell = IDUCell(args.feat_vect_dim, args.hidden_size, args.num_classes)
+        self.iducell = IDUCell(args.feat_vect_dim, args.hidden_size, args.num_classes, args.enc_steps, device)
         self.classifier = nn.Linear(args.hidden_size, args.num_classes)
 
     def forward(self, x):
         # x.shape == (batch_size, steps, feat_vect_dim)
+        scores = torch.zeros(x.shape[0], self.steps, self.num_classes)
         h0 = torch.zeros(x.shape[0], self.hidden_size, dtype=x.dtype, device=x.device)
         hts, ptes, p0es, xtes, x0es = self.iducell(x, h0)
-        scores = self.classifier(hts[:, -1])
+        scores[:, 0] = self.classifier(hts[:, -1])
+        for i in range(1, self.steps):
+            scores[:, i] = scores[:, 0]
         return scores, ptes, p0es, xtes, x0es

@@ -44,7 +44,7 @@ class ContrastiveLoss(nn.Module):
                     continue
 
                 d = torch.dist(sample_xte, sample_x0e).pow(2)       # calculate the squared euclidean distance
-                if target_xte == target_x0e:
+                if target_xte.argmax() == target_x0e.argmax():
                     loss +=  d
                 else:
                     temp = m - d
