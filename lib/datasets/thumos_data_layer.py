@@ -20,7 +20,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
             self.sessions = self.sessions[0:50]
             pass
         for session in self.sessions:
-            target = np.load(osp.join(self.data_root, 'target', session+'.npy'))
+            target = np.load(osp.join(self.data_root, 'target_startend' if args.num_classes == 44 else 'target', session+'.npy'))
             seed = np.random.randint(self.enc_steps) if self.training else 0
             for start, end in zip(
                 range(seed, target.shape[0] - self.dec_steps, self.enc_steps),

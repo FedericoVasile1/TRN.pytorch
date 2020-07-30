@@ -29,6 +29,7 @@ _META_ARCHITECTURES = {
     'FC': FC,
     'DISCRACTCONVLSTM2': DiscrActConvLSTM2,
     'IDU': IDU,
+    'STARTENDLSTM': LSTMmodel,
 }
 
 def build_model(args):
