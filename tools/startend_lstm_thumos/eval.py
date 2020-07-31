@@ -67,7 +67,7 @@ def main(args):
         with torch.set_grad_enabled(False):
             camera_inputs = np.load(osp.join(args.data_root, args.camera_feature, session+'.npy'), mmap_mode='r')
             camera_inputs = torch.as_tensor(camera_inputs.astype(np.float32))
-            target = np.load(osp.join(args.data_root, 'target_startend', session+'.npy'))
+            target = np.load(osp.join(args.data_root, 'target', session+'.npy'))
 
             for l in range(target.shape[0]):
                 if l % args.enc_steps == 0:

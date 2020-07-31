@@ -53,7 +53,7 @@ def main(args):
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
-        camera_inputs, _ = dataiter.next()
+        camera_inputs, _, _, _ = dataiter.next()
         camera_inputs = camera_inputs.view(-1, camera_inputs.shape[2], camera_inputs.shape[3],
                                            camera_inputs.shape[4], camera_inputs.shape[5])
         writer.add_graph(model, camera_inputs.to(device))
