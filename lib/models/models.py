@@ -12,6 +12,7 @@ from .cnn import CNN
 from .fc import FC
 from .discr_act_2_convlstm import DiscrActConvLSTM2
 from .idu import IDU
+from .triplelstm import TripleLSTM
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -30,6 +31,7 @@ _META_ARCHITECTURES = {
     'DISCRACTCONVLSTM2': DiscrActConvLSTM2,
     'IDU': IDU,
     'STARTENDLSTM': LSTMmodel,
+    'TRIPLELSTM': TripleLSTM,
 }
 
 def build_model(args):

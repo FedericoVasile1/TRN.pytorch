@@ -14,13 +14,6 @@ from configs.thumos import parse_trn_args as parse_args
 from models import build_model
 
 def main(args):
-    args.num_classes *= 2
-    args.class_index += args.class_index
-    for idx, cls in enumerate(args.class_index[:22], start=0):
-        args.class_index[idx] = args.class_index[idx] + '_start'
-    for idx, cls in enumerate(args.class_index[22:], start=22):
-        args.class_index[idx] = args.class_index[idx] + '_end'
-
     this_dir = osp.join(osp.dirname(__file__), '.')
     save_dir = osp.join(this_dir, 'checkpoints')
     if not osp.isdir(save_dir):
@@ -43,9 +36,11 @@ def main(args):
     if args.downsample_backgr:
         # trick to ignore multiple class
         #weights[0] = 0  # ignore background class
-        weights[21] = 0
+        weights[21] = 0  # ignore ambiguous class
         weights[43] = 0
-    criterion = nn.CrossEntropyLoss(weight=weights, ignore_index=21).to(device)
+    criterion_actback = nn.CrossEntropyLoss().to(device)
+    criterion_acts = nn.CrossEntropyLoss(ignore_index=21).to(device)
+    criterion_startend = nn.CrossEntropyLoss(weight=weights).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -112,6 +107,11 @@ def main(args):
                     loss /= camera_inputs.shape[1]      # scale by enc_steps
 
                     losses[phase] += loss.item() * batch_size
+
+                    if args.loss_diffs:
+                        if args.alpha == -1:
+                            raise Exception('With loss diffs you must provide also alpha hyperparameter')
+                        loss += (args.alpha * loss_diffs(score, batch_size, args.num_classes))
 
                     if training:
                         loss.backward()

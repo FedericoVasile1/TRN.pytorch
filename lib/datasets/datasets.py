@@ -1,6 +1,7 @@
 from .thumos_data_layer import TRNTHUMOSDataLayer
 from .thumos_data_layer2 import TRNTHUMOSDataLayer2
 from .thumos_data_layer_e2e import TRNTHUMOSDataLayerE2E
+from .thumos_data_layer_triplelstm import TRNTHUMOSDataLayerTripleLSTM
 
 _DATA_LAYERS = {
     'TRNTHUMOS': TRNTHUMOSDataLayer,
@@ -23,6 +24,7 @@ _DATA_LAYERS = {
     'DISCRACTLSTMTHUMOS': TRNTHUMOSDataLayer,
     'IDUTHUMOS': TRNTHUMOSDataLayer,
     'STARTENDLSTMTHUMOS': TRNTHUMOSDataLayer,
+    'TRIPLELSTMTHUMOS': TRNTHUMOSDataLayerTripleLSTM,
 }
 
 def build_dataset(args, phase):

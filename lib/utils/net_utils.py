@@ -5,6 +5,7 @@ import os.path as osp
 import torch
 import torch.nn as nn
 import torch.utils.data as data
+import torch.nn.functional as F
 import cv2
 from PIL import Image
 
@@ -16,6 +17,7 @@ __all__ = [
     'weights_init',
     'count_parameters',
     'show_video_predictions',
+    'soft_argmax',
 ]
 
 def set_seed(seed):
@@ -94,3 +96,10 @@ def show_video_predictions(args, camera_inputs, session, enc_score_metrics, enc_
         if key == ord('p'):
             # pause
             cv2.waitKey(-1)  # wait until any key is pressed
+
+def soft_argmax(scores):
+    # scores.shape == (batch_size, num_classes).   scores are NOT passed through softmax
+    softmax = F.softmax(scores, dim=1)
+    pos = torch.arange(scores.shape[1])
+    softargmax = torch.sum(pos * softmax, dim=1)
+    return softargmax
