@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.utils.data as data
 
-class TRNTHUMOSDataLayer(data.Dataset):
+class TRNTHUMOSDataLayerTripleLSTM(data.Dataset):
     def __init__(self, args, phase='train'):
         self.data_root = args.data_root
         self.camera_feature = args.camera_feature

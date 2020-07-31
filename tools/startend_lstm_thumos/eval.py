@@ -55,7 +55,9 @@ def main(args):
         checkpoint = torch.load(args.checkpoint)
     else:
         raise(RuntimeError('Cannot find the checkpoint {}'.format(args.checkpoint)))
+    args.num_classes = 44
     model = build_model(args).to(device)
+    args.num_classes = 22
     model.load_state_dict(checkpoint['model_state_dict'])
     model.train(False)
 
@@ -78,13 +80,14 @@ def main(args):
                 enc_score, enc_h_n, enc_c_n = model.step(camera_input, enc_h_n, enc_c_n)
 
                 # enc_score.shape == (1, 44)   so I need to get predictions back to only classes(without start and end)
-                all_zeros = torch.zeros(1, 22)
-                if enc_score[0, 22:] != all_zeros:
+                all_zeros = torch.zeros(1, 22, dtype=camera_input.dtype, device=camera_input.device)
+                if torch.all(enc_score[0, 22:].eq(all_zeros)):
                     pred_label = enc_score.argmax()
                     pred_label -= 22
                     enc_score[0, pred_label] = 1
 
                 enc_score = enc_score[0, :22]
+                enc_score = enc_score.unsqueeze(0)
 
                 enc_score_metrics.append(softmax(enc_score).cpu().numpy()[0])
                 enc_target_metrics.append(target[l])
