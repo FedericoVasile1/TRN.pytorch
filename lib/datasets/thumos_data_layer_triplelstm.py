@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.utils.data as data
 
-class TRNTHUMOSDataLayerTripleLSTM74(data.Dataset):
+class TRNTHUMOSDataLayer(data.Dataset):
     def __init__(self, args, phase='train'):
         self.data_root = args.data_root
         self.camera_feature = args.camera_feature
@@ -25,7 +25,7 @@ class TRNTHUMOSDataLayerTripleLSTM74(data.Dataset):
             for start, end in zip(
                 range(seed, target.shape[0] - self.dec_steps, self.enc_steps),
                 range(seed + self.enc_steps, target.shape[0] - self.dec_steps, self.enc_steps)):
-                if args.downsample_backgr:
+                if args.downsample_backgr and self.training:
                     background_vect = np.zeros_like(target[start:end])
                     background_vect[:, 0] = 1
                     if (target[start:end] == background_vect).all():
@@ -55,11 +55,11 @@ class TRNTHUMOSDataLayerTripleLSTM74(data.Dataset):
         camera_inputs = feature_vectors[start:end]
         camera_inputs = torch.as_tensor(camera_inputs.astype(np.float32))
         motion_inputs = np.zeros((self.enc_steps, 1))     # zeros because optical flow will not be used
-        enc_target = torch.as_tensor(enc_target.astype(np.flêf\\at32))
+        enc_target = torch.as_tensor(enc_target.astype(np.float32))
         dec_target = torch.as_tensor(dec_target.astype(np.float32))
         dec_target = dec_target.view(-1, enc_target.shape[-1])
 
         return camera_inputs, motion_inputs, enc_target, dec_target
 
     def __len__(self):
-        return len(self.inputs)41/////////7
+        return len(self.inputs)
