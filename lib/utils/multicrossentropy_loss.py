@@ -39,16 +39,15 @@ class ContrastiveLoss(nn.Module):
                 sample_xte, sample_x0e = (xtes[sample, step], x0es[sample, step])
                 target_xte, target_x0e = (yts[sample, step], yts[sample, -1])
 
-                # TODO CHECK BETTER THIS PART
                 if target_xte.argmax() == self.ignore_index or target_x0e.argmax() == self.ignore_index:
                     continue
 
                 d = torch.dist(sample_xte, sample_x0e).pow(2)       # calculate the squared euclidean distance
                 if target_xte.argmax() == target_x0e.argmax():
-                    loss +=  d
+                    loss += d
                 else:
                     temp = m - d
                     if temp > 0:
                         loss += temp
-        loss /= steps
+        loss /= (steps * batch_size)
         return loss

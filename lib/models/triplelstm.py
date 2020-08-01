@@ -61,7 +61,7 @@ class TripleLSTM(nn.Module):
             out = self.final_classifier(fusion_vect)  # out.shape == (batch_size, num_classes_acts)
 
             actback_scores[:, step] = actback_score
-            acts_scores[:, step] = actback_score
+            acts_scores[:, step] = acts_score
             startend_scores[:, step] = startend_score
             final_scores[:, step] = out
         return final_scores, actback_scores, acts_scores, startend_scores
