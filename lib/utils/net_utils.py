@@ -100,6 +100,6 @@ def show_video_predictions(args, camera_inputs, session, enc_score_metrics, enc_
 def soft_argmax(scores):
     # scores.shape == (batch_size, num_classes).   scores are NOT passed through softmax
     softmax = F.softmax(scores, dim=1)
-    pos = torch.arange(scores.shape[1])
+    pos = torch.arange(scores.shape[1]).to(scores.device)
     softargmax = torch.sum(pos * softmax, dim=1)
     return softargmax

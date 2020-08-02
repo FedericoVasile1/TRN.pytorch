@@ -110,9 +110,9 @@ def main(args):
                     actback_scores = actback_scores.to(device)
                     target_actback = target_actback.to(device)
                     # sum losses alog all timesteps
-                    loss_actback = criterion_actback(actback_scores[:, 0], target_actback[:, 0].max(axis=1)[1])
+                    loss_actback = criterion_actback(actback_scores[:, 0], target_actback[:, 0].max(axis=1)[1].unsqueeze(1))
                     for step in range(1, camera_inputs.shape[1]):
-                        loss_actback += criterion_actback(actback_scores[:, step], target_actback[:, step].max(axis=1)[1])
+                        loss_actback += criterion_actback(actback_scores[:, step], target_actback[:, step].max(axis=1)[1].unsqueeze(1))
                     loss_actback /= camera_inputs.shape[1]      # scale by enc_steps
 
                     acts_scores = acts_scores.to(device)

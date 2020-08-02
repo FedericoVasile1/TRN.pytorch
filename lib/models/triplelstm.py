@@ -28,7 +28,7 @@ class TripleLSTM(nn.Module):
         self.startend = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
         self.startend_classifier = nn.Linear(self.hidden_size, self.num_classes_startend)
 
-        self.final_classifier = nn.Linear(4, self.num_classes_acts)
+        self.final_classifier = nn.Linear(44 + 22, self.num_classes_acts)
 
     def forward(self, x):
         # x.shape == (batch_size, enc_steps, feat_vect_dim)
@@ -39,7 +39,7 @@ class TripleLSTM(nn.Module):
         startend_h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
         startend_c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
 
-        actback_scores = torch.zeros(x.shape[0], self.enc_steps, self.num_classes_actback, dtype=x.dtype)
+        actback_scores = torch.zeros(x.shape[0], self.enc_steps, 1, dtype=x.dtype)
         acts_scores = torch.zeros(x.shape[0], self.enc_steps, self.num_classes_acts, dtype=x.dtype)
         startend_scores = torch.zeros(x.shape[0], self.enc_steps, self.num_classes_startend, dtype=x.dtype)
         final_scores = torch.zeros(x.shape[0], self.enc_steps, self.num_classes_acts, dtype=x.dtype)
