@@ -17,18 +17,13 @@ class TripleLSTM(nn.Module):
         self.feature_extractor = build_feature_extractor(args)
 
         self.actback = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
-        self.actback_classifier = nn.Sequential(
-            nn.Linear(self.hidden_size, 1),
-            nn.Tanh(),
-        )
+        self.actback_classifier = nn.Linear(self.hidden_size, 2)
 
         self.acts = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
         self.acts_classifier = nn.Linear(self.hidden_size, self.num_classes_acts)
 
         self.startend = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
         self.startend_classifier = nn.Linear(self.hidden_size, self.num_classes_startend)
-
-        self.final_classifier = nn.Linear(44 + 22, self.num_classes_acts)
 
     def forward(self, x):
         # x.shape == (batch_size, enc_steps, feat_vect_dim)
@@ -39,7 +34,7 @@ class TripleLSTM(nn.Module):
         startend_h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
         startend_c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
 
-        actback_scores = torch.zeros(x.shape[0], self.enc_steps, 1, dtype=x.dtype)
+        actback_scores = torch.zeros(x.shape[0], self.enc_steps, self.num_classes_actback, dtype=x.dtype)
         acts_scores = torch.zeros(x.shape[0], self.enc_steps, self.num_classes_acts, dtype=x.dtype)
         startend_scores = torch.zeros(x.shape[0], self.enc_steps, self.num_classes_startend, dtype=x.dtype)
         final_scores = torch.zeros(x.shape[0], self.enc_steps, self.num_classes_acts, dtype=x.dtype)
@@ -56,17 +51,46 @@ class TripleLSTM(nn.Module):
             acts_score = self.acts_classifier(acts_h_n)
             startend_score = self.startend_classifier(startend_h_n)
 
-            fusion_vect = torch.cat((acts_score, startend_score), dim=1)
-            fusion_vect *= actback_score
-
-            out = self.final_classifier(fusion_vect)  # out.shape == (batch_size, num_classes_acts)
-
             actback_scores[:, step] = actback_score
             acts_scores[:, step] = acts_score
             startend_scores[:, step] = startend_score
-            final_scores[:, step] = out
-        return final_scores, actback_scores, acts_scores, startend_scores
 
+        # do post-processing for the final prediction
+        with torch.set_grad_enabled(False):
+            for step in range(self.enc_steps):
+                for sample in range(x.shape[0]):
+                    if actback_scores[sample, step].argmax().detach().item() == 0:
+                        backgr_vect = torch.zeros(self.num_classes_acts)
+                        backgr_vect[0] = 1
+                        final_scores[sample, step] = backgr_vect
+                    else:
+                        cls_acts = acts_scores[sample, step].argmax()
+                        cls_startend = startend_scores[sample, step].argmax()
+                        if cls_startend.detach().item() > 21:
+                            cls_startend -= 22
+
+                        if cls_acts.detach().item() == cls_startend.detach().item():
+                            # they predict the same action for the current step, so we are very surely about
+                            #  action predicted
+                            action_vect = torch.zeros(self.num_classes_acts)
+                            action_vect[cls_startend] = 1
+                            final_scores[sample, step] = action_vect
+                        else:
+                            if torch.tensor([cls_startend]).to(x.device) in startend_scores[sample].argmax(dim=1)   \
+                            and torch.tensor([cls_startend+22]).to(x.device) in startend_scores[sample].argmax(dim=1):
+                                # during the sequence the model individuate both start and end of an action, so
+                                #  for this timestep the action is surely this one
+                                action_vect = torch.zeros(self.num_classes_acts)
+                                action_vect[cls_startend] = 1
+                                final_scores[sample, step] = action_vect
+                            else:
+                                # we have not enough information to be sure that the initially predicted action is
+                                #  the real one, so predict background
+                                backgr_vect = torch.zeros(self.num_classes_acts)
+                                backgr_vect[0] = 1
+                                final_scores[sample, step] = backgr_vect
+
+        return final_scores, actback_scores, acts_scores, startend_scores
 
     def step(self, camera_input, h_n, c_n):
         raise NotImplementedError
