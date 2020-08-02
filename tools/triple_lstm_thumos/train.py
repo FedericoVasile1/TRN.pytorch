@@ -38,7 +38,7 @@ def main(args):
         #weights[0] = 0  # ignore background class
         weights[21] = 0  # ignore ambiguous class
         weights[43] = 0
-    criterion_actback = nn.CrossEntropyLoss().to(device)
+    criterion_actback = nn.MSELoss().to(device)
     criterion_acts = nn.CrossEntropyLoss(ignore_index=21).to(device)
     criterion_startend = nn.CrossEntropyLoss(weight=weights).to(device)
     criterion_final = nn.CrossEntropyLoss().to(device)

@@ -17,7 +17,10 @@ class TripleLSTM(nn.Module):
         self.feature_extractor = build_feature_extractor(args)
 
         self.actback = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
-        self.actback_classifier = nn.Linear(self.hidden_size, self.num_classes_actback)
+        self.actback_classifier = nn.Sequential(
+            nn.Linear(self.hidden_size, 1),
+            nn.Tanh(),
+        )
 
         self.acts = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
         self.acts_classifier = nn.Linear(self.hidden_size, self.num_classes_acts)
@@ -53,10 +56,8 @@ class TripleLSTM(nn.Module):
             acts_score = self.acts_classifier(acts_h_n)
             startend_score = self.startend_classifier(startend_h_n)
 
-            argmax_actions = utl.soft_argmax(acts_score).unsqueeze(1)
-            argmax_startend = utl.soft_argmax(startend_score).unsqueeze(1)
-
-            fusion_vect = torch.cat((actback_score, argmax_actions, argmax_startend), dim=1)
+            fusion_vect = torch.cat((acts_score, startend_score), dim=1)
+            fusion_vect *= actback_score
 
             out = self.final_classifier(fusion_vect)  # out.shape == (batch_size, num_classes_acts)
 

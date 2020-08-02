@@ -44,6 +44,11 @@ def main(args):
 
     criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    if osp.isfile(args.checkpoint):
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = args.lr
+        args.start_epoch += checkpoint['epoch']
     softmax = nn.Softmax(dim=1).to(device)
 
     writer = SummaryWriter()
