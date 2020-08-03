@@ -32,6 +32,7 @@ def main(args):
         model = nn.DataParallel(model)
     model = model.to(device)
 
+    t_criterion = nn.CosineSimilarity(dim=1, eps=1e-6)
     criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
@@ -78,17 +79,19 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (camera_inputs, _, enc_target, _) in enumerate(data_loaders[phase], start=1):
+                for batch_idx, (camera_inputs, _, enc_target, t_target) in enumerate(data_loaders[phase], start=1):
                     # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
                     # enc_target.shape == (batch_size, enc_steps, num_classes)
+                    # t_target.shape == (batch_size, enc_steps, dec_steps, feat_vect_dim)
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
+                    t_target = t_target[:, -1]      # take only the next dec_steps frames of the last step of enc_steps
 
                     if training:
                         optimizer.zero_grad()
 
                     # forward pass
-                    score, r_score, u_score = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
+                    score, t_score = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
 
                     score = score.to(device)
                     target = enc_target.to(device)
@@ -98,6 +101,16 @@ def main(args):
                         loss += criterion(score[:, step], target[:, step].max(axis=1)[1])
                     loss /= camera_inputs.shape[1]      # scale by enc_steps
 
+                    t_score = t_score.to(device)
+                    t_target = t_target.to(device)
+                    # sum losses along all timesteps
+                    t_loss = 1 - t_criterion(t_score[:, 0], t_target[:, 0].max(axis=1)[1])
+                    for step in range(1, camera_inputs.shape[1]):
+                        t_loss += 1 - t_criterion(t_score[:, step], t_target[:, step].max(axis=1)[1])
+                    t_loss = t_loss.sum()
+                    t_loss /= camera_inputs.shape[1]  # scale by enc_steps
+
+                    loss += t_loss
                     losses[phase] += loss.item() * batch_size
 
                     if training:
