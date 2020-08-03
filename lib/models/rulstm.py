@@ -14,7 +14,7 @@ class RULSTM(nn.Module):
 
         self.feature_extractor = build_feature_extractor(args)
 
-        self.r_lstm = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size_r)
+        self.r_lstm = nn.LSTMCell(self.feature_extractor.fusion_size, self.r_hidden_size)
         self.r_classifier = nn.Linear(self.r_hidden_size, self.num_classes)
 
         self.h_lin_trasf = nn.Sequential(
@@ -39,6 +39,8 @@ class RULSTM(nn.Module):
         r_h_n = torch.zeros(x.shape[0], self.r_hidden_size, device=x.device, dtype=x.dtype)
         r_c_n = torch.zeros(x.shape[0], self.r_hidden_size, device=x.device, dtype=x.dtype)
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
+        r_scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
+        u_scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
         for step in range(self.r_steps):
             x_t = x[:, step]
             feat_vects = self.feature_extractor(x_t, torch.zeros(1))  # second input is optical flow, in our case will not be used
@@ -59,8 +61,10 @@ class RULSTM(nn.Module):
         out = self.final_classifier(out)
         for step in range(self.r_steps):
             scores[:, step] = out
+            r_scores[:, step] = r_out
+            u_scores[:, step] = u_out
 
-        return scores
+        return scores, r_scores, u_scores
 
     def step(self, camera_input, h_n, c_n):
         raise NotImplementedError

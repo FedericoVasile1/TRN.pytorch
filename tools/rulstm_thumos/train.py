@@ -32,6 +32,8 @@ def main(args):
         model = nn.DataParallel(model)
     model = model.to(device)
 
+    r_criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
+    u_criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
     criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
@@ -88,7 +90,7 @@ def main(args):
                         optimizer.zero_grad()
 
                     # forward pass
-                    score = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
+                    score, r_score, u_score = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
 
                     score = score.to(device)
                     target = enc_target.to(device)
@@ -98,6 +100,21 @@ def main(args):
                         loss += criterion(score[:, step], target[:, step].max(axis=1)[1])
                     loss /= camera_inputs.shape[1]      # scale by enc_steps
 
+                    r_score = r_score.to(device)
+                    # sum losses along all timesteps
+                    r_loss = r_criterion(r_score[:, 0], target[:, 0].max(axis=1)[1])
+                    for step in range(1, camera_inputs.shape[1]):
+                        r_loss += r_criterion(r_score[:, step], target[:, step].max(axis=1)[1])
+                    r_loss /= camera_inputs.shape[1]  # scale by enc_steps
+
+                    u_score = u_score.to(device)
+                    # sum losses along all timesteps
+                    u_loss = u_criterion(u_score[:, 0], target[:, 0].max(axis=1)[1])
+                    for step in range(1, camera_inputs.shape[1]):
+                        u_loss += u_criterion(u_score[:, step], target[:, step].max(axis=1)[1])
+                    u_loss /= camera_inputs.shape[1]  # scale by enc_steps
+
+                    loss += r_loss + u_loss
                     losses[phase] += loss.item() * batch_size
 
                     if training:
