@@ -38,7 +38,7 @@ class RULSTM(nn.Module):
         # x.shape == (batch_size, enc_steps, feat_vect_dim)
         r_h_n = torch.zeros(x.shape[0], self.r_hidden_size, device=x.device, dtype=x.dtype)
         r_c_n = torch.zeros(x.shape[0], self.r_hidden_size, device=x.device, dtype=x.dtype)
-        scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
+        scores = torch.zeros(x.shape[0], self.r_steps, self.num_classes, dtype=x.dtype)
         t_scores = torch.zeros(x.shape[0], self.u_steps, self.feature_extractor.fusion_size, dtype=x.dtype)
         for step in range(self.r_steps):
             x_t = x[:, step]

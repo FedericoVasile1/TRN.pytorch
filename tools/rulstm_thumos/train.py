@@ -105,10 +105,10 @@ def main(args):
                     t_target = t_target.to(device)
                     # sum losses along all timesteps
                     t_loss = 1 - t_criterion(t_score[:, 0], t_target[:, 0].max(axis=1)[1])
-                    for step in range(1, camera_inputs.shape[1]):
+                    for step in range(1, args.dec_steps):
                         t_loss += 1 - t_criterion(t_score[:, step], t_target[:, step].max(axis=1)[1])
                     t_loss = t_loss.sum()
-                    t_loss /= camera_inputs.shape[1]  # scale by enc_steps
+                    t_loss /= args.dec_steps  # scale by enc_steps
 
                     loss += t_loss
                     losses[phase] += loss.item() * batch_size
