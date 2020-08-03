@@ -54,8 +54,8 @@ def main(args):
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
-        camera_inputs, _, _, _ = dataiter.next()
-        writer.add_graph(model, camera_inputs.to(device))
+        camera_inputs, _, _, t_target = dataiter.next()
+        writer.add_graph(model, camera_inputs.to(device), t_target.to(device))
         writer.close()
 
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
@@ -85,7 +85,7 @@ def main(args):
                     # t_target.shape == (batch_size, enc_steps, dec_steps, feat_vect_dim)
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
-                    t_target = t_target[:, -1]      # take only the next dec_steps frames of the last step of enc_steps
+                    t_target = t_target[:, -1].to(device)      # take only the next dec_steps frames of the last step of enc_steps
 
                     if training:
                         optimizer.zero_grad()
