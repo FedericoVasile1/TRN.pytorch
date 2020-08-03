@@ -91,7 +91,7 @@ def main(args):
                         optimizer.zero_grad()
 
                     # forward pass
-                    score, t_score = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
+                    score, t_score = model(camera_inputs, t_target)            # score.shape == (batch_size, enc_steps, num_classes)
 
                     score = score.to(device)
                     target = enc_target.to(device)
@@ -110,7 +110,7 @@ def main(args):
                     t_loss = t_loss.sum()
                     t_loss /= args.dec_steps  # scale by enc_steps
 
-                    loss += t_loss
+                    loss += 0.5 * t_loss
                     losses[phase] += loss.item() * batch_size
 
                     if training:

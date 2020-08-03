@@ -34,8 +34,9 @@ class RULSTM(nn.Module):
 
         self.final_classifier = nn.Linear(self.num_classes * 2, self.num_classes)
 
-    def forward(self, x):
+    def forward(self, x, next_feat_vects):
         # x.shape == (batch_size, enc_steps, feat_vect_dim)
+        # next_feat_vects.shape == (batch_size, dec_steps, feat_vect_dim)
         r_h_n = torch.zeros(x.shape[0], self.r_hidden_size, device=x.device, dtype=x.dtype)
         r_c_n = torch.zeros(x.shape[0], self.r_hidden_size, device=x.device, dtype=x.dtype)
         scores = torch.zeros(x.shape[0], self.r_steps, self.num_classes, dtype=x.dtype)
@@ -50,8 +51,9 @@ class RULSTM(nn.Module):
         next_in = feat_vects
         for step in range(self.u_steps):
             u_h_n, u_c_n = self.u_lstm(next_in, (u_h_n, u_c_n))
-            next_in = self.out_lin_transf(u_h_n)
-            t_scores[:, step] = next_in
+            t_scores[:, step] = self.out_lin_transf(u_h_n)
+
+            next_in = next_feat_vects[:, step]
 
         out = self.u_classifier(next_in)
         for step in range(self.r_steps):
