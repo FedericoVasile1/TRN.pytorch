@@ -50,7 +50,7 @@ class RULSTM(nn.Module):
         next_in = feat_vects
         for step in range(self.u_steps):
             u_h_n, u_c_n = self.u_lstm(next_in, (u_h_n, u_c_n))
-            next_in = self.out_lin_transf(u_h_n)        # TODO: SUPERVISION HERE
+            next_in = self.out_lin_transf(u_h_n)
             t_scores[:, step] = next_in
 
         out = self.u_classifier(next_in)
@@ -59,5 +59,20 @@ class RULSTM(nn.Module):
 
         return scores, t_scores
 
-    def step(self, camera_input, h_n, c_n):
-        raise NotImplementedError
+    def step(self, x, count_step, r_h_n, r_c_n):
+        # x.shape == (batch_size, feat_vect_dim)
+        feat_vects = self.feature_extractor(x, torch.zeros(1))
+        r_h_n, r_c_n = self.r_lstm(feat_vects, (r_h_n, r_c_n))
+
+        if count_step == (self.r_steps - 1):
+            u_h_n = self.h_lin_trasf(r_h_n)
+            u_c_n = self.c_lin_trasf(r_c_n)
+            next_in = feat_vects
+            for step in range(self.u_steps):
+                u_h_n, u_c_n = self.u_lstm(next_in, (u_h_n, u_c_n))
+                next_in = self.out_lin_transf(u_h_n)
+
+            out = self.u_classifier(next_in)
+            return out
+        else:
+            return r_h_n, r_c_n

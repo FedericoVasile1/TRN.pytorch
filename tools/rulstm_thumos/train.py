@@ -104,9 +104,9 @@ def main(args):
                     t_score = t_score.to(device)
                     t_target = t_target.to(device)
                     # sum losses along all timesteps
-                    t_loss = 1 - t_criterion(t_score[:, 0], t_target[:, 0].max(axis=1)[1])
+                    t_loss = 1 - t_criterion(t_score[:, 0], t_target[:, 0])
                     for step in range(1, args.dec_steps):
-                        t_loss += 1 - t_criterion(t_score[:, step], t_target[:, step].max(axis=1)[1])
+                        t_loss += 1 - t_criterion(t_score[:, step], t_target[:, step])
                     t_loss = t_loss.sum()
                     t_loss /= args.dec_steps  # scale by enc_steps
 
