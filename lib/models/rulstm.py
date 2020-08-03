@@ -54,17 +54,11 @@ class RULSTM(nn.Module):
             next_in = self.out_lin_transf(u_h_n)        # TODO: SUPERVISION HERE
 
         # TODO: SUPERVISION ON THESE TWO INTERMEDIATE OUTPUT
-        u_out = self.u_classifier(next_in)
-        r_out = self.r_classifier(r_h_n)
-        out = torch.cat((u_out, r_out), dim=1)
-
-        out = self.final_classifier(out)
+        out = self.u_classifier(next_in)
         for step in range(self.r_steps):
             scores[:, step] = out
-            r_scores[:, step] = r_out
-            u_scores[:, step] = u_out
 
-        return scores, r_scores, u_scores
+        return scores
 
     def step(self, camera_input, h_n, c_n):
         raise NotImplementedError
