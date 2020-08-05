@@ -14,6 +14,7 @@ from .discr_act_2_convlstm import DiscrActConvLSTM2
 from .idu import IDU
 from .triplelstm import TripleLSTM
 from .rulstm import RULSTM
+from .lstm_attention import LSTMAttention
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -34,6 +35,7 @@ _META_ARCHITECTURES = {
     'STARTENDLSTM': LSTMmodel,
     'TRIPLELSTM': TripleLSTM,
     'RULSTM': RULSTM,
+    'LSTMATTENTION': LSTMAttention,
 }
 
 def build_model(args):

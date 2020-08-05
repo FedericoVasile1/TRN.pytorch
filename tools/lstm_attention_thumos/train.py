@@ -32,7 +32,6 @@ def main(args):
         model = nn.DataParallel(model)
     model = model.to(device)
 
-    t_criterion = nn.CosineSimilarity(dim=1, eps=1e-6)
     criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
@@ -54,8 +53,8 @@ def main(args):
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
-        camera_inputs, _, _, t_target = dataiter.next()
-        writer.add_graph(model, camera_inputs.to(device), t_target[:, -1].to(device))
+        camera_inputs, _, _, _ = dataiter.next()
+        writer.add_graph(model, camera_inputs.to(device))
         writer.close()
 
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
@@ -79,19 +78,17 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (camera_inputs, _, enc_target, t_target) in enumerate(data_loaders[phase], start=1):
-                    # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
+                for batch_idx, (camera_inputs, _, enc_target, _) in enumerate(data_loaders[phase], start=1):
+                    # camera_inputs.shape == (batch_size, enc_steps, 3, 6, 112, 112)
                     # enc_target.shape == (batch_size, enc_steps, num_classes)
-                    # t_target.shape == (batch_size, enc_steps, dec_steps, feat_vect_dim)
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
-                    t_target = t_target[:, -1].to(device)      # take only the next dec_steps frames of the last step of enc_steps
 
                     if training:
                         optimizer.zero_grad()
 
                     # forward pass
-                    score, t_score = model(camera_inputs, t_target)            # score.shape == (batch_size, enc_steps, num_classes)
+                    score = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
 
                     score = score.to(device)
                     target = enc_target.to(device)
@@ -101,17 +98,12 @@ def main(args):
                         loss += criterion(score[:, step], target[:, step].max(axis=1)[1])
                     loss /= camera_inputs.shape[1]      # scale by enc_steps
 
-                    t_score = t_score.to(device)
-                    t_target = t_target.to(device)
-                    # sum losses along all timesteps
-                    t_loss = 1 - t_criterion(t_score[:, 0], t_target[:, 0])
-                    for step in range(1, args.dec_steps):
-                        t_loss += 1 - t_criterion(t_score[:, step], t_target[:, step])
-                    t_loss = t_loss.sum()
-                    t_loss /= args.dec_steps  # scale by enc_steps
-
-                    loss += 0.5 * t_loss
                     losses[phase] += loss.item() * batch_size
+
+                    if args.loss_diffs:
+                        if args.alpha == -1:
+                            raise Exception('With loss diffs you must provide also alpha hyperparameter')
+                        loss += (args.alpha * loss_diffs(score, batch_size, args.num_classes))
 
                     if training:
                         loss.backward()

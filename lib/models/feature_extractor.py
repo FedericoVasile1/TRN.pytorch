@@ -31,8 +31,13 @@ class THUMOSFeatureExtractor(nn.Module):
                     param.requires_grad = False
             elif args.feature_extractor == 'RESNET2+1D':
                 self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
-                self.feat_vect_dim = self.feature_extractor.fc.in_features
-                self.feature_extractor.fc = nn.Identity()
+                if args.model == 'LSTMATTENTION':
+                    # here we need to return the feature maps, so remove adaptive3davgpool and linear.
+                    # The output shape is (batch_size, 512, -1, 7, 7)
+                    self.feature_extractor = nn.Sequential(*list(self.feature_extractor.children())[:-2])
+                else:
+                    self.feat_vect_dim = self.feature_extractor.fc.in_features
+                    self.feature_extractor.fc = nn.Identity()
                 for param in self.feature_extractor.parameters():
                     param.requires_grad = False
             else:
