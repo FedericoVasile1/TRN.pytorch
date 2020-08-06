@@ -6,6 +6,14 @@ import math
 
 from .feature_extractor import build_feature_extractor
 
+class SelfAttention(nn.Module):
+    def __init__(self, feat_maps_channels, num_filters):
+        super(SelfAttention, self).__init__()
+
+        self.queries_conv = nn.Conv2d(feat_maps_channels, num_filters, 1)
+        self.keys_conv = nn.Conv2d(feat_maps_channels, num_filters, 1)
+        self.values_conv = nn.Conv2d(feat_maps_channels, num_filters, 1)
+
 class ScaledDotProductAttention(nn.Module):
     def __init__(self, rnn_hidden_size):
         super(ScaledDotProductAttention, self).__init__()
