@@ -64,23 +64,31 @@ def show_video_predictions(args, camera_inputs, session, enc_score_metrics, enc_
         idx_frame = idx * args.chunk_size + args.chunk_size // 2
         pil_frame = Image.open(osp.join(args.data_root, 'video_frames_24fps', session,
                                         str(idx_frame + 1) + '.jpg')).convert('RGB')
-        pil_frame = transforms.Resize((224, 224))(pil_frame)
         open_cv_frame = np.array(pil_frame)
+
         # Convert RGB to BGR
         open_cv_frame = open_cv_frame[:, :, ::-1].copy()
 
         if attn_weights is not None:
+            original_H, original_W, _ = open_cv_frame.shape
+            if args.feature_extractor == 'VGG16':
+                open_cv_frame = cv2.resize(open_cv_frame, (224, 224), interpolation=cv2.INTER_AREA)
+            elif args.feature_extractor == 'RESNET2+1D':
+                open_cv_frame = cv2.resize(open_cv_frame, (112, 112), interpolation=cv2.INTER_AREA)
+            else:
+                raise Exception('Wrong feature_extractor option')
+            H, W, _ = open_cv_frame.shape
+
             attn_weights_t = attn_weights[idx]
             attn_weights_t = attn_weights_t.squeeze(0)
-            H, W, C = open_cv_frame.shape
-            attn_weights_t = cv2.resize(attn_weights_t.data.numpy().copy(),
-                                        (W, H), interpolation=cv2.INTER_NEAREST)
+            attn_weights_t = cv2.resize(attn_weights_t.data.numpy().copy(), (W, H), interpolation=cv2.INTER_NEAREST)
             attn_weights_t = np.repeat(np.expand_dims(attn_weights_t, axis=2), 3, axis=2)
+            attn_weights_t *= 255
             attn_weights_t = attn_weights_t.astype('uint8')
+            # mask original image according to the attention weights
             open_cv_frame = cv2.addWeighted(attn_weights_t, 0.5, open_cv_frame, 0.5, 0)
 
-
-        # TODO: HERE OPEN_CV_FRAME HAS TO BE REHSAPED TO ORIGINAL SIZE
+            open_cv_frame = cv2.resize(open_cv_frame, (original_W, original_H), interpolation=cv2.INTER_AREA)
 
         open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 60, 0, 0, 0, borderType=cv2.BORDER_CONSTANT, value=0)
         pred_label = args.class_index[enc_pred_metrics[idx]]

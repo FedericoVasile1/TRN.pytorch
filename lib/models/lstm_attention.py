@@ -28,7 +28,7 @@ class ScaledDotProductAttention(nn.Module):
 class LSTMAttention(nn.Module):
     '''
     Actually, this model can only work in end to end mode(i.e. starting from the frames), since
-    we do not have the extracted featrure maps
+    we do not have the extracted featrure maps. Hence camera_feature == video_frames_24fps is the only one supported
     '''
     def __init__(self, args, dtype=torch.float32):
         super(LSTMAttention, self).__init__()

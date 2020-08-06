@@ -52,15 +52,12 @@ def main(args):
     enc_score_metrics = []
     enc_target_metrics = []
 
-    # TODO: DA CANCELLARE
-    '''
-    if osp.isfile(args.checkpoint):     
+    if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint)
     else:
         raise(RuntimeError('Cannot find the checkpoint {}'.format(args.checkpoint)))
-    '''
     model = build_model(args).to(device)
-    #model.load_state_dict(checkpoint['model_state_dict'])
+    model.load_state_dict(checkpoint['model_state_dict'])
     model.train(False)
 
     softmax = nn.Softmax(dim=1).to(device)
@@ -94,8 +91,7 @@ def main(args):
 
             attn_weights = torch.zeros(target.shape[0], 1, 7, 7, dtype=torch.float32)
             for l in range(target.shape[0]):
-                if l > 100:     # TODO: DA CANCELLARE
-                    break
+                # load chunk/frame
                 if args.feature_extractor == 'RESNET2+1D':
                     camera_input = torch.zeros(args.chunk_size, 3, 112, 112, dtype=torch.float32)
                     idx_central_frame = l * args.chunk_size + (args.chunk_size // 2)
