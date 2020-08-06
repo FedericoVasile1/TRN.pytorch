@@ -15,6 +15,7 @@ from .idu import IDU
 from .triplelstm import TripleLSTM
 from .rulstm import RULSTM
 from .lstm_attention import LSTMAttention
+from .tc_lstm import TCLSTM
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -36,6 +37,7 @@ _META_ARCHITECTURES = {
     'TRIPLELSTM': TripleLSTM,
     'RULSTM': RULSTM,
     'LSTMATTENTION': LSTMAttention,
+    'TCLSTM': TCLSTM,
 }
 
 def build_model(args):
