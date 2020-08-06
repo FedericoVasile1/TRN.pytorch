@@ -50,9 +50,10 @@ def main():
             if str(dir)+'.npy' in os.listdir(os.path.join(DATA_ROOT, VIDEO_FEATURES)):
                 continue
 
-            feat_maps_video = torch.zeros(num_frames//CHUNK_SIZE, FEAT_MAP_DIM[0], FEAT_MAP_DIM[1], FEAT_MAP_DIM[2], dtype=torch.float32)
             num_frames = len(os.listdir(os.path.join(DATA_ROOT, VIDEO_FRAMES, dir)))
             num_frames = num_frames - (num_frames % CHUNK_SIZE)
+
+            feat_maps_video = torch.zeros(num_frames//CHUNK_SIZE, FEAT_MAP_DIM[0], FEAT_MAP_DIM[1], FEAT_MAP_DIM[2], dtype=torch.float32)
             sample = torch.zeros(CHUNK_SIZE, 3, 112, 112, dtype=torch.float32)
             for idx_frame in range(0, num_frames):
                 # idx_frame+1 because frames start from 1.  e.g. 1.jpg
