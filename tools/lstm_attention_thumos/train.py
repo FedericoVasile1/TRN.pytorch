@@ -100,11 +100,6 @@ def main(args):
 
                     losses[phase] += loss.item() * batch_size
 
-                    if args.loss_diffs:
-                        if args.alpha == -1:
-                            raise Exception('With loss diffs you must provide also alpha hyperparameter')
-                        loss += (args.alpha * loss_diffs(score, batch_size, args.num_classes))
-
                     if training:
                         loss.backward()
                         optimizer.step()

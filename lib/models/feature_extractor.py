@@ -9,6 +9,13 @@ class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.shape[0], -1)
 
+class Squeeze(nn.Module):
+    def __init__(self):
+        super(Squeeze, self).__init__()
+
+    def forward(self, x):
+        return x.squeeze(2)
+
 class THUMOSFeatureExtractor(nn.Module):
     def __init__(self, args):
         super(THUMOSFeatureExtractor, self).__init__()
@@ -25,19 +32,33 @@ class THUMOSFeatureExtractor(nn.Module):
             # starting from frames, so choose a feature extractor
             if args.feature_extractor == 'VGG16':
                 self.feature_extractor = models.vgg16(pretrained=True)
-                self.feature_extractor.classifier = self.feature_extractor.classifier[:2]       # extract fc6 feature vector
-                self.feat_vect_dim = self.feature_extractor.classifier[0].out_features
+
+                if args.model == 'LSTMATTENTION':
+                    # here we need to return the feature maps, so remove adaptiveavgpool and linear.
+                    # The output shape is (batch_size, 512, 7, 7)
+                    self.feature_extractor = nn.Sequential(*list(self.feature_extractor.children())[:-2])
+                    self.feat_vect_dim = 512    # HARD-CODED; number of channels of the output feature maps
+                else:
+                    self.feat_vect_dim = self.feature_extractor.classifier[0].out_features
+                    self.feature_extractor.classifier = self.feature_extractor.classifier[:2]       # extract fc6 feature vector
+
                 for param in self.feature_extractor.parameters():
                     param.requires_grad = False
             elif args.feature_extractor == 'RESNET2+1D':
                 self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
+
                 if args.model == 'LSTMATTENTION':
-                    # here we need to return the feature maps, so remove adaptive3davgpool and linear.
-                    # The output shape is (batch_size, 512, -1, 7, 7)
-                    self.feature_extractor = nn.Sequential(*list(self.feature_extractor.children())[:-2])
+                    # here we need to return the feature maps, so remove adaptiveavgpool and linear.
+                    # The output shape is (batch_size, 512, 1, 7, 7)
+                    self.feature_extractor = nn.Sequential(
+                        *list(self.feature_extractor.children())[:-2],
+                        Squeeze(),
+                    )
+                    self.feat_vect_dim = 512        # HARD-CODED; number of channels of the output feature maps
                 else:
                     self.feat_vect_dim = self.feature_extractor.fc.in_features
                     self.feature_extractor.fc = nn.Identity()
+
                 for param in self.feature_extractor.parameters():
                     param.requires_grad = False
             else:
