@@ -98,7 +98,7 @@ class TCLSTM(nn.Module):
             h_n, c_n = self.lstm(out, (h_n, c_n))
             out = self.classifier(self.drop(h_n))  # out.shape == (batch_size, num_classes)
 
-            scores[:, step, :] = out
+            scores[:, step//2, :] = out
         return scores
 
     def step(self, camera_input, h_n, c_n):

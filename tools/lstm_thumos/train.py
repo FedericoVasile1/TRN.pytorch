@@ -13,20 +13,6 @@ import utils as utl
 from configs.thumos import parse_trn_args as parse_args
 from models import build_model
 
-def count_diffs(x):
-    diff_x = x[1:] - x[:-1]
-    return (diff_x != 0).sum()
-
-def loss_diffs(x, batch_size, num_classes):
-    # x.shape == (batch_size, enc_steps, num_classes)
-    loss = 0.0
-    for idx_batch in range(batch_size):
-        for idx_class in range(num_classes):
-            loss += count_diffs(x[idx_batch, :, idx_class])
-    loss /= (batch_size * num_classes)
-
-    return loss
-
 def main(args):
     this_dir = osp.join(osp.dirname(__file__), '.')
     save_dir = osp.join(this_dir, 'checkpoints')
@@ -46,12 +32,7 @@ def main(args):
         model = nn.DataParallel(model)
     model = model.to(device)
 
-    weights = torch.ones(args.num_classes)
-    if args.downsample_backgr:
-        # trick to ignore multiple class
-        #weights[0] = 0  # ignore background class
-        weights[21] = 0  # ignore ambiguous class
-    criterion = nn.CrossEntropyLoss(weight=weights).to(device)
+    criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -118,11 +99,6 @@ def main(args):
                     loss /= camera_inputs.shape[1]      # scale by enc_steps
 
                     losses[phase] += loss.item() * batch_size
-
-                    if args.loss_diffs:
-                        if args.alpha == -1:
-                            raise Exception('With loss diffs you must provide also alpha hyperparameter')
-                        loss += (args.alpha * loss_diffs(score, batch_size, args.num_classes))
 
                     if training:
                         loss.backward()

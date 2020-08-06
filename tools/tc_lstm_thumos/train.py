@@ -83,7 +83,7 @@ def main(args):
                     # enc_target.shape == (batch_size, enc_steps, num_classes)
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
-                    target = target[:, 1::2, :]
+                    enc_target = enc_target[:, 1::2, :]
 
                     if training:
                         optimizer.zero_grad()
@@ -91,7 +91,7 @@ def main(args):
                     # forward pass
                     score = model(camera_inputs)            # score.shape == (batch_size, enc_steps//2, num_classes)
 
-                    assert score[1].item() == target[1].item() == args.enc_steps // 2, 'enc_steps fail'
+                    assert score.shape[1] == enc_target.shape[1] == args.enc_steps // 2, 'enc_steps fail'
 
                     score = score.to(device)
                     target = enc_target.to(device)
