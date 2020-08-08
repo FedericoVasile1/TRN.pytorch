@@ -69,16 +69,13 @@ def main(args):
             camera_inputs = np.load(osp.join(args.data_root, args.camera_feature, session + '.npy'), mmap_mode='r')
             camera_inputs = torch.as_tensor(camera_inputs.astype(np.float32))
             target = np.load(osp.join(args.data_root, 'target', session + '.npy'))
-            num_frames = target.shape[0]
-            num_frames = num_frames - (num_frames % args.chunk_size)
-            target = target[:num_frames]
             assert camera_inputs.shape[0] == target.shape[0]
 
             attn_weights = torch.zeros(target.shape[0], 1, 7, 7, dtype=torch.float32)
             for l in range(camera_inputs.shape[0]):
                 if l % args.enc_steps == 0:
-                    enc_h_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_input.dtype)
-                    enc_c_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_input.dtype)
+                    enc_h_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
+                    enc_c_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
 
                 camera_input = to_device(camera_inputs[l], device)
                 enc_score, enc_h_n, enc_c_n, attn_weights[l] = model.step(camera_input, enc_h_n, enc_c_n)
