@@ -4,11 +4,11 @@ import numpy as np
 import torch
 import torch.utils.data as data
 
-'''
-This datalayer, with respect to the original one, for the decoder part it loads the next feature vectors instead
-of the next labels. So enc_target are class labels while dec_target are feature vector labels
-'''
 class TRNTHUMOSDataLayer2(data.Dataset):
+    '''
+    This datalayer, with respect to the original one, for the decoder part it loads the next feature vectors instead
+    of the next labels. So enc_target are class labels while dec_target are feature vector labels
+    '''
     def __init__(self, args, phase='train'):
         self.data_root = args.data_root
         self.camera_feature = args.camera_feature

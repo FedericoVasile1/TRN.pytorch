@@ -113,12 +113,8 @@ class ConvLSTM(nn.Module):
             # HARD-CODED: resnet2+1d model   returns feature maps of shape (512, 7, 7)
             self.input_dim = num_out_feature_maps       # == 512
             self.H, self.W = (7, 7)
-        elif args.feature_extractor == 'FRAMES':
-            self.feature_extractor = nn.Identity()
-
-            self.input_dim = 3      # number of channels of input images(i.e. RGB)
-            self.H, self.W = (180, 320)
         else:
+            # TODO: CHANGE THIS IF-ELSE AND SUBSEQUENT CODE; NOW WE HAVE FEATURES MAPS EXTRACTED
             raise Exception('Wrong feature_extractor option')
 
         cell_list = []
@@ -143,7 +139,6 @@ class ConvLSTM(nn.Module):
         ----------
         input_tensor: 6-D Tensor either of shape:
           if feature_extractor == resnet2+1d  =>  (batch_size, enc_steps, 3, chunk_size, 112, 112)
-          if feature_extractor == frames      =>  (batch_size, enc_steps, 3, 224, 224)
 
         Returns
         -------
@@ -152,7 +147,8 @@ class ConvLSTM(nn.Module):
         batch_size = input_tensor.shape[0]
         scores = torch.zeros(batch_size, self.steps, self.num_classes)
 
-        # Since the init is done in forward. Can send image size here
+        # Since the init is done in forward. Can send image size here(to be precise, it is not the
+        # image size; it is the feature maps size outputted by the feature extractor)
         hidden_state = self._init_hidden(batch_size=batch_size, image_size=(self.H, self.W))
 
         for step in range(self.steps):
@@ -172,7 +168,7 @@ class ConvLSTM(nn.Module):
         return scores
 
     def step(self, input_tensor, hidden_state):
-        # input_tensor.shape == (batch_size, C, chunk_size, 112, 112)
+        # input_tensor.shape == (batch_size, 3, chunk_size, 112, 112)
         batch_size = input_tensor.shape[0]
         scores = torch.zeros(batch_size, self.num_classes)
 

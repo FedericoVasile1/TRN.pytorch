@@ -9,6 +9,8 @@ class C3D(nn.Module):
     """
     def __init__(self, args, pretrained=True):
         super(C3D, self).__init__()
+        if args.camera_feature != 'video_frames_24fps':
+            raise Exception('Wrong camera_feature option')
 
         self.conv1 = nn.Conv3d(3, 64, kernel_size=(3, 3, 3), padding=(1, 1, 1))
         self.pool1 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))

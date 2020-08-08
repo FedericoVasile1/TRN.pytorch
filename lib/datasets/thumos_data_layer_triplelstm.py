@@ -5,6 +5,10 @@ import torch
 import torch.utils.data as data
 
 class TRNTHUMOSDataLayerTripleLSTM(data.Dataset):
+    '''
+    This dataset differs from the original one because together with the usual labels, it also returns
+    the labels of start and end actions
+    '''
     def __init__(self, args, phase='train'):
         self.data_root = args.data_root
         self.camera_feature = args.camera_feature

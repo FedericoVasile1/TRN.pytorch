@@ -13,6 +13,32 @@ class SelfAttention(nn.Module):
         self.queries_conv = nn.Conv2d(feat_maps_channels, num_filters, 1)
         self.keys_conv = nn.Conv2d(feat_maps_channels, num_filters, 1)
         self.values_conv = nn.Conv2d(feat_maps_channels, num_filters, 1)
+        self.final_conv = nn.Conv2d(num_filters, feat_maps_channels, 1)
+
+    def forward(self, x):
+        '''
+        Check https://web.eecs.umich.edu/~justincj/slides/eecs498/498_FA2019_lecture13.pdf at slide 81 for
+        details about computations
+        :param x: the output of the feature extractor; feature maps of shape (batch_size, C, H, W)
+        :return attn: tensor of shape (batch_size, C, H, W)
+                attn_weights: tensor of shape(batch_size, H*W, H*W)
+        '''
+        _, _, H, W = x.shape
+
+        queries = self.queries_conv(x).flatten(start_dim=2)
+        keys = self.keys_conv(x).flatten(start_dim=2)
+
+        queries = queries.permute(0, 2, 1)  # transpose matrices
+        attn_weights = F.softmax(queries.bmm(keys), dim=2)   # attn_weigths.shape == (batch_size, H*W, H*W)
+
+        values = self.values_conv(x).flatten(start_dim=2)   # values.shape == (batch_size, C', H*W)
+        attn = values.bmm(attn_weights)
+        attn = attn.view(attn.shape[0], attn.shape[1], H, W)
+
+        attn = self.final_conv(attn)
+        attn += x
+
+        return attn, attn_weights
 
 class ScaledDotProductAttention(nn.Module):
     def __init__(self, rnn_hidden_size):
@@ -40,8 +66,6 @@ class LSTMAttention(nn.Module):
     '''
     def __init__(self, args, dtype=torch.float32):
         super(LSTMAttention, self).__init__()
-        if args.camera_feature != 'video_frames_24fps':
-            raise Exception('wrong camera_feature option; this model is actually only trainable in end to end mode')
 
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes

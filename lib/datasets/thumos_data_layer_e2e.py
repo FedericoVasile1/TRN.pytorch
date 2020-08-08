@@ -20,7 +20,7 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
                 or (args.model == 'CONVLSTM' and args.feature_extractor == 'RESNET2+1D') \
                 or (args.model == 'DISCRIMINATORCONVLSTM' and args.feature_extractor == 'RESNET2+1D'):
             self.transform = transforms.Compose([
-                transforms.Resize((112, 112)),    # preferable size for resnet(2+1)D model
+                transforms.Resize((112, 112)),
                 transforms.ToTensor(),
                 transforms.Normalize([0.43216, 0.394666, 0.37645], [0.22803, 0.22145, 0.216989])
             ])
