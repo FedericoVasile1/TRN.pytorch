@@ -19,7 +19,12 @@ class Squeeze(nn.Module):
 class THUMOSFeatureExtractor(nn.Module):
     def __init__(self, args):
         super(THUMOSFeatureExtractor, self).__init__()
-        if args.inputs != 'camera':
+        #if args.inputs != 'camera':
+        #    raise (RuntimeError('Unknown inputs of {}'.format(args.inputs)))
+        if args.inputs in ['camera', 'motion', 'multistream']:
+            self.with_camera = 'motion' not in args.inputs
+            self.with_motion = 'camera' not in args.inputs
+        else:
             raise (RuntimeError('Unknown inputs of {}'.format(args.inputs)))
 
         if args.camera_feature != 'video_frames_24fps':
@@ -75,9 +80,16 @@ class THUMOSFeatureExtractor(nn.Module):
             self.input_linear = nn.Identity()
 
     def forward(self, camera_input, motion_input):
-        camera_input = self.feature_extractor(camera_input)
-        camera_input = self.input_linear(camera_input)
-        return camera_input
+        if self.with_camera and self.with_motion:
+            fusion_input = torch.cat((camera_input, motion_input), 1)
+        elif self.with_camera:
+            fusion_input = camera_input
+        elif self.with_motion:
+            fusion_input = motion_input
+
+        fusion_input = self.feature_extractor(fusion_input)
+        fusion_input = self.input_linear(fusion_input)
+        return fusion_input
 
 _FEATURE_EXTRACTORS = {
     'THUMOS': THUMOSFeatureExtractor,

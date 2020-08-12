@@ -28,7 +28,7 @@ def main():
     model.train(False)
 
     transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+        #transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -47,14 +47,16 @@ def main():
             extracted_feat_vect = []
             for idx_frame in range(num_frames):
                 frame = all_frames[idx_frame]
-                frame = torch.as_tensor(frame.astype(np.float32))
+                frame = np.swapaxes(np.swapaxes(frame, 0, 2), 0, 1)
+                frame = frame.astype(np.uint8)
                 frame = transform(frame).to(device)
                 # forward pass
                 feat_vect = model(frame.unsqueeze(0))   # TODO: load a batch instead of a single sample
                 extracted_feat_vect.append(feat_vect.squeeze(0))
 
             extracted_feat_vect = torch.stack(extracted_feat_vect)
-            np.save(os.path.join(DATA_ROOT, VIDEO_FEATURES, str(dir)), extracted_feat_vect)
+            np.save(os.path.join(DATA_ROOT, VIDEO_FEATURES, str(dir)), extracted_feat_vect.cpu().numpy())
+            print('processed video: ', str(dir))
 
 if __name__ == '__main__':
     main()

@@ -18,14 +18,14 @@ class LSTMmodel(nn.Module):
         self.drop = nn.Dropout(args.dropout)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
-    def forward(self, x):
+    def forward(self, x, motion_inputs):
         # x.shape == (batch_size, enc_steps, feat_vect_dim)
         h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
         c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
         for step in range(self.enc_steps):
             x_t = x[:, step]
-            out = self.feature_extractor(x_t, torch.zeros(1))  # second input is optical flow, in our case will not be used
+            out = self.feature_extractor(x_t, motion_inputs)  # second input is optical flow, in our case will not be used
 
             h_n, c_n = self.lstm(out, (h_n, c_n))
             out = self.classifier(self.drop(h_n))  # out.shape == (batch_size, num_classes)

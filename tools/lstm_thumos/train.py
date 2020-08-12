@@ -53,8 +53,8 @@ def main(args):
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
-        camera_inputs, _, _, _ = dataiter.next()
-        writer.add_graph(model, camera_inputs.to(device))
+        camera_inputs, motion_inputs, _, _ = dataiter.next()
+        writer.add_graph(model, [camera_inputs.to(device), motion_inputs.to(device)])
         writer.close()
 
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
@@ -78,17 +78,18 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (camera_inputs, _, enc_target, _) in enumerate(data_loaders[phase], start=1):
+                for batch_idx, (camera_inputs, motion_inputs, enc_target, _) in enumerate(data_loaders[phase], start=1):
                     # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
                     # enc_target.shape == (batch_size, enc_steps, num_classes)
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
+                    motion_inputs = motion_inputs.to(device)
 
                     if training:
                         optimizer.zero_grad()
 
                     # forward pass
-                    score = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
+                    score = model(camera_inputs, motion_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
 
                     score = score.to(device)
                     target = enc_target.to(device)
