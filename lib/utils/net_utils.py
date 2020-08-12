@@ -73,10 +73,10 @@ def show_video_predictions(args, camera_inputs, session, enc_score_metrics, enc_
             original_H, original_W, _ = open_cv_frame.shape
             if args.feature_extractor == 'VGG16':
                 open_cv_frame = cv2.resize(open_cv_frame, (224, 224), interpolation=cv2.INTER_AREA)
-            elif args.feature_extractor == 'RESNET2+1D':
-                open_cv_frame = cv2.resize(open_cv_frame, (112, 112), interpolation=cv2.INTER_AREA)
             else:
-                raise Exception('Wrong feature_extractor option')
+                # RESNET2+1D feature extraction
+                open_cv_frame = cv2.resize(open_cv_frame, (112, 112), interpolation=cv2.INTER_AREA)
+
             H, W, _ = open_cv_frame.shape
 
             attn_weights_t = attn_weights[idx]

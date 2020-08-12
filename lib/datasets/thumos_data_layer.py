@@ -17,7 +17,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
         self.inputs = []
         if not self.training:
             # validate only on a subset
-            self.sessions = self.sessions[0:50]
+            #self.sessions = self.sessions[0:50]
             pass
         for session in self.sessions:
             target = np.load(osp.join(self.data_root, 'target_startend' if args.num_classes == 44 else 'target', session+'.npy'))
