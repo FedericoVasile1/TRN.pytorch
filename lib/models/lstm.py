@@ -25,7 +25,8 @@ class LSTMmodel(nn.Module):
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
         for step in range(self.enc_steps):
             x_t = x[:, step]
-            out = self.feature_extractor(x_t, motion_inputs)  # second input is optical flow, in our case will not be used
+            motion_inputs_t = motion_inputs[:, step]
+            out = self.feature_extractor(x_t, motion_inputs_t)  # second input is optical flow, in our case will not be used
 
             h_n, c_n = self.lstm(out, (h_n, c_n))
             out = self.classifier(self.drop(h_n))  # out.shape == (batch_size, num_classes)
