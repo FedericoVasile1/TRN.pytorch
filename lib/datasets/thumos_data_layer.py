@@ -16,16 +16,11 @@ class TRNTHUMOSDataLayer(data.Dataset):
         self.args_inputs = args.inputs
 
         self.inputs = []
-        if not self.training:
-            # validate only on a subset
-            #self.sessions = self.sessions[0:50]
-            pass
         for session in self.sessions:
             target = np.load(osp.join(self.data_root, 'target_startend' if args.num_classes == 44 else 'target', session+'.npy'))
             seed = np.random.randint(self.enc_steps) if self.training else 0
-            for start, end in zip(
-                range(seed, target.shape[0] - self.dec_steps, self.enc_steps),
-                range(seed + self.enc_steps, target.shape[0] - self.dec_steps, self.enc_steps)):
+            for start, end in zip(range(seed, target.shape[0] - self.dec_steps, self.enc_steps),
+                                  range(seed + self.enc_steps, target.shape[0] - self.dec_steps, self.enc_steps)):
                 if args.downsample_backgr and self.training:
                     background_vect = np.zeros_like(target[start:end])
                     background_vect[:, 0] = 1
@@ -51,18 +46,13 @@ class TRNTHUMOSDataLayer(data.Dataset):
     def __getitem__(self, index):
         session, start, end, enc_target, dec_target = self.inputs[index]
 
-        camera_inputs = np.load(
-            osp.join(self.data_root, self.camera_feature, session+'.npy'), mmap_mode='r')
+        camera_inputs = np.load(osp.join(self.data_root, self.camera_feature, session+'.npy'), mmap_mode='r')
         camera_inputs = camera_inputs[start:end]
         camera_inputs = torch.as_tensor(camera_inputs.astype(np.float32))
 
-        if self.args_inputs == 'camera':
-            motion_inputs = np.zeros((self.enc_steps, 1))
-        else:
-            motion_inputs = np.load(
-                osp.join(self.data_root, self.motion_feature, session+'.npy'), mmap_mode='r')
-            motion_inputs = motion_inputs[start:end]
-            motion_inputs = torch.as_tensor(motion_inputs.astype(np.float32))
+        motion_inputs = np.load(osp.join(self.data_root, self.motion_feature, session+'.npy'), mmap_mode='r')
+        motion_inputs = motion_inputs[start:end]
+        motion_inputs = torch.as_tensor(motion_inputs.astype(np.float32))
 
         enc_target = torch.as_tensor(enc_target.astype(np.float32))
         dec_target = torch.as_tensor(dec_target.astype(np.float32))
