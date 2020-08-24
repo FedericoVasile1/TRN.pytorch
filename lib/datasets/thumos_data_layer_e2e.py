@@ -16,9 +16,7 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
         self.dec_steps = args.dec_steps
         self.training = phase=='train'
 
-        if args.feature_extractor == 'RESNET2+1D' or args.model == 'RESNET2+1D' or args.model == 'DISCRIMINATORCNN3D'\
-                or (args.model == 'CONVLSTM' and args.feature_extractor == 'RESNET2+1D') \
-                or (args.model == 'DISCRIMINATORCONVLSTM' and args.feature_extractor == 'RESNET2+1D'):
+        if args.is_3D:
             self.transform = transforms.Compose([
                 transforms.Resize((112, 112)),
                 transforms.ToTensor(),
@@ -43,9 +41,6 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
         self.CHUNK_SIZE = args.chunk_size
 
         self.inputs = []
-        if not self.training:
-            self.sessions = self.sessions[0:50]
-            pass
         for session in self.sessions:
             target = np.load(osp.join(self.data_root, 'target_frames_24fps', session+'.npy'))
             # round to multiple of CHUNK_SIZE

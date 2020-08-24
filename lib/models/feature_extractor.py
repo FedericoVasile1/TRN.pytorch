@@ -19,8 +19,6 @@ class Squeeze(nn.Module):
 class THUMOSFeatureExtractor(nn.Module):
     def __init__(self, args):
         super(THUMOSFeatureExtractor, self).__init__()
-        #if args.inputs != 'camera':
-        #    raise (RuntimeError('Unknown inputs of {}'.format(args.inputs)))
         if args.inputs in ['camera', 'motion', 'multistream']:
             self.with_camera = 'motion' not in args.inputs
             self.with_motion = 'camera' not in args.inputs
@@ -42,10 +40,10 @@ class THUMOSFeatureExtractor(nn.Module):
                     # here we need to return the feature maps, so remove adaptiveavgpool and linear.
                     # The output shape is (batch_size, 512, 7, 7)
                     self.feature_extractor = nn.Sequential(*list(self.feature_extractor.children())[:-2])
-                    self.feat_vect_dim = 512    # HARD-CODED; number of channels of the output feature maps
+                    self.feat_vect_dim = 512    # HARD-CODED; number of **channels** of the output feature maps
                 else:
                     self.feat_vect_dim = self.feature_extractor.classifier[0].out_features
-                    self.feature_extractor.classifier = self.feature_extractor.classifier[:2]       # extract fc6 feature vector
+                    self.feature_extractor.classifier = self.feature_extractor.classifier[:2]   # extract fc6 feature vector
 
                 for param in self.feature_extractor.parameters():
                     param.requires_grad = False
@@ -69,6 +67,7 @@ class THUMOSFeatureExtractor(nn.Module):
             else:
                 raise Exception('Feature extractor model not supported: '+args.feature_extractor)
 
+        # To put or not a linear layer between the feature extractor and the recurrent model
         if args.put_linear:
             self.fusion_size = args.neurons
             self.input_linear = nn.Sequential(

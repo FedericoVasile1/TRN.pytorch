@@ -13,8 +13,7 @@ class CNN(nn.Module):
                 self.feature_extractor = models.resnet50(pretrained=True)
                 #for param in self.feature_extractor.parameters():
                 #    param.requires_grad = False
-                self.feature_extractor.fc = nn.Linear(self.feature_extractor.fc.in_features,
-                                                      args.num_classes)
+                self.feature_extractor.fc = nn.Linear(self.feature_extractor.fc.in_features, args.num_classes)
             else:
                 raise Exception('Wrong feature_extractor option, ' + args.feature_extractor + ' is not supported')
         else:
