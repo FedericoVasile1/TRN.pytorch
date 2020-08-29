@@ -20,6 +20,8 @@ data/THUMOS
 
 model_zoo/*
 
+rgb_imagenet.pt
+
 tools/*.json
 tools/**/*.json
 tools/**/**/*.json

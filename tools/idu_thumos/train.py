@@ -35,7 +35,8 @@ def main(args):
 
     criterion_let = nn.CrossEntropyLoss(ignore_index=21).to(device)
     criterion_le0 = nn.CrossEntropyLoss(ignore_index=21).to(device)
-    criterion_lc = utl.ContrastiveLoss().to(device)
+    #criterion_lc = utl.ContrastiveLoss().to(device)
+    criterion_lc = nn.CosineEmbeddingLoss().to(device)
     criterion_la = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
@@ -55,6 +56,7 @@ def main(args):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
         camera_inputs, _, _, _ = dataiter.next()
+        model.train(False)
         writer.add_graph(model, camera_inputs.to(device))
         writer.close()
 
@@ -66,6 +68,10 @@ def main(args):
         if epoch == args.reduce_lr_epoch or count_reduce_val_loss == args.reduce_lr_count:
             if count_reduce_val_loss == args.reduce_lr_count:
                 count_reduce_val_loss = 0
+                print('=== Learning rate reduction due to validation loss stagnation '
+                      'after ' + str(args.reduce_lr_count) + ' epochs ===')
+            else:
+                print('=== Learning rate reduction planned for epoch ' + str(args.reduce_lr_epoch) + ' ===')
             args.lr = args.lr * 0.1
             for param_group in optimizer.param_groups:
                 param_group['lr'] = args.lr
@@ -122,7 +128,20 @@ def main(args):
 
                     xtes = xtes.to(device)
                     x0es = x0es.to(device)
-                    loss_lc = criterion_lc(xtes, x0es, target)
+                    #loss_lc = criterion_lc(xtes, x0es, target)
+                    # sum losses along all timesteps
+                    target_xtes, target_x0es = (target[:, 0].max(axis=1)[1], target[:, -1].max(axis=1)[1])
+                    t = target_xtes == target_x0es
+                    t = t.to(torch.int8)
+                    t[t == 0] = -1
+                    loss_lc = criterion_lc(xtes[:, 0], x0es[:, 0], t)
+                    for step in range(1, camera_inputs.shape[1]):
+                        target_xtes, target_x0es = (target[:, step].max(axis=1)[1], target[:, -1].max(axis=1)[1])
+                        t = target_xtes == target_x0es
+                        t = t.to(torch.int8)
+                        t[t == 0] = -1
+                        loss_lc += criterion_lc(xtes[:, step], x0es[:, step], t)
+                    loss_lc /= camera_inputs.shape[1]  # scale by enc_steps
 
                     loss = loss_la + 1.0 * ((loss_let + loss_le0) + loss_lc)
 

@@ -62,6 +62,10 @@ def main(args):
         if epoch == args.reduce_lr_epoch or count_reduce_val_loss == args.reduce_lr_count:
             if count_reduce_val_loss == args.reduce_lr_count:
                 count_reduce_val_loss = 0
+                print('=== Learning rate reduction due to validation loss stagnation '
+                      'after ' + str(args.reduce_lr_count) + ' epochs ===')
+            else:
+                print('=== Learning rate reduction planned for epoch ' + str(args.reduce_lr_epoch) + ' ===')
             args.lr = args.lr * 0.1
             for param_group in optimizer.param_groups:
                 param_group['lr'] = args.lr

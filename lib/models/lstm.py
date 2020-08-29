@@ -3,16 +3,30 @@ import torch.nn as nn
 
 from .feature_extractor import build_feature_extractor
 
-class LSTMmodel(nn.Module):
+class MyGRUCell(nn.GRUCell):
+    """
+    This model has been created for the only purpose of having a forward signature equal to the one
+    of the LSTMCell model, by doing this we only need a single code pipeline for both lstm and gru models.
+    """
+    def forward(self, x, states):
+        h_n, _ = states
+        super(x, h_n)
+
+class RNNmodel(nn.Module):
     def __init__(self, args):
-        super(LSTMmodel, self).__init__()
+        super(RNNmodel, self).__init__()
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.enc_steps = args.enc_steps
 
         self.feature_extractor = build_feature_extractor(args)
 
-        self.lstm = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
+        if args.model == 'LSTM':
+            self.rnn = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
+            self.model = 'LSTM'
+        elif args.model == 'GRU':
+            self.rnn = nn.MyGRUCell(self.feature_extractor.fusion_size, self.hidden_size)
+            self.model = 'GRU'
         self.drop = nn.Identity()#nn.Dropout(args.dropout)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
@@ -26,7 +40,7 @@ class LSTMmodel(nn.Module):
             motion_input_t = motion_input[:, step]
             out = self.feature_extractor(camera_input_t, motion_input_t)
 
-            h_n, c_n = self.lstm(out, (h_n, c_n))
+            h_n, c_n = self.rnn(out, (h_n, c_n if self.model == 'LSTM' else torch.zeros(1)))
             out = self.classifier(self.drop(h_n))  # out.shape == (batch_size, num_classes)
 
             scores[:, step, :] = out
@@ -34,6 +48,6 @@ class LSTMmodel(nn.Module):
 
     def step(self, camera_input_t, motion_input_t, h_n, c_n):
         out = self.feature_extractor(camera_input_t, motion_input_t)
-        h_n, c_n = self.lstm(out, (h_n, c_n))
+        h_n, c_n = self.rnn(out, (h_n, c_n))
         out = self.classifier(h_n)
         return out, h_n, c_n
