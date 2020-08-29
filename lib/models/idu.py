@@ -7,10 +7,6 @@ import math
 
 from .feature_extractor import build_feature_extractor
 
-# TODO: MODIFY THE IMPLEMENTATION OF IDUCELL AND IDU ACCORDING TO THE PYTORCH LSTMCELL/LSTM API. THE IDUCELL DOES NOT
-#       HAVE A STEP FUNCTION, THE IMPLEMENTATION OF THE STEP FUNCTION SHOULD BE THE FORWARD FUNCTION... AND SO
-#       ON, CHECK ALSO THE IDU CLASS AND ITS FUNCTIONS
-
 class IDUCell(nn.Module):
     def __init__(self, input_size, hidden_size, num_classes, steps, device, dtype=torch.float32):
         super(IDUCell, self).__init__()
@@ -37,20 +33,20 @@ class IDUCell(nn.Module):
         self.Wh1h1 = Parameter(torch.randn(hidden_size, hidden_size, dtype=dtype, device=device).div(math.sqrt(hidden_size)))
         self.bh1h1 = Parameter(torch.zeros(hidden_size, dtype=dtype, device=device))
 
-    def step(self, xt, x0, prev_h):
-        '''
-        Do a forward for a single timestep
-        :param xt: Feature vector of the current timestep, of shape (batch_size, feat_vect_dim)
-        :param x0: Current information, of shape (batch_size, feat_vect_dim)
-        :param prev_h: The previous hidden state, of shape  (batch_size, hidden_size)
-        :return ht: the next hidden  state
+    def forward(self, x_t, x_0, prev_h):
+        """
+        Do a forward pass for a single timestep
+        :param x_t: Feature vector of the current timestep, of shape (batch_size, feat_vect_dim)
+        :param x_0: Current information, of shape (batch_size, feat_vect_dim)
+        :param prev_h: The previous hidden state, of shape (batch_size, hidden_size)
+        :return h_t: the next hidden state, of shape (batch_size, hidden_size)
                 pte, p0e: probability distribution over action classes, for current timestep and current
                             information, both of shape (batch_size, num_classes)
                 xte, xt0: the outputs of the early embedding module, for current timestep and current
                             information, both of shape (batch_size, hidden_size)
-        '''
-        xte = F.relu(xt.mm(self.Wxe) + self.bxe)
-        x0e = F.relu(x0.mm(self.Wxe) + self.bxe)
+        """
+        xte = F.relu(x_t.mm(self.Wxe) + self.bxe)
+        x0e = F.relu(x_0.mm(self.Wxe) + self.bxe)
 
         pte = xte.mm(self.Wep) + self.bep
         p0e = x0e.mm(self.Wep) + self.bep
@@ -60,42 +56,9 @@ class IDUCell(nn.Module):
 
         h1_t_1 = prev_h.mm(self.Wh1h1) + self.bh1h1
         ht1 = torch.tanh(xte.mm(self.Wxth1) + self.bxth1 + rt * h1_t_1)
-        ht = (1 - zt) * ht1 + zt * prev_h
+        h_t = (1 - zt) * ht1 + zt * prev_h
 
-        return ht, pte, p0e, xte, x0e
-
-    def forward(self, x, h0):
-        '''
-        It executes a complete unroll of the network for enc_steps. Furthermore, we need also the current
-        information: for a given sequence of data(it is enc_steps long) the current information is the feature
-        vector of the last timestep of the sequence
-        :param x: Input tensor containing feature vectors for each
-                    timestep, of shape (batch_size, enc_steps, feat_vect_dim)
-        :param h0: The initial hidden state, of shape (batch_size, hidden_size)
-        :return hts: hidden states for each timestep, of shape (batch_size, enc_steps, hidden_size)
-                ptes, p0es: prpbability distributions, of shape (batch_size, enc_steps, num_classes)
-                xtes, x0es: early embedding features, of shape (batch_size, enc_steps, hidden_size)
-        '''
-        batch_size, hidden_size = h0.shape
-        hts = torch.zeros(batch_size, self.steps, hidden_size).to(dtype=x.dtype)
-        ptes = torch.zeros(batch_size, self.steps, self.num_classes).to(dtype=x.dtype)
-        p0es = torch.zeros(batch_size, self.steps, self.num_classes).to(dtype=x.dtype)
-        xtes = torch.zeros(batch_size, self.steps, hidden_size).to(dtype=x.dtype)
-        x0es = torch.zeros(batch_size, self.steps, hidden_size).to(dtype=x.dtype)
-
-        x0 = x[:, -1]        # last step features is the current information
-        h_t = h0
-        for step_t in range(self.steps):
-            x_t = x[:, step_t]
-            h_t, pte, p0e, xte, x0e = self.step(x_t, x0, h_t)
-
-            hts[:, step_t] = h_t
-            ptes[:, step_t] = pte
-            p0es[:, step_t] = p0e
-            xtes[:, step_t] = xte
-            x0es[:, step_t] = x0e
-
-        return hts, ptes, p0es, xtes, x0es
+        return h_t, pte, p0e, xte, x0e
 
 class IDU(nn.Module):
     def __init__(self, args):
@@ -109,33 +72,48 @@ class IDU(nn.Module):
         self.iducell = IDUCell(self.feature_extractor.fusion_size,
                                args.hidden_size,
                                args.num_classes,
-                               args.enc_steps, args.device)
+                               args.enc_steps,
+                               args.device)
         self.classifier = nn.Linear(args.hidden_size, args.num_classes)
 
     def forward(self, x):
-        # x.shape == (batch_size, steps, feat_vect_dim)
-        scores = torch.zeros(x.shape[0], self.steps, self.num_classes)
-        h0 = torch.zeros(x.shape[0], self.hidden_size, dtype=x.dtype, device=x.device)
-        hts, ptes, p0es, xtes, x0es = self.iducell(x, h0)
-        # Take the last hidden state timestep and do the prediction, this will be the prediction for all
-        #  the time-sequence
-        scores[:, 0] = self.classifier(hts[:, -1].to(x.device))
-        for i in range(1, self.steps):
-            scores[:, i] = scores[:, 0]
+        """
+        It executes a complete unroll of the network for enc_steps. Furthermore, we need also the current
+        information: for a given sequence of data(it is enc_steps long) the current information is the feature
+        vector of the last timestep of the sequence
+        :param x: Input tensor containing feature vectors for each
+                    timestep, of shape (batch_size, enc_steps, feat_vect_dim)
+        :return scores: tensor containing score classes for each
+                        timestep, of shape (batch_size, enc_steps, num_classes)
+                ptes, p0es: probability distributions, of shape (batch_size, enc_steps, num_classes)
+                xtes, x0es: early embedding features, of shape (batch_size, enc_steps, hidden_size)
+        """
+        scores = []
+        ptes = []
+        p0es = []
+        xtes = []
+        x0es = []
+
+        x_0 = x[:, -1]       # last step features is the current information
+        h_t = torch.zeros(x.shape[0], self.hidden_size, dtype=x.dtype, device=x.device)
+        for step in range(self.steps):
+            x_t = x[:, step]
+            x_t = self.feature_extractor(x_t)
+            h_t, pte, p0e, xte, x0e = self.iducell(x_t, x_0, h_t)
+            out = self.classifier(h_t)
+
+            scores.append(out)
+            ptes.append(pte)
+            p0es.append(p0e)
+            xtes.append(xte)
+            x0es.append(x0e)
+        scores = torch.stack(scores, dim=1)
+        ptes = torch.stack(ptes, dim=1)
+        p0es = torch.stack(p0es, dim=1)
+        xtes = torch.stack(xtes, dim=1)
+        x0es = torch.stack(x0es, dim=1)
+
         return scores, ptes, p0es, xtes, x0es
 
-if __name__ == '__main__':
-    BATCH_SIZE = 4
-    ENC_STEPS = 2
-    FEAT_VECT_DIM = 3
-    HIDDEN_SIZE = 8
-    NUM_CLASSES = 7
-
-    i = torch.randn(BATCH_SIZE, ENC_STEPS, FEAT_VECT_DIM).cpu()
-    h0 = torch.zeros(BATCH_SIZE, HIDDEN_SIZE).cpu()
-
-    iducell = IDUCell(FEAT_VECT_DIM, HIDDEN_SIZE, NUM_CLASSES, ENC_STEPS, 'cpu')
-    ht, pte, p0e, xte, xt0 = iducell(i, h0)
-    print(ht.shape)
-    print(pte.shape, p0e.shape)
-    print(xte.shape, xt0.shape)
+    def step(self, x_t, x_0, prev_h):
+        raise NotImplementedError

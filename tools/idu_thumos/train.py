@@ -150,11 +150,6 @@ def main(args):
                     if training:
                         loss.backward()
                         optimizer.step()
-                    else:
-                        if epoch > args.start_epoch:
-                            if loss.item() > prev_val_loss:
-                                count_reduce_val_loss += 1
-                        prev_val_loss = loss.item()
 
                     # Prepare metrics
                     scores = scores.view(-1, args.num_classes)
@@ -176,6 +171,15 @@ def main(args):
                                                                                       batch_idx,
                                                                                       loss.item()))
         end = time.time()
+
+        if epoch > args.start_epoch:
+            if losses['test'].item() > min_val_loss:
+                count_reduce_val_loss += 1
+            else:
+                min_val_loss = losses['test'].item()
+                count_reduce_val_loss = 0
+        else:
+            min_val_loss = losses['test'].item()
 
         writer.add_scalars('Loss_epoch/train_val_enc',
                            {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},

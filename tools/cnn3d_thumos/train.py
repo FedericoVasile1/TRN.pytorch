@@ -76,6 +76,10 @@ def main(args):
         if epoch == args.reduce_lr_epoch or count_reduce_val_loss == args.reduce_lr_count:
             if count_reduce_val_loss == args.reduce_lr_count:
                 count_reduce_val_loss = 0
+                print('=== Learning rate reduction due to validation loss stagnation '
+                      'after ' + str(args.reduce_lr_count) + ' epochs ===')
+            else:
+                print('=== Learning rate reduction planned for epoch ' + str(args.reduce_lr_epoch) + ' ===')
             args.lr = args.lr * 0.1
             for param_group in optimizer.param_groups:
                 param_group['lr'] = args.lr
@@ -126,12 +130,6 @@ def main(args):
                     if training:
                         loss.backward()
                         optimizer.step()
-                    else:
-                        if epoch > args.start_epoch:
-                            if loss.item() > prev_val_loss:
-                                count_reduce_val_loss += 1
-                        prev_val_loss = loss.item()
-
 
                     # Prepare metrics
                     scores = softmax(scores).cpu().detach().numpy()
@@ -151,6 +149,15 @@ def main(args):
                                                                                       batch_idx,
                                                                                       loss.item()))
         end = time.time()
+
+        if epoch > args.start_epoch:
+            if losses['test'].item() > min_val_loss:
+                count_reduce_val_loss += 1
+            else:
+                min_val_loss = losses['test'].item()
+                count_reduce_val_loss = 0
+        else:
+            min_val_loss = losses['test'].item()
 
         writer.add_scalars('Loss_epoch/train_val',
                            {phase: losses[phase] / (len(data_loaders[phase].dataset) * args.enc_steps)
