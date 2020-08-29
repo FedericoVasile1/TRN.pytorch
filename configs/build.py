@@ -12,6 +12,18 @@ def build_data_info(args):
     args.class_index = data_info['class_index']
     args.num_classes = len(args.class_index)
 
+    if args.inputs == 'motion':
+        raise Exception('Optical flow only is not supported')
+    if args.inputs == 'multistream' and args.motion_feature == '':
+        raise Exception('No --motion_features option provided; with --inputs == multistream a --motion_feature'
+                        'option must be provided.')
+    if args.camera_feature == 'resnet3d_featuremaps' and (args.inputs != 'camera' or args.motion_feature != ''):
+        raise Exception('The current pipeline do not support rgb and flow fusion between feature maps.'
+                        'Use rgb feature maps only or switch to feature vectors if you want to do '
+                        'the fusion.')
+    if args.camera_feature == 'video_frames_24fps' and (args.inputs != 'camera' or args.motion_feature != ''):
+        raise Exception('Currently the end to end mode is avaible for rgb input.')
+
     args.E2E = 'E2E' if args.camera_feature == 'video_frames_24fps' else ''
 
     if args.feature_extractor == 'RESNET2+1D' or args.model == 'CNN3D' or args.model == 'DISCRIMINATORCNN3D' \

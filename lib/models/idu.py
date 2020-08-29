@@ -5,6 +5,12 @@ import torch.nn.functional as F
 
 import math
 
+from .feature_extractor import build_feature_extractor
+
+# TODO: MODIFY THE IMPLEMENTATION OF IDUCELL AND IDU ACCORDING TO THE PYTORCH LSTMCELL/LSTM API. THE IDUCELL DOES NOT
+#       HAVE A STEP FUNCTION, THE IMPLEMENTATION OF THE STEP FUNCTION SHOULD BE THE FORWARD FUNCTION... AND SO
+#       ON, CHECK ALSO THE IDU CLASS AND ITS FUNCTIONS
+
 class IDUCell(nn.Module):
     def __init__(self, input_size, hidden_size, num_classes, steps, device, dtype=torch.float32):
         super(IDUCell, self).__init__()
@@ -98,7 +104,12 @@ class IDU(nn.Module):
         self.num_classes = args.num_classes
         self.steps = args.enc_steps
 
-        self.iducell = IDUCell(args.feat_vect_dim, args.hidden_size, args.num_classes, args.enc_steps, args.device)
+        self.feature_extractor = build_feature_extractor(args)
+        self.drop = nn.Identity()
+        self.iducell = IDUCell(self.feature_extractor.fusion_size,
+                               args.hidden_size,
+                               args.num_classes,
+                               args.enc_steps, args.device)
         self.classifier = nn.Linear(args.hidden_size, args.num_classes)
 
     def forward(self, x):
@@ -106,7 +117,25 @@ class IDU(nn.Module):
         scores = torch.zeros(x.shape[0], self.steps, self.num_classes)
         h0 = torch.zeros(x.shape[0], self.hidden_size, dtype=x.dtype, device=x.device)
         hts, ptes, p0es, xtes, x0es = self.iducell(x, h0)
+        # Take the last hidden state timestep and do the prediction, this will be the prediction for all
+        #  the time-sequence
         scores[:, 0] = self.classifier(hts[:, -1].to(x.device))
         for i in range(1, self.steps):
             scores[:, i] = scores[:, 0]
         return scores, ptes, p0es, xtes, x0es
+
+if __name__ == '__main__':
+    BATCH_SIZE = 4
+    ENC_STEPS = 2
+    FEAT_VECT_DIM = 3
+    HIDDEN_SIZE = 8
+    NUM_CLASSES = 7
+
+    i = torch.randn(BATCH_SIZE, ENC_STEPS, FEAT_VECT_DIM).cpu()
+    h0 = torch.zeros(BATCH_SIZE, HIDDEN_SIZE).cpu()
+
+    iducell = IDUCell(FEAT_VECT_DIM, HIDDEN_SIZE, NUM_CLASSES, ENC_STEPS, 'cpu')
+    ht, pte, p0e, xte, xt0 = iducell(i, h0)
+    print(ht.shape)
+    print(pte.shape, p0e.shape)
+    print(xte.shape, xt0.shape)

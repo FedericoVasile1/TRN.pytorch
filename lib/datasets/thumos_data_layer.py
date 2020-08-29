@@ -8,7 +8,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
     def __init__(self, args, phase='train'):
         self.data_root = args.data_root
         self.camera_feature = args.camera_feature
-        self.motion_feature = args.motion_feature       # optical flow will not be used in our case
+        self.motion_feature = args.motion_feature
         self.sessions = getattr(args, phase+'_session_set')
         self.enc_steps = args.enc_steps
         self.dec_steps = args.dec_steps
@@ -21,6 +21,7 @@ class TRNTHUMOSDataLayer(data.Dataset):
             seed = np.random.randint(self.enc_steps) if self.training else 0
             for start, end in zip(range(seed, target.shape[0] - self.dec_steps, self.enc_steps),
                                   range(seed + self.enc_steps, target.shape[0] - self.dec_steps, self.enc_steps)):
+
                 if args.downsample_backgr and self.training:
                     background_vect = np.zeros_like(target[start:end])
                     background_vect[:, 0] = 1
@@ -50,9 +51,12 @@ class TRNTHUMOSDataLayer(data.Dataset):
         camera_inputs = camera_inputs[start:end]
         camera_inputs = torch.as_tensor(camera_inputs.astype(np.float32))
 
-        motion_inputs = np.load(osp.join(self.data_root, self.motion_feature, session+'.npy'), mmap_mode='r')
-        motion_inputs = motion_inputs[start:end]
-        motion_inputs = torch.as_tensor(motion_inputs.astype(np.float32))
+        if self.motion_feature == '':
+            motion_inputs = np.zeros((self.enc_steps, 1))
+        else:
+            motion_inputs = np.load(osp.join(self.data_root, self.motion_feature, session+'.npy'), mmap_mode='r')
+            motion_inputs = motion_inputs[start:end]
+            motion_inputs = torch.as_tensor(motion_inputs.astype(np.float32))
 
         enc_target = torch.as_tensor(enc_target.astype(np.float32))
         dec_target = torch.as_tensor(dec_target.astype(np.float32))

@@ -25,10 +25,12 @@ class THUMOSFeatureExtractor(nn.Module):
         else:
             raise (RuntimeError('Unknown inputs of {}'.format(args.inputs)))
 
+        self.camera_feature = args.camera_feature
         if args.camera_feature != 'video_frames_24fps':
             # starting from features extracted
             if args.feat_vect_dim == -1:
                 raise Exception('Specify the dimension of the feature vector via feat_vect_dim option')
+            # in case of feature maps, the feat_vect_dim is intended to be the channels dimension of the feature maps
             self.feat_vect_dim = args.feat_vect_dim
             self.feature_extractor = nn.Identity()   # no feature extractor needed
         else:
@@ -36,7 +38,8 @@ class THUMOSFeatureExtractor(nn.Module):
             if args.feature_extractor == 'VGG16':
                 self.feature_extractor = models.vgg16(pretrained=True)
 
-                if args.model == 'LSTMATTENTION':
+                # Depending on the model, the feature extractor must return feature maps or feature vectors
+                if args.model == 'LSTMATTENTION' or args.model == 'CONVLSTM' or args.model == 'SELFATTENTION':
                     # here we need to return the feature maps, so remove adaptiveavgpool and linear.
                     # The output shape is (batch_size, 512, 7, 7)
                     self.feature_extractor = nn.Sequential(*list(self.feature_extractor.children())[:-2])
@@ -47,25 +50,46 @@ class THUMOSFeatureExtractor(nn.Module):
 
                 for param in self.feature_extractor.parameters():
                     param.requires_grad = False
+
+            elif args.feature_extractor == 'RESNET34':
+                self.feature_extractor = models.resnet34(pretrained=True)
+                self.feat_vect_dim = self.feature_extractor.fc.in_features
+
+                # Depending on the model, the feature extractor must return feature maps or feature vectors
+                if args.model == 'LSTMATTENTION' or args.model == 'CONVLSTM' or args.model == 'SELFATTENTION':
+                    # here we need to return the feature maps, so remove adaptiveavgpool and linear.
+                    # The output shape is (batch_size, 512, 7, 7)
+                    self.feature_extractor = nn.Sequential(*list(self.feature_extractor.children())[:-2])
+                else:
+                    self.feature_extractor.fc = nn.Identity()   # extract feature vector
+
+                for param in self.feature_extractor.parameters():
+                    param.requires_grad = False
+
             elif args.feature_extractor == 'RESNET2+1D':
                 self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
+                self.feat_vect_dim = self.feature_extractor.fc.in_features
 
-                if args.model == 'LSTMATTENTION':
+                # Depending on the model, the feature extractor must return feature maps or feature vectors
+                if args.model == 'LSTMATTENTION' or args.model == 'CONVLSTM' or args.model == 'SELFATTENTION':
                     # here we need to return the feature maps, so remove adaptiveavgpool and linear.
-                    # The output shape is (batch_size, 512, 1, 7, 7)
+                    # The output shape before Squeeze() is (batch_size, 512, 1, 7, 7)
                     self.feature_extractor = nn.Sequential(
                         *list(self.feature_extractor.children())[:-2],
                         Squeeze(),
                     )
-                    self.feat_vect_dim = 512        # HARD-CODED; number of channels of the output feature maps
                 else:
-                    self.feat_vect_dim = self.feature_extractor.fc.in_features
                     self.feature_extractor.fc = nn.Identity()
 
                 for param in self.feature_extractor.parameters():
                     param.requires_grad = False
+
             else:
                 raise Exception('Feature extractor model not supported: '+args.feature_extractor)
+
+        if self.with_camera and self.with_motion and args.camera_feature != 'resnet3d_featuremaps':
+            MOTION_FEAT_VECT = self.feat_vect_dim       # modify here if needed
+            self.feat_vect_dim += MOTION_FEAT_VECT
 
         # To put or not a linear layer between the feature extractor and the recurrent model
         if args.put_linear:
@@ -78,15 +102,19 @@ class THUMOSFeatureExtractor(nn.Module):
             self.fusion_size = self.feat_vect_dim
             self.input_linear = nn.Identity()
 
+
     def forward(self, camera_input, motion_input):
+        # camera_input.shape == (batch_size, feat_vect_dim)  , motion_input.shape == (batch_size, feat_vect_dim_2)
         if self.with_camera and self.with_motion:
+            camera_input = self.feature_extractor(camera_input)
+            motion_input = self.feature_extractor(motion_input)
+
             fusion_input = torch.cat((camera_input, motion_input), 1)
         elif self.with_camera:
-            fusion_input = camera_input
+            fusion_input = self.feature_extractor(camera_input)
         elif self.with_motion:
-            fusion_input = motion_input
+            fusion_input = self.feature_extractor(motion_input)
 
-        fusion_input = self.feature_extractor(fusion_input)
         fusion_input = self.input_linear(fusion_input)
         return fusion_input
 

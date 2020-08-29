@@ -1,27 +1,41 @@
 import os.path as osp
 import numpy as np
+import warnings
 
 import torch
 import torch.utils.data as data
 from torchvision import transforms
 from PIL import Image
 
+class I3DNormalization(object):
+    def __call__(self, sample):
+        sample *= 255       # get back from range [0, 1] to [0, 255]
+        sample = sample / 128 - 1
+        return sample
+
 class TRNTHUMOSDataLayerE2E(data.Dataset):
     def __init__(self, args, phase='train'):
         self.data_root = args.data_root
         self.camera_feature = args.camera_feature
-        self.motion_feature = args.motion_feature       # optical flow will not be used in our case
+        self.motion_feature = args.motion_feature
         self.sessions = getattr(args, phase+'_session_set')
         self.enc_steps = args.enc_steps
         self.dec_steps = args.dec_steps
         self.training = phase=='train'
 
         if args.is_3D:
-            self.transform = transforms.Compose([
-                transforms.Resize((112, 112)),
-                transforms.ToTensor(),
-                transforms.Normalize([0.43216, 0.394666, 0.37645], [0.22803, 0.22145, 0.216989])
-            ])
+            if args.feature_extractor == 'I3D':
+                self.transform = transforms.Compose([
+                    transforms.Resize((224, 224)),
+                    transforms.ToTensor(),
+                    I3DNormalization(),
+                ])
+            else:
+                self.transform = transforms.Compose([
+                    transforms.Resize((112, 112)),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.43216, 0.394666, 0.37645], [0.22803, 0.22145, 0.216989])
+                ])
 
             self.is_3D = True
         else:
@@ -52,9 +66,8 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
             target = target[self.CHUNK_SIZE//2::self.CHUNK_SIZE]
 
             seed = np.random.randint(self.enc_steps) if self.training else 0
-            for start, end in zip(
-                range(seed, target.shape[0] - self.dec_steps, self.enc_steps),
-                range(seed + self.enc_steps, target.shape[0] - self.dec_steps, self.enc_steps)):
+            for start, end in zip(range(seed, target.shape[0] - self.dec_steps, self.enc_steps),
+                                  range(seed + self.enc_steps, target.shape[0] - self.dec_steps, self.enc_steps)):
 
                 if args.downsample_backgr and self.training:
                     background_vect = np.zeros_like(target[start:end])
@@ -98,8 +111,15 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
                                             dtype=torch.float32)
             camera_inputs[count - start] = frame
 
-        motion_inputs = np.zeros((end - start, self.enc_steps))  # optical flow will not be used
+        if self.chunk_size == 6:
+            motion_inputs = np.load(osp.join(self.data_root, self.motion_feature, session + '.npy'), mmap_mode='r')
+            motion_inputs = motion_inputs[start:end]
+        else:
+            warnings.warn('Actually, we only offer optical flow images for args.chunk_size==6'
+                          'Hence change this argument to 6 if you want ot use optical flow, otherwise will be discarded')
+            motion_inputs = np.zeros((end - start, self.enc_steps))
         motion_inputs = torch.as_tensor(motion_inputs.astype(np.float32))
+
         enc_target = torch.as_tensor(enc_target.astype(np.float32))
         dec_target = torch.as_tensor(dec_target.astype(np.float32))
 
@@ -125,13 +145,23 @@ class TRNTHUMOSDataLayerE2E(data.Dataset):
                         dtype=torch.float32)
                 camera_inputs[count - start, idx_frame - start_f] = frame
 
-        motion_inputs = np.zeros((end - start, self.enc_steps))  # optical flow will not be used
-        motion_inputs = torch.as_tensor(motion_inputs.astype(np.float32))
-        enc_target = torch.as_tensor(enc_target.astype(np.float32))
-        dec_target = torch.as_tensor(dec_target.astype(np.float32))
-
         # switch channel with chunk_size (3d models want input in this way)
         camera_inputs = camera_inputs.permute(0, 2, 1, 3, 4)
+
+        if self.motion_feature == '':
+            motion_inputs = np.zeros((end - start, self.enc_steps))
+        else:
+            if self.chunk_size == 6:
+                motion_inputs = np.load(osp.join(self.data_root, self.motion_feature, session + '.npy'), mmap_mode='r')
+                motion_inputs = motion_inputs[start:end]
+                motion_inputs = torch.as_tensor(motion_inputs.astype(np.float32))
+            else:
+                warnings.warn('Actually, we only offer optical flow images for --chunk_size == 6. '
+                              'Hence change this argument to 6 if you want ot use optical flow, otherwise will be discarded')
+                motion_inputs = np.zeros((end - start, self.enc_steps))
+
+        enc_target = torch.as_tensor(enc_target.astype(np.float32))
+        dec_target = torch.as_tensor(dec_target.astype(np.float32))
 
         return camera_inputs, motion_inputs, enc_target, dec_target
 

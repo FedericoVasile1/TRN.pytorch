@@ -20,9 +20,9 @@ def main(args):
         os.makedirs(save_dir)
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    args.device = device
     utl.set_seed(int(args.seed))
 
-    args.device = device
     model = build_model(args)
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint, map_location=torch.device('cpu'))
@@ -51,9 +51,6 @@ def main(args):
     f.write(command)
     f.close()
 
-    batch_idx_train = 1
-    batch_idx_test = 1
-
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
@@ -61,11 +58,19 @@ def main(args):
         writer.add_graph(model, camera_inputs.to(device))
         writer.close()
 
+    batch_idx_train = 1
+    batch_idx_test = 1
+    count_reduce_val_loss = 0
+    prev_val_loss = -1
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
-        data_loaders = {
-            phase: utl.build_data_loader(args, phase)
-            for phase in args.phases
-        }
+        if epoch == args.reduce_lr_epoch or count_reduce_val_loss == args.reduce_lr_count:
+            if count_reduce_val_loss == args.reduce_lr_count:
+                count_reduce_val_loss = 0
+            args.lr = args.lr * 0.1
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = args.lr
+
+        data_loaders = {phase: utl.build_data_loader(args, phase) for phase in args.phases}
 
         losses = {phase: 0.0 for phase in args.phases}
         score_metrics = {phase: [] for phase in args.phases}
@@ -82,8 +87,8 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (camera_inputs, _, enc_target, _) in enumerate(data_loaders[phase], start=1):
-                    # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
+                for batch_idx, (camera_inputs, _, targets, _) in enumerate(data_loaders[phase], start=1):
+                    # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim [if starting from features])
                     # enc_target.shape == (batch_size, enc_steps, num_classes)
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
@@ -91,15 +96,14 @@ def main(args):
                     if training:
                         optimizer.zero_grad()
 
-                    # forward pass
-                    score, ptes, p0es, xtes, x0es = model(camera_inputs)            # score.shape == (batch_size, enc_steps, num_classes)
+                    scores, ptes, p0es, xtes, x0es = model(camera_inputs)
 
-                    score = score.to(device)
-                    target = enc_target.to(device)
+                    scores = scores.to(device)
+                    target = targets.to(device)
                     # sum losses along all timesteps
-                    loss_la = criterion_la(score[:, 0], target[:, 0].max(axis=1)[1])
+                    loss_la = criterion_la(scores[:, 0], target[:, 0].max(axis=1)[1])
                     for step in range(1, camera_inputs.shape[1]):
-                        loss_la += criterion_la(score[:, step], target[:, step].max(axis=1)[1])
+                        loss_la += criterion_la(scores[:, step], target[:, step].max(axis=1)[1])
                     loss_la /= camera_inputs.shape[1]      # scale by enc_steps
 
                     ptes = ptes.to(device)
@@ -127,13 +131,18 @@ def main(args):
                     if training:
                         loss.backward()
                         optimizer.step()
+                    else:
+                        if epoch > args.start_epoch:
+                            if loss.item() > prev_val_loss:
+                                count_reduce_val_loss += 1
+                        prev_val_loss = loss.item()
 
                     # Prepare metrics
-                    score = score.view(-1, args.num_classes)
+                    scores = scores.view(-1, args.num_classes)
                     target = target.view(-1, args.num_classes)
-                    score = softmax(score).cpu().detach().numpy()
+                    scores = softmax(scores).cpu().detach().numpy()
                     target = target.cpu().detach().numpy()
-                    score_metrics[phase].extend(score)
+                    score_metrics[phase].extend(scores)
                     target_metrics[phase].extend(target)
 
                     if training:
@@ -166,8 +175,8 @@ def main(args):
 
         writer.add_scalars('mAP_epoch/train_val_enc', {phase: mAP[phase] for phase in args.phases}, epoch)
 
-        log = 'Epoch: {:2} | [train] enc_avg_loss: {:.5f}  enc_mAP: {:.4f} |'
-        log += ' [test] enc_avg_loss: {:.5f}  enc_mAP: {:.4f}  |\n'
+        log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f} |'
+        log += ' [test] loss: {:.5f}  mAP: {:.4f}  |\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
                               losses['train'] / len(data_loaders['train'].dataset),

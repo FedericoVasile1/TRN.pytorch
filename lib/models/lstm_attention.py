@@ -6,66 +6,57 @@ import math
 
 from .feature_extractor import build_feature_extractor
 
-class SelfAttention(nn.Module):
-    def __init__(self, feat_maps_channels, num_filters):
-        super(SelfAttention, self).__init__()
-
-        self.queries_conv = nn.Conv2d(feat_maps_channels, num_filters, 1)
-        self.keys_conv = nn.Conv2d(feat_maps_channels, num_filters, 1)
-        self.values_conv = nn.Conv2d(feat_maps_channels, num_filters, 1)
-        self.final_conv = nn.Conv2d(num_filters, feat_maps_channels, 1)
-
-    def forward(self, x):
-        '''
-        Check https://web.eecs.umich.edu/~justincj/slides/eecs498/498_FA2019_lecture13.pdf at slide 81 for
-        details about computations
-        :param x: the output of the feature extractor; feature maps of shape (batch_size, C, H, W)
-        :return attn: tensor of shape (batch_size, C, H, W)
-                attn_weights: tensor of shape(batch_size, H*W, H*W)
-        '''
-        _, _, H, W = x.shape
-
-        queries = self.queries_conv(x).flatten(start_dim=2)
-        keys = self.keys_conv(x).flatten(start_dim=2)
-
-        queries = queries.permute(0, 2, 1)  # transpose matrices
-        attn_weights = F.softmax(queries.bmm(keys), dim=2)   # attn_weigths.shape == (batch_size, H*W, H*W)
-
-        values = self.values_conv(x).flatten(start_dim=2)   # values.shape == (batch_size, C', H*W)
-        attn = values.bmm(attn_weights)
-        attn = attn.view(attn.shape[0], attn.shape[1], H, W)
-
-        attn = self.final_conv(attn)
-        attn += x
-
-        return attn, attn_weights
-
 class ScaledDotProductAttention(nn.Module):
+    '''
+    The scaled dot product attention conceptually takes as input at each timestep the feature maps and the
+    previous hidden state and performs a dot product between them in order to obtain the attention weights.
+    The attention weights tell us how much each spatial position of the feature maps is important at this timestep.
+    The attention weights will be fed as input at this timestep to the lstm together with feature maps.
+    '''
     def __init__(self, rnn_hidden_size):
         super(ScaledDotProductAttention, self).__init__()
         self.rnn_hidden_size = rnn_hidden_size
 
     def forward(self, prev_h, feat_maps_projected):
-        # perform **scaled** dot-product attention
-        attn_weights = prev_h.unsqueeze(1).bmm(feat_maps_projected)  # attn_weights.shape == (batch_size, 1, 7 * 7)
+        """
+        - Perform the dot product above discussed.
+        - In order to perform dot product(i.e. the batched matrix multiply below) the two inputs must have the
+            following shapes: input1: (batch_size, R, C)  -  input2: (batch_size, C, C2) and the output will
+            have the following shape:  output: (batch_size, R, C2)
+        - (*)Notice that til now, we are only working with few feature extractors, and all of them output
+            feature maps of shape (batch_size, 512, 7, 7) hence HH == WW == 7.
+        :param prev_h: torch tensor of shape (batch_size, rnn_hidden_size)
+        :param feat_maps_projected: torch tensor of shape (batch_size, rnn_hidden_size, HH * WW)
+        :return attn: torch tensor of shape (batch_size, rnn_hidden_size)
+            This will be the input to the lstm, together with the usual input(i.e. the feature vector in our case)
+        :return attn_weights: torch tensor of shape (batch_size, HH, WW)
+            We use the weights in evaluation mode; where we project back the (HH, WW) 'image' to its original
+            size (H, W) in order to visualize how much each spatial part of the image contributes to the prediction
+        """
+        attn_weights = prev_h.unsqueeze(1).bmm(feat_maps_projected)  # attn_weights.shape == (batch_size, 1, HH * WW)
         attn_weights = attn_weights.div(math.sqrt(self.rnn_hidden_size))
 
         # get probability-normalized weights
         attn_weights = F.softmax(attn_weights, dim=2)
 
-        # compute context vector
-        attn = feat_maps_projected.bmm(attn_weights.permute(0, 2, 1))  # attn.shape == (batch_size, hidden_size, 1)
+        # compute context vector attn
+        attn = feat_maps_projected.bmm(attn_weights.permute(0, 2, 1))  # attn.shape == (batch_size, rnn_hidden_size, 1)
         attn = attn.squeeze(2)
 
-        return attn, attn_weights.squeeze(1).view(attn_weights.shape[0], 7, 7)   # attn_weights.shape == (batch_size, 7, 7)
+        return attn, attn_weights.squeeze(1).view(attn_weights.shape[0], 7, 7)
 
 class LSTMAttention(nn.Module):
-    '''
-    Actually, this model can only work in end to end mode(i.e. starting from the frames), since
-    we do not have the extracted featrure maps. Hence camera_feature == video_frames_24fps is the only one supported
-    '''
-    def __init__(self, args, dtype=torch.float32):
+    """
+    Notice that here we work only with RGB feature maps; neither optical flow fusion nor feature vectors are allowed.
+    """
+    def __init__(self, args):
         super(LSTMAttention, self).__init__()
+        if args.camera_feature != 'resnet3d_featuremaps' and args.camera_feature != 'video_frames_24fps':
+            raise Exception('Wrong camera_feature option, this model supports only feature maps. '
+                            'Change this option to \'resnet3d_featuremaps\' or switch to end to end training with the '
+                            'following options: --camera_feature video_frames_24fps --feature_extractor RESNET2+1D')
+
+        self.dtype = torch.float32
 
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
@@ -85,14 +76,14 @@ class LSTMAttention(nn.Module):
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
     def forward(self, x):
-        # x.shape == (batch_size, enc_steps, 3, chunk_size, 112, 112) || (batch_size, enc_steps, 3, 224, 224)
+        # x.shape == (batch_size, enc_steps, C, chunk_size, 112, 112) || (batch_size, enc_steps, 3, 224, 224)
         h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
         c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
 
         for step in range(self.enc_steps):
             x_t = x[:, step]
-            feat_maps = self.feature_extractor(x_t, torch.zeros(1))  # second input is optical flow, in our case will not be used
+            feat_maps = self.feature_extractor(x_t, torch.zeros(1).cpu())  # second input is optical flow, in our case will not be used
 
             # feat_maps.shape == (batch_size, 512, 7, 7)
             feat_maps = feat_maps.flatten(start_dim=2)      # flatten feature maps to feature vectors
