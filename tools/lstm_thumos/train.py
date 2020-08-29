@@ -58,7 +58,7 @@ def main(args):
     batch_idx_train = 1
     batch_idx_test = 1
     count_reduce_val_loss = 0
-    prev_val_loss = -1
+    min_val_loss = None
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
         if epoch == args.reduce_lr_epoch or count_reduce_val_loss == args.reduce_lr_count:
             if count_reduce_val_loss == args.reduce_lr_count:
@@ -115,9 +115,13 @@ def main(args):
                         optimizer.step()
                     else:
                         if epoch > args.start_epoch:
-                            if loss.item() > prev_val_loss:
+                            if loss.item() > min_val_loss:
                                 count_reduce_val_loss += 1
-                        prev_val_loss = loss.item()
+                            else:
+                                min_val_loss = loss.item()
+                                count_reduce_val_loss = 0
+                        else:
+                            min_val_loss = loss.item()
 
                     # Prepare metrics
                     scores = scores.view(-1, args.num_classes)
