@@ -33,20 +33,20 @@ class IDUCell(nn.Module):
         self.Wh1h1 = Parameter(torch.randn(hidden_size, hidden_size, dtype=dtype, device=device).div(math.sqrt(hidden_size)))
         self.bh1h1 = Parameter(torch.zeros(hidden_size, dtype=dtype, device=device))
 
-    def forward(self, x_t, x_0, prev_h):
+    def forward(self, xt, x0, prev_h):
         """
         Do a forward pass for a single timestep
-        :param x_t: Feature vector of the current timestep, of shape (batch_size, feat_vect_dim)
-        :param x_0: Current information, of shape (batch_size, feat_vect_dim)
+        :param xt: Feature vector of the current timestep, of shape (batch_size, feat_vect_dim)
+        :param x0: Current information, of shape (batch_size, feat_vect_dim)
         :param prev_h: The previous hidden state, of shape (batch_size, hidden_size)
-        :return h_t: the next hidden state, of shape (batch_size, hidden_size)
+        :return ht: the next hidden state, of shape (batch_size, hidden_size)
                 pte, p0e: probability distribution over action classes, for current timestep and current
                             information, both of shape (batch_size, num_classes)
                 xte, xt0: the outputs of the early embedding module, for current timestep and current
                             information, both of shape (batch_size, hidden_size)
         """
-        xte = F.relu(x_t.mm(self.Wxe) + self.bxe)
-        x0e = F.relu(x_0.mm(self.Wxe) + self.bxe)
+        xte = F.relu(xt.mm(self.Wxe) + self.bxe)
+        x0e = F.relu(x0.mm(self.Wxe) + self.bxe)
 
         pte = xte.mm(self.Wep) + self.bep
         p0e = x0e.mm(self.Wep) + self.bep
@@ -56,9 +56,9 @@ class IDUCell(nn.Module):
 
         h1_t_1 = prev_h.mm(self.Wh1h1) + self.bh1h1
         ht1 = torch.tanh(xte.mm(self.Wxth1) + self.bxth1 + rt * h1_t_1)
-        h_t = (1 - zt) * ht1 + zt * prev_h
+        ht = (1 - zt) * ht1 + zt * prev_h
 
-        return h_t, pte, p0e, xte, x0e
+        return ht, pte, p0e, xte, x0e
 
 class IDU(nn.Module):
     def __init__(self, args):
@@ -94,13 +94,13 @@ class IDU(nn.Module):
         xtes = []
         x0es = []
 
-        x_0 = x[:, -1]       # last step features is the current information
-        h_t = torch.zeros(x.shape[0], self.hidden_size, dtype=x.dtype, device=x.device)
+        x0 = x[:, -1]       # last step features is the current information
+        ht = torch.zeros(x.shape[0], self.hidden_size, dtype=x.dtype, device=x.device)
         for step in range(self.steps):
-            x_t = x[:, step]
-            x_t = self.feature_extractor(x_t)
-            h_t, pte, p0e, xte, x0e = self.iducell(x_t, x_0, h_t)
-            out = self.classifier(h_t)
+            xt = x[:, step]
+            xt = self.feature_extractor(xt, torch.zeros(1))
+            ht, pte, p0e, xte, x0e = self.iducell(xt, x0, ht)
+            out = self.classifier(ht)
 
             scores.append(out)
             ptes.append(pte)

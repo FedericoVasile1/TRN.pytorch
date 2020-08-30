@@ -1,5 +1,5 @@
 from .generalized_trn import GeneralizedTRN
-from .lstm import RNNmodel
+from .rnn import RNNmodel
 from .cnn3d import CNN3D
 from .convlstm import ConvLSTM
 from .cnn import CNN

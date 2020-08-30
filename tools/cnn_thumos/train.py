@@ -128,11 +128,6 @@ def main(args):
                     if training:
                         loss.backward()
                         optimizer.step()
-                    else:
-                        if epoch > args.start_epoch:
-                            if loss.item() > prev_val_loss:
-                                count_reduce_val_loss += 1
-                        prev_val_loss = loss.item()
 
                     # Prepare metrics
                     scores = softmax(scores).cpu().detach().numpy()
@@ -152,6 +147,15 @@ def main(args):
                                                                                       batch_idx,
                                                                                       loss.item()))
         end = time.time()
+
+        if epoch > args.start_epoch:
+            if losses['test'] > min_val_loss:
+                count_reduce_val_loss += 1
+            else:
+                min_val_loss = losses['test']
+                count_reduce_val_loss = 0
+        else:
+            min_val_loss = losses['test']
 
         writer.add_scalars('Loss_epoch/train_val_enc',
                            {phase: losses[phase] / (len(data_loaders[phase].dataset) * args.enc_steps)

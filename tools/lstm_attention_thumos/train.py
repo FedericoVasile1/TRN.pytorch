@@ -134,13 +134,13 @@ def main(args):
         end = time.time()
 
         if epoch > args.start_epoch:
-            if losses['test'].item() > min_val_loss:
+            if losses['test'] > min_val_loss:
                 count_reduce_val_loss += 1
             else:
-                min_val_loss = losses['test'].item()
+                min_val_loss = losses['test']
                 count_reduce_val_loss = 0
         else:
-            min_val_loss = losses['test'].item()
+            min_val_loss = losses['test']
 
         writer.add_scalars('Loss_epoch/train_val_enc',
                            {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},

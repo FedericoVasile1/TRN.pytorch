@@ -92,7 +92,6 @@ def main(args):
                     # enc_target.shape == (batch_size, enc_steps, num_classes)
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
-                    enc_target = enc_target[:, 1::2, :]
 
                     if training:
                         optimizer.zero_grad()
@@ -136,13 +135,13 @@ def main(args):
         end = time.time()
 
         if epoch > args.start_epoch:
-            if losses['test'].item() > min_val_loss:
+            if losses['test'] > min_val_loss:
                 count_reduce_val_loss += 1
             else:
-                min_val_loss = losses['test'].item()
+                min_val_loss = losses['test']
                 count_reduce_val_loss = 0
         else:
-            min_val_loss = losses['test'].item()
+            min_val_loss = losses['test']
 
         writer.add_scalars('Loss_epoch/train_val_enc',
                            {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},

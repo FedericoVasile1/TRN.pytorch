@@ -2,6 +2,8 @@ import os.path as osp
 import os
 import sys
 import time
+import numpy as np
+from scipy.ndimage import label
 
 import torch
 import torch.nn as nn
@@ -12,6 +14,15 @@ import _init_paths
 import utils as utl
 from configs.thumos import parse_trn_args as parse_args
 from models import build_model
+
+def get_relevance(ti_anno):
+    # ti_anno.shape == (enc_steps, num_classes)
+    class_line = np.argmax(ti_anno, axis=1)
+    binary_line = (class_line == class_line[-1]).astype(np.int32)
+    indexed_line, _ = label(binary_line)
+    t0_idx = indexed_line[-1]
+    relation_line = (indexed_line == t0_idx).astype(np.float32)
+    return relation_line
 
 def main(args):
     this_dir = osp.join(osp.dirname(__file__), '.')
@@ -35,7 +46,6 @@ def main(args):
 
     criterion_let = nn.CrossEntropyLoss(ignore_index=21).to(device)
     criterion_le0 = nn.CrossEntropyLoss(ignore_index=21).to(device)
-    #criterion_lc = utl.ContrastiveLoss().to(device)
     criterion_lc = nn.CosineEmbeddingLoss().to(device)
     criterion_la = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -105,45 +115,42 @@ def main(args):
                     scores, ptes, p0es, xtes, x0es = model(camera_inputs)
 
                     scores = scores.to(device)
-                    target = targets.to(device)
+                    targets = targets.to(device)
                     # sum losses along all timesteps
-                    loss_la = criterion_la(scores[:, 0], target[:, 0].max(axis=1)[1])
+                    loss_la = criterion_la(scores[:, 0], targets[:, 0].max(axis=1)[1])
                     for step in range(1, camera_inputs.shape[1]):
-                        loss_la += criterion_la(scores[:, step], target[:, step].max(axis=1)[1])
+                        loss_la += criterion_la(scores[:, step], targets[:, step].max(axis=1)[1])
                     loss_la /= camera_inputs.shape[1]      # scale by enc_steps
 
                     ptes = ptes.to(device)
                     # sum losses along all timesteps
-                    loss_let = criterion_let(ptes[:, 0], target[:, 0].max(axis=1)[1])
+                    loss_let = criterion_let(ptes[:, 0], targets[:, 0].max(axis=1)[1])
                     for step in range(1, camera_inputs.shape[1]):
-                        loss_let += criterion_let(ptes[:, step], target[:, step].max(axis=1)[1])
+                        loss_let += criterion_let(ptes[:, step], targets[:, step].max(axis=1)[1])
                     loss_let /= camera_inputs.shape[1]  # scale by enc_steps
 
                     p0es = p0es.to(device)
                     # sum losses along all timesteps
-                    loss_le0 = criterion_le0(p0es[:, 0], target[:, -1].max(axis=1)[1])
+                    loss_le0 = criterion_le0(p0es[:, 0], targets[:, -1].max(axis=1)[1])
                     for step in range(1, camera_inputs.shape[1]):
-                        loss_le0 += criterion_le0(p0es[:, step], target[:, -1].max(axis=1)[1])
+                        loss_le0 += criterion_le0(p0es[:, step], targets[:, -1].max(axis=1)[1])
                     loss_le0 /= camera_inputs.shape[1]  # scale by enc_steps
 
                     xtes = xtes.to(device)
                     x0es = x0es.to(device)
-                    #loss_lc = criterion_lc(xtes, x0es, target)
+                    targets_relevance = []
+                    for i in range(batch_size):
+                        appo = get_relevance(targets[i, :, :21])
+                        targets_relevance.append(appo)
+                    targets_relevance = torch.stack(targets_relevance)
+                    targets_relevance[targets_relevance == 0] = -1
                     # sum losses along all timesteps
-                    target_xtes, target_x0es = (target[:, 0].max(axis=1)[1], target[:, -1].max(axis=1)[1])
-                    t = target_xtes == target_x0es
-                    t = t.to(torch.int8)
-                    t[t == 0] = -1
-                    loss_lc = criterion_lc(xtes[:, 0], x0es[:, 0], t)
+                    loss_lc = criterion_lc(xtes[:, 0], x0es[:, 0], targets_relevance[:, 0])
                     for step in range(1, camera_inputs.shape[1]):
-                        target_xtes, target_x0es = (target[:, step].max(axis=1)[1], target[:, -1].max(axis=1)[1])
-                        t = target_xtes == target_x0es
-                        t = t.to(torch.int8)
-                        t[t == 0] = -1
-                        loss_lc += criterion_lc(xtes[:, step], x0es[:, step], t)
+                        loss_lc += criterion_lc(xtes[:, step], x0es[:, step], targets_relevance[:, step])
                     loss_lc /= camera_inputs.shape[1]  # scale by enc_steps
 
-                    loss = loss_la + 1.0 * ((loss_let + loss_le0) + loss_lc)
+                    loss = loss_la + 0.3 * ((loss_let + loss_le0) + loss_lc)
 
                     losses[phase] += loss.item() * batch_size
 
@@ -153,11 +160,11 @@ def main(args):
 
                     # Prepare metrics
                     scores = scores.view(-1, args.num_classes)
-                    target = target.view(-1, args.num_classes)
+                    targets = targets.view(-1, args.num_classes)
                     scores = softmax(scores).cpu().detach().numpy()
-                    target = target.cpu().detach().numpy()
+                    targets = targets.cpu().detach().numpy()
                     score_metrics[phase].extend(scores)
-                    target_metrics[phase].extend(target)
+                    target_metrics[phase].extend(targets)
 
                     if training:
                         writer.add_scalar('Loss_iter/train_enc', loss.item(), batch_idx_train)
@@ -173,13 +180,13 @@ def main(args):
         end = time.time()
 
         if epoch > args.start_epoch:
-            if losses['test'].item() > min_val_loss:
+            if losses['test'] > min_val_loss:
                 count_reduce_val_loss += 1
             else:
-                min_val_loss = losses['test'].item()
+                min_val_loss = losses['test']
                 count_reduce_val_loss = 0
         else:
-            min_val_loss = losses['test'].item()
+            min_val_loss = losses['test']
 
         writer.add_scalars('Loss_epoch/train_val_enc',
                            {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
