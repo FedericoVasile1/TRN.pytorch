@@ -15,10 +15,8 @@ def main(args):
     args.dataset = osp.basename(osp.normpath(args.data_root))
     with open(args.data_info, 'r') as f:
         data_info = json.load(f)[args.dataset]
-    #args.train_session_set = data_info['train_session_set']
-    #args.test_session_set = data_info['test_session_set']
-    args.train_session_set = [i for i in data_info['train_session_set'] if 'video_validation_0000690' in i]
-    args.test_session_set = [i for i in data_info['train_session_set'] if 'video_validation_0000690' in i]
+    args.train_session_set = data_info['train_session_set']
+    args.test_session_set = data_info['test_session_set']
     args.class_index = data_info['class_index']
     args.num_classes = len(args.class_index) - 1    # drop ambiguous class
 
