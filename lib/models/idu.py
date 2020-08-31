@@ -94,7 +94,8 @@ class IDU(nn.Module):
         xtes = []
         x0es = []
 
-        x0 = x[:, -1]       # last step features is the current information
+        with torch.set_grad_enabled(False):
+            x0 = self.feature_extractor(x[:, -1], torch.zeros(1))       # last step features is the current information
         ht = torch.zeros(x.shape[0], self.hidden_size, dtype=x.dtype, device=x.device)
         for step in range(self.steps):
             xt = x[:, step]
