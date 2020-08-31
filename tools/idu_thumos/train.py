@@ -46,7 +46,8 @@ def main(args):
 
     criterion_let = nn.CrossEntropyLoss(ignore_index=21).to(device)
     criterion_le0 = nn.CrossEntropyLoss(ignore_index=21).to(device)
-    criterion_lc = nn.CosineEmbeddingLoss().to(device)
+    criterion_lc = nn.CosineEmbeddingLoss(margin=1).to(device)
+    #criterion_lc = utl.MarginMSELoss(margin=1).to(device)
     criterion_la = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
@@ -136,13 +137,14 @@ def main(args):
                         loss_le0 += criterion_le0(p0es[:, step], targets[:, -1].max(axis=1)[1])
                     loss_le0 /= camera_inputs.shape[1]  # scale by enc_steps
 
-                    xtes = xtes.to(device)
+                    xtes = xtes.to(device)      # xtes.shape == (batch_size, enc_steps, idu.hidden_size)
                     x0es = x0es.to(device)
                     targets_relevance = []
                     for i in range(batch_size):
-                        appo = get_relevance(targets[i, :, :21])
+                        # for each sample, look at all of its steps in order to obtain relevance
+                        appo = get_relevance(targets[i, :])
                         targets_relevance.append(appo)
-                    targets_relevance = torch.stack(targets_relevance)
+                    targets_relevance = torch.stack(targets_relevance)  # targets_relevance.shape == (batch_size, enc_steps)
                     targets_relevance[targets_relevance == 0] = -1
                     # sum losses along all timesteps
                     loss_lc = criterion_lc(xtes[:, 0], x0es[:, 0], targets_relevance[:, 0])
