@@ -89,7 +89,7 @@ class THUMOSFeatureExtractor(nn.Module):
             elif args.feature_extractor == 'I3D':
                 # TODO: add also feature maps extraction(see resnet2+1d above)
                 self.feature_extractor = InceptionI3d()
-                self.feature_extractor.load_state_dict('rgb_imagenet.pt')
+                self.feature_extractor.load_state_dict(torch.load('rgb_imagenet.pt'))
                 self.feat_vect_dim = 1024
                 self.feature_extractor.dropout = nn.Identity()
                 self.feature_extractor.logits = nn.Identity()

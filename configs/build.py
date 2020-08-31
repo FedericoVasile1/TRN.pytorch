@@ -26,7 +26,10 @@ def build_data_info(args):
 
     args.E2E = 'E2E' if args.camera_feature == 'video_frames_24fps' else ''
 
-    if args.feature_extractor == 'RESNET2+1D' or args.model == 'CNN3D' or args.model == 'DISCRIMINATORCNN3D' \
+    if args.feature_extractor == 'RESNET2+1D' \
+            or args.feature_extractor == 'I3D' \
+            or args.model == 'CNN3D' \
+            or args.model == 'DISCRIMINATORCNN3D' \
             or (args.model == 'CONVLSTM' and args.feature_extractor == 'RESNET2+1D') \
             or (args.model == 'DISCRIMINATORCONVLSTM' and args.feature_extractor == 'RESNET2+1D'):
         args.is_3D = True
