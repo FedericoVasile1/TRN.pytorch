@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from .feature_extractor import build_feature_extractor
+from .rnn import MyGRUCell
 
 class DilatedCausalConv1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, dilatation=1, pad_start=True):
@@ -83,7 +84,7 @@ class DCCBlock(nn.Module):
 
         amount_pad = (self.conv.kernel_size - x.shape[-1]) * self.conv.dilatation
         if amount_pad > 0:
-            tensor_pad = torch.zeros(x.shape[0], x.shape[1], amount_pad)
+            tensor_pad = torch.zeros(x.shape[0], x.shape[1], amount_pad).to(x.device)
             x = torch.cat((tensor_pad, x), dim=2)
 
         out = self.conv.step(x)
@@ -112,19 +113,32 @@ class DCCRNN(nn.Module):
                             1,
                             True)
 
-        self.lstm = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
+        if args.model == 'DCCLSTM':
+            self.rnn = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
+            self.model = 'DCCLSTM'
+        elif args.model == 'DCCGRU':
+            self.rnn = MyGRUCell(self.feature_extractor.fusion_size, self.hidden_size)
+            self.model = 'DCCGRU'
+        else:
+            raise Exception('Model ' + args.model + ' here is not supported')
         self.drop = nn.Identity()#nn.Dropout(args.dropout)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
         self.feat_vects_queue = []
         self.queue_size = self.dcc_kernel_size
 
-    def forward(self, x, flush_queue=False):
+    def forward(self, x, flush_queue=True):
         """
         :param x: torch tensor of shape (batch_size, enc_steps, feat_vect_dim)
         """
-        h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
-        c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
+        h_n = torch.zeros(x.shape[0],
+                          self.hidden_size,
+                          device=x.device,
+                          dtype=x.dtype)
+        c_n = torch.zeros(x.shape[0],
+                          self.hidden_size,
+                          device=x.device,
+                          dtype=x.dtype) if self.model == 'DCCLSTM' else torch.zeros(1).cpu()
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
 
         if flush_queue:
@@ -136,7 +150,7 @@ class DCCRNN(nn.Module):
 
             out = out.unsqueeze(2)      # out_t.shape == (batch_size, feat_vect_dim, 1)
             self.feat_vects_queue.append(out)
-            if step > self.queue_size:
+            if step >= self.queue_size:
                 assert len(self.feat_vects_queue) == self.queue_size + 1
                 self.feat_vects_queue.pop(0)
             out = torch.cat(self.feat_vects_queue, dim=2)
@@ -144,7 +158,7 @@ class DCCRNN(nn.Module):
 
             out = self.dcc.step(out).squeeze(2)     # out.shape == (batch_size, feat_vect_dim)
 
-            h_n, c_n = self.lstm(out, (h_n, c_n))
+            h_n, c_n = self.rnn(out, (h_n, c_n))
             out = self.classifier(self.drop(h_n))  # out.shape == (batch_size, num_classes)
 
             scores[:, step] = out
@@ -166,7 +180,7 @@ class DCCRNN(nn.Module):
         out = torch.cat(self.feat_vects_queue, dim=2)
 
         out = self.dcc(out).squeeze(2)
-        h_n, c_n = self.lstm(out, (h_n, c_n))
+        h_n, c_n = self.rnn(out, (h_n, c_n))
         out = self.classifier(h_n)
         return out, h_n, c_n
 

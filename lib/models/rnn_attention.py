@@ -5,15 +5,7 @@ import torch.nn.functional as F
 import math
 
 from .feature_extractor import build_feature_extractor
-
-class MyGRUCell(nn.GRUCell):
-    """
-    This model has been created for the only purpose of having a forward signature equal to the one
-    of the LSTMCell model, by doing this we only need a single code pipeline for both lstm and gru models.
-    """
-    def forward(self, x, states):
-        h_n, _ = states
-        return super(MyGRUCell, self).forward(x, h_n), torch.zeros(1)
+from .rnn import MyGRUCell
 
 class ScaledDotProductAttention(nn.Module):
     '''
@@ -101,7 +93,7 @@ class RNNAttention(nn.Module):
         c_n = torch.zeros(x.shape[0],
                           self.hidden_size,
                           device=x.device,
-                          dtype=x.dtype) if self.model == 'LSTMATTENTION' else torch.zeros(1)
+                          dtype=x.dtype) if self.model == 'LSTMATTENTION' else torch.zeros(1).cpu()
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
 
         for step in range(self.enc_steps):
