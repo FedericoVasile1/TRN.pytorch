@@ -5,8 +5,8 @@ from .convlstm import ConvLSTM
 from .cnn import CNN
 from .idu import IDU
 from .rulstm import RULSTM
-from .lstm_attention import LSTMAttention
-from .dcc_lstm import DCCLSTM
+from .rnn_attention import RNNAttention
+from .dcc_rnn import DCCRNN
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -20,8 +20,10 @@ _META_ARCHITECTURES = {
     'STARTENDLSTM': RNNmodel,
     'STARTENDGRU': RNNmodel,
     'RULSTM': RULSTM,
-    'LSTMATTENTION': LSTMAttention,
-    'DCCLSTM': DCCLSTM,
+    'LSTMATTENTION': RNNAttention,
+    'GRUATTENTION': RNNAttention,
+    'DCCLSTM': DCCRNN,
+    'DCCGRU': DCCRNN,
 }
 
 def build_model(args):

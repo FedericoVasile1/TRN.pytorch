@@ -57,7 +57,7 @@ def main(args):
     batch_idx_train = 1
     batch_idx_test = 1
     count_reduce_val_loss = 0
-    prev_val_loss = -1
+    min_val_loss = None
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
         if epoch == args.reduce_lr_epoch or count_reduce_val_loss == args.reduce_lr_count:
             if count_reduce_val_loss == args.reduce_lr_count:
@@ -97,7 +97,7 @@ def main(args):
                         optimizer.zero_grad()
 
                     # forward pass
-                    scores = model(camera_inputs)            # scores.shape == (batch_size, enc_steps//2, num_classes)
+                    scores = model(camera_inputs)            # scores.shape == (batch_size, enc_steps, num_classes)
 
                     scores = scores.to(device)
                     targets = targets.to(device)

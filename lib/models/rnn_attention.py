@@ -6,6 +6,15 @@ import math
 
 from .feature_extractor import build_feature_extractor
 
+class MyGRUCell(nn.GRUCell):
+    """
+    This model has been created for the only purpose of having a forward signature equal to the one
+    of the LSTMCell model, by doing this we only need a single code pipeline for both lstm and gru models.
+    """
+    def forward(self, x, states):
+        h_n, _ = states
+        return super(MyGRUCell, self).forward(x, h_n), torch.zeros(1)
+
 class ScaledDotProductAttention(nn.Module):
     '''
     The scaled dot product attention conceptually takes as input at each timestep the feature maps and the
@@ -45,12 +54,12 @@ class ScaledDotProductAttention(nn.Module):
 
         return attn, attn_weights.squeeze(1).view(attn_weights.shape[0], 7, 7)
 
-class LSTMAttention(nn.Module):
+class RNNAttention(nn.Module):
     """
     Notice that here we work only with RGB feature maps; neither optical flow fusion nor feature vectors are allowed.
     """
     def __init__(self, args):
-        super(LSTMAttention, self).__init__()
+        super(RNNAttention, self).__init__()
         if args.camera_feature != 'resnet3d_featuremaps' and args.camera_feature != 'video_frames_24fps':
             raise Exception('Wrong camera_feature option, this model supports only feature maps. '
                             'Change this option to \'resnet3d_featuremaps\' or switch to end to end training with the '
@@ -72,13 +81,27 @@ class LSTMAttention(nn.Module):
         # The input to the lstm is the concatenation of the input vector and context vector.
         #  The input vector is the usual feature vector, i.e. the globalavgpooling along the feature maps
         #  The context vector is the one returned by the attention layer
-        self.lstm = nn.LSTMCell(self.feature_extractor.fusion_size + self.hidden_size, self.hidden_size)
+        if args.model == 'LSTMATTENTION':
+            self.rnn = nn.LSTMCell(self.feature_extractor.fusion_size + self.hidden_size, self.hidden_size)
+            self.model = 'LSTMATTENTION'
+        elif args.model == 'GRUATTENTION':
+            self.rnn = MyGRUCell(self.feature_extractor.fusion_size + self.hidden_size, self.hidden_size)
+            self.model = 'GRUATTENTION'
+        else:
+            raise Exception('Model ' + args.model + ' here is not supported')
+
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
     def forward(self, x):
         # x.shape == (batch_size, enc_steps, C, chunk_size, 112, 112) || (batch_size, enc_steps, 3, 224, 224)
-        h_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
-        c_n = torch.zeros(x.shape[0], self.hidden_size, device=x.device, dtype=x.dtype)
+        h_n = torch.zeros(x.shape[0],
+                          self.hidden_size,
+                          device=x.device,
+                          dtype=x.dtype)
+        c_n = torch.zeros(x.shape[0],
+                          self.hidden_size,
+                          device=x.device,
+                          dtype=x.dtype) if self.model == 'LSTMATTENTION' else torch.zeros(1)
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
 
         for step in range(self.enc_steps):
@@ -99,7 +122,7 @@ class LSTMAttention(nn.Module):
 
             input = feat_maps.mean(dim=2)       # perform global average pooling. input.shape == (batch_size, 512)
             input = torch.cat((input, attn), dim=1)
-            h_n, c_n = self.lstm(input, (h_n, c_n))
+            h_n, c_n = self.rnn(input, (h_n, c_n))
             out = self.classifier(h_n)  # out.shape == (batch_size, num_classes)
 
             scores[:, step, :] = out
@@ -117,7 +140,7 @@ class LSTMAttention(nn.Module):
 
         input = feat_maps.mean(dim=2)
         input = torch.cat((input, attn), dim=1)
-        h_n, c_n = self.lstm(input, (h_n, c_n))
+        h_n, c_n = self.rnn(input, (h_n, c_n))
         out = self.classifier(h_n)
 
         return out, h_n, c_n, attn_weights

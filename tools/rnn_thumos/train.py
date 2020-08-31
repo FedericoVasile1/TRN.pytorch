@@ -51,7 +51,6 @@ def main(args):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
         camera_inputs, motion_inputs, _, _ = dataiter.next()
-        model.train(False)
         writer.add_graph(model, [camera_inputs.to(device), motion_inputs.to(device)])
         writer.close()
 

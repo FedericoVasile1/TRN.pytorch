@@ -27,6 +27,8 @@ class RNNmodel(nn.Module):
         elif args.model == 'GRU':
             self.rnn = MyGRUCell(self.feature_extractor.fusion_size, self.hidden_size)
             self.model = 'GRU'
+        else:
+            raise Exception('Model ' + args.model + ' here is not supported')
         self.drop = nn.Identity()#nn.Dropout(args.dropout)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 

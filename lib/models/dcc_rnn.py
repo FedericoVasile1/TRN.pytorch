@@ -93,22 +93,24 @@ class DCCBlock(nn.Module):
         out += x
         return out
 
-class DCCLSTM(nn.Module):
+class DCCRNN(nn.Module):
     '''
     This model is made up of the following block: feature extractor > DCC > lstm > classifier
     '''
     def __init__(self, args):
-        super(DCCLSTM, self).__init__()
+        super(DCCRNN, self).__init__()
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.enc_steps = args.enc_steps
 
-
         self.feature_extractor = build_feature_extractor(args)
 
         self.dcc_kernel_size = 2
-        self.dcc = DCCBlock(self.feature_extractor.fusion_size, self.feature_extractor.fusion_size,
-                            self.dcc_kernel_size, 1, True)
+        self.dcc = DCCBlock(self.feature_extractor.fusion_size,
+                            self.feature_extractor.fusion_size,
+                            self.dcc_kernel_size,
+                            1,
+                            True)
 
         self.lstm = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
         self.drop = nn.Identity()#nn.Dropout(args.dropout)
