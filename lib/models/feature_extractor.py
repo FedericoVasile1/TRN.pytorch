@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
+from lib.models.i3d import InceptionI3d
+
 class Flatten(nn.Module):
     def __init__(self):
         super(Flatten, self).__init__()
@@ -80,6 +82,17 @@ class THUMOSFeatureExtractor(nn.Module):
                     )
                 else:
                     self.feature_extractor.fc = nn.Identity()
+
+                for param in self.feature_extractor.parameters():
+                    param.requires_grad = False
+
+            elif args.feature_extractor == 'I3D':
+                # TODO: add also feature maps extraction(see resnet2+1d above)
+                self.feature_extractor = InceptionI3d()
+                self.feature_extractor.load_state_dict('rgb_imagenet.pt')
+                self.feat_vect_dim = 1024
+                self.feature_extractor.dropout = nn.Identity()
+                self.feature_extractor.logits = nn.Identity()
 
                 for param in self.feature_extractor.parameters():
                     param.requires_grad = False

@@ -17,12 +17,13 @@ from models import build_model
 
 def get_relevance(ti_anno):
     # ti_anno.shape == (enc_steps, num_classes)
+    ti_anno = ti_anno.cpu().detach().numpy()
     class_line = np.argmax(ti_anno, axis=1)
     binary_line = (class_line == class_line[-1]).astype(np.int32)
     indexed_line, _ = label(binary_line)
     t0_idx = indexed_line[-1]
     relation_line = (indexed_line == t0_idx).astype(np.float32)
-    return relation_line
+    return torch.as_tensor(relation_line)
 
 def main(args):
     this_dir = osp.join(osp.dirname(__file__), '.')
@@ -46,8 +47,8 @@ def main(args):
 
     criterion_let = nn.CrossEntropyLoss(ignore_index=21).to(device)
     criterion_le0 = nn.CrossEntropyLoss(ignore_index=21).to(device)
-    criterion_lc = nn.CosineEmbeddingLoss(margin=1).to(device)
-    #criterion_lc = utl.MarginMSELoss(margin=1).to(device)
+    #criterion_lc = nn.CosineEmbeddingLoss(margin=0).to(device)
+    criterion_lc = utl.ContrastiveLoss(margin=1).to(device)
     criterion_la = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if osp.isfile(args.checkpoint):
@@ -144,7 +145,7 @@ def main(args):
                         # for each sample, look at all of its steps in order to obtain relevance
                         appo = get_relevance(targets[i, :])
                         targets_relevance.append(appo)
-                    targets_relevance = torch.stack(targets_relevance)  # targets_relevance.shape == (batch_size, enc_steps)
+                    targets_relevance = torch.stack(targets_relevance).to(device)  # targets_relevance.shape == (batch_size, enc_steps)
                     targets_relevance[targets_relevance == 0] = -1
                     # sum losses along all timesteps
                     loss_lc = criterion_lc(xtes[:, 0], x0es[:, 0], targets_relevance[:, 0])

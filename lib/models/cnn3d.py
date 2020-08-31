@@ -19,7 +19,7 @@ class CNN3D(nn.Module):
             elif args.feature_extractor == 'I3D':
                 self.feature_extractor = InceptionI3d()
                 # load i3d weights from imagenet + kinetics training
-                self.feature_extractor.load_state_dict(torch.load('flow_imagenet.pt'))
+                self.feature_extractor.load_state_dict(torch.load('rgb_imagenet.pt'))
                 self.feature_extractor.replace_logits(args.num_classes)
             else:
                 raise Exception('Wrong feature_extractor option, ' + args.feature_extractor + ' is not supported')
