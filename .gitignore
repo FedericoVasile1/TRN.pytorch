@@ -17,6 +17,9 @@
 
 data/HDD
 data/THUMOS
+data/JUDO/video_frames_30fps
+data/JUDO/data_00
+data/JUDO/metadati.csv
 
 model_zoo/*
 
@@ -28,7 +31,7 @@ tools/**/**/*.json
 tools/**/**/**/*.json
 
 .idea
-data
+data/small_data_info.json
 venv
 
 runs
