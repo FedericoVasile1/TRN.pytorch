@@ -21,17 +21,17 @@ def main():
 
     print(len(filename_set))
     for filename in filename_set:
+        if os.path.isdir('video_frames_25fps/'+filename):
+            continue
         print(filename)
-        os.mkdir('video_frames_30fps/'+filename)
-        folder = filename.split('_')[4]
-        vidcap = cv2.VideoCapture('data_00/'+folder+'/'+filename)
 
-        success, image = vidcap.read()
-        count = 0
-        while success:
-            cv2.imwrite('video_frames_30fps/'+filename+"/%d.jpg" % count, image)  # save frame as JPEG file
-            success, image = vidcap.read()
-            count += 1
+        os.mkdir('video_frames_25fps/'+filename)
+
+        filename = filename.replace(' ', '\ ')
+        folder = filename.split('_')[4]
+        path = 'data_00/'+folder+'/'+filename
+        savedir = 'video_frames_25fps/'+filename+'/'
+        os.system('ffmpeg -i '+path+' -r 25.0 '+savedir+'%d.jpg')
 
 if __name__ == '__main__':
     # run from JUDO basedir

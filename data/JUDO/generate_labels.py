@@ -2,23 +2,22 @@ import os
 import numpy as np
 import csv
 
-def milliseconds_to_numframe(time_milliseconds, fps=30):
+def milliseconds_to_numframe(time_milliseconds, fps=25):
     fpms = fps * 0.001
-    # minus 1 because our stored frames start from index 0. (e.g. 0.jpg)
-    num_frame = (time_milliseconds * fpms) - 1
+    num_frame = (time_milliseconds * fpms)
     return int(num_frame)
 
 def main():
     CLASS_INDEX = {'Background': 0, 'Ashi Waza': 1, 'Te Waza': 2, 'Koshi Waza': 3, 'Sutemi Waza': 4}
     NUM_CLASSES = len(CLASS_INDEX)
 
-    for video_dir in os.listdir('video_frames_30fps'):
+    for video_dir in os.listdir('video_frames_25fps'):
         if '.mp4' not in video_dir:
             continue
-        num_frames_video = len(os.listdir('video_frames_30fps/'+video_dir))
+        num_frames_video = len(os.listdir('video_frames_25fps/'+video_dir))
         all_background_labels = np.zeros((num_frames_video, NUM_CLASSES))
         all_background_labels[:, CLASS_INDEX['Background']] = 1
-        np.save('target_frames_30fps/'+video_dir+'.npy', all_background_labels)
+        np.save('target_frames_25fps/'+video_dir+'.npy', all_background_labels)
 
     column_time = 1     # column B
     column_class = 37
@@ -32,7 +31,7 @@ def main():
                 continue
             if row[column_class] in (None, ''):
                 continue
-            if not os.path.isdir('video_frames_30fps/'+row[column_filename]):
+            if not os.path.isdir('video_frames_25fps/'+row[column_filename]):
                 continue
 
             # there is a 5 seconds delay from the indicated time and the real action
@@ -47,11 +46,11 @@ def main():
 
             filename = row[column_filename]
             class_idx = CLASS_INDEX[row[column_class]]
-            labels = np.load('target_frames_30fps/'+filename+'.npy')
+            labels = np.load('target_frames_25fps/'+filename+'.npy')
             for i in range(start_frame, end_frame):
-                labels[i, 0] = 0        # remove background label
+                labels[i, CLASS_INDEX['Background']] = 0        # remove background label
                 labels[i, class_idx] = 1
-            np.save('target_frames_30fps/'+filename+'.npy', labels)
+            np.save('target_frames_25fps/'+filename+'.npy', labels)
 
 if __name__ == '__main__':
     # run from JUDO basedir
