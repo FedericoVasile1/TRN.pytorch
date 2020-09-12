@@ -35,4 +35,9 @@ def main():
 
 if __name__ == '__main__':
     # run from JUDO basedir
+    base_dir = os.getcwd()
+    base_dir = base_dir.split('/')[-1]
+    if base_dir != 'JUDO':
+        raise Exception('Wrong base dir, this file must be run from JUDO/ directory.')
+
     main()
