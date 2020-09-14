@@ -17,7 +17,7 @@ def main():
         num_frames_video = len(os.listdir('video_frames_25fps/'+video_dir))
         all_background_labels = np.zeros((num_frames_video, NUM_CLASSES))
         all_background_labels[:, CLASS_INDEX['Background']] = 1
-        np.save('target_frames_25fps/'+video_dir+'.npy', all_background_labels)
+        np.save('target_frames_25fps_original/'+video_dir+'.npy', all_background_labels)
 
     column_time = 1     # column B
     column_class = 37
@@ -35,23 +35,20 @@ def main():
             if not os.path.isdir('video_frames_25fps/'+row[column_filename]):
                 continue
 
-            # there is a 5 seconds delay from the indicated time and the real action
-            DELAY = 5000
-            time = int(row[column_time]) + 5000
-            # we decided that all actions are 2 seconds long
-            DURATION_ACTION = 2000
-            start_time = time - DURATION_ACTION // 2
-            end_time = time + DURATION_ACTION // 2
+            time = int(row[column_time])
+            DURATION_ACTION = 10000
+            start_time = time
+            end_time = time + DURATION_ACTION
             start_frame = milliseconds_to_numframe(start_time)
             end_frame = milliseconds_to_numframe(end_time)
 
             filename = row[column_filename]
             class_idx = CLASS_INDEX[row[column_class]]
-            labels = np.load('target_frames_25fps/'+filename+'.npy')
+            labels = np.load('target_frames_25fps_original/'+filename+'.npy')
             for i in range(start_frame, end_frame):
                 labels[i, CLASS_INDEX['Background']] = 0        # remove background label
                 labels[i, class_idx] = 1
-            np.save('target_frames_25fps/'+filename+'.npy', labels)
+            np.save('target_frames_25fps_original/'+filename+'.npy', labels)
 
 if __name__ == '__main__':
     # run from JUDO basedir
