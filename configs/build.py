@@ -8,6 +8,7 @@ def build_data_info(args):
     with open(args.data_info, 'r') as f:
         data_info = json.load(f)[args.dataset]
     args.train_session_set = data_info['train_session_set']
+    args.val_session_set = data_info['val_session_set'] if 'val_session_set' in data_info else None
     args.test_session_set = data_info['test_session_set']
     args.class_index = data_info['class_index']
     args.num_classes = len(args.class_index)

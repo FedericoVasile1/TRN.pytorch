@@ -79,7 +79,9 @@ def show_video_predictions(args,
     enc_target_metrics = torch.argmax(torch.tensor(enc_target_metrics), dim=1)
 
     num_frames = enc_target_metrics.shape[0]
-    for idx in range(num_frames):
+    idx = 0
+    #for idx in range(num_frames):
+    while idx < num_frames:
         idx_frame = idx * args.chunk_size + args.chunk_size // 2
         pil_frame = Image.open(osp.join(args.data_root,
                                         frames_dir,
@@ -89,6 +91,10 @@ def show_video_predictions(args,
 
         # Convert RGB to BGR
         open_cv_frame = open_cv_frame[:, :, ::-1].copy()
+
+        if args.dataset == 'JUDO':
+            H, W, _ = open_cv_frame.shape
+            open_cv_frame = cv2.resize(open_cv_frame, (W // 2, H // 2), interpolation=cv2.INTER_AREA)
 
         if attn_weights is not None:
             original_H, original_W, _ = open_cv_frame.shape
@@ -142,8 +148,15 @@ def show_video_predictions(args,
 
         # [ (idx_frame + 1) / 24 ]    => 24 because frames has been extracted at 24 fps
         cv2.putText(open_cv_frame,
-                    '{:.2f}s'.format((idx_frame + 1) / 24),
+                    '{:.2f}s'.format((idx_frame + 1) / fps),
                     (275, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.3,
+                    (255, 255, 255),
+                    1)
+        cv2.putText(open_cv_frame,
+                    'speed: {}x'.format(args.speed),
+                    (275, 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.3,
                     (255, 255, 255),
@@ -172,12 +185,27 @@ def show_video_predictions(args,
         if key == ord('p'):
             # pause
             cv2.waitKey(-1)  # wait until any key is pressed
+        if key == ord('e'):
+            delay /= 2
+            args.speed *= 2
+        if key == ord('w'):
+            delay *= 2
+            args.speed /= 2
+        if key == ord('a'):
+            idx -= fps
+            if idx < 0:
+                idx = 0
+        if key == ord('s'):
+            idx += fps
+
+        idx += 1
 
 def show_random_videos(args,
                        samples_list,
-                       samples=2,
+                       samples=1,
                        frames_dir='video_frames_24fps',
-                       targets_dir='target_frames_24fps'):
+                       targets_dir='target_frames_24fps',
+                       fps=24):
     '''
     It shows samples videos from samples_list , randomly sampled. Furthermore, labels are attached to video.
     :param args: ParserArgument object containing main arguments
@@ -188,12 +216,18 @@ def show_random_videos(args,
     :return:
     '''
     num_samples = len(samples_list)
-    idx_samples = np.random.randint(low=0, high=num_samples, size=samples)
+    idx_samples = np.random.choice(num_samples, size=samples, replace=False)
     for i in idx_samples:
         video_name = samples_list[i]
+
         target = np.load(osp.join(args.data_root, targets_dir, video_name + '.npy'))
-        args.chunk_size = 1
-        show_video_predictions(args, video_name, target, frames_dir=frames_dir)
+        num_frames = target.shape[0]
+        num_frames = num_frames - (num_frames % args.chunk_size)
+        target = target[:num_frames]
+        target = target[args.chunk_size // 2::args.chunk_size]
+
+        print(video_name)
+        show_video_predictions(args, video_name, target, frames_dir=frames_dir, fps=fps)
 
 def soft_argmax(scores):
     # scores.shape == (batch_size, num_classes).   scores are NOT passed through softmax
