@@ -5,7 +5,6 @@ __all__ = ['parse_trn_args']
 def parse_trn_args():
     parser = parse_base_args()
     parser.add_argument('--data_root', default='data/JUDO', type=str)
-
     #TODO: modify arguments below: actually are copied from configs/thumos/trn_thumos.py
     parser.add_argument('--model', default='TRN', type=str)
     parser.add_argument('--inputs', default='camera', type=str)
@@ -24,8 +23,4 @@ def parse_trn_args():
     parser.add_argument('--chunk_size', default=6, type=int)
     parser.add_argument('--reduce_lr_epoch', default=-1, type=int)
     parser.add_argument('--reduce_lr_count', default=-1, type=int)
-
-    # actually only used in data/JUDO/show_videos_labels.py
-    parser.add_argument('--video_name', default='', type=str)
-    parser.add_argument('--samples', default=1, type=int)
     return build_data_info(parser.parse_args())

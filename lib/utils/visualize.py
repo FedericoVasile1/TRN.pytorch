@@ -1,61 +1,10 @@
-import random
+import torch
+from PIL import Image
+import cv2
 
 import numpy as np
 import os.path as osp
 import os
-import torch
-import torch.nn as nn
-import torch.utils.data as data
-import torch.nn.functional as F
-from torchvision import transforms
-import cv2
-from PIL import Image
-
-from datasets import build_dataset
-
-__all__ = [
-    'set_seed',
-    'build_data_loader',
-    'weights_init',
-    'count_parameters',
-    'show_video_predictions',
-    'soft_argmax',
-]
-
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
-
-def build_data_loader(args, phase='train'):
-    data_loaders = data.DataLoader(
-        dataset=build_dataset(args, phase),
-        batch_size=args.batch_size,
-        shuffle=phase=='train',
-        num_workers=args.num_workers,
-    )
-    return data_loaders
-
-def weights_init(m):
-    if isinstance(m, nn.Conv2d):
-        #m.weight.data.normal_(0.0, 0.001)
-        pass
-    elif isinstance(m, nn.Linear):
-        m.weight.data.normal_(0.0, 0.001)
-    elif isinstance(m, nn.LSTMCell):
-        for param in m.parameters():
-            if len(param.shape) >= 2:
-                nn.init.orthogonal_(param.data)
-            else:
-                nn.init.normal_(param.data)
-
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def show_video_predictions(args,
                            video_name,
@@ -65,22 +14,28 @@ def show_video_predictions(args,
                            frames_dir='video_frames_24fps',
                            fps=24):
     '''
+    It shows the video_name together with its ground truth, its predictions(if provided), its attention
+     weights(if provided)
     :param args: ParserArgument object containing main arguments
     :param video_name: string containing the name of the video
-    :param enc_target_metrics: numpy array of shape(num_frames, num_classes) containing the ground truth of the video
+    :param enc_target_metrics: numpy array of shape(num_frames, num_classes) containing the ground truth of the video.
+                                Notice that the that array that comes here is **already chunked**
     :param enc_score_metrics: numpy array of shape(num_frames, num_classes) containing the output scores of the model
     :param attn_weights:
     :param frames_dir: string containing the base folder name, i.e. under the base folder there will be
                         one folder(i.e. video_name) for each video, this will contains the frames of that video
+    :param fps: int representing the fps at which the video is previously extracted(this number is needed in order
+                    to correctly make the conversion from index of frame to its time in seconds)
     :return:
     '''
     if enc_score_metrics is not None:
         enc_pred_metrics = torch.argmax(torch.tensor(enc_score_metrics), dim=1)
     enc_target_metrics = torch.argmax(torch.tensor(enc_target_metrics), dim=1)
 
+    speed = 1.0
+
     num_frames = enc_target_metrics.shape[0]
     idx = 0
-    #for idx in range(num_frames):
     while idx < num_frames:
         idx_frame = idx * args.chunk_size + args.chunk_size // 2
         pil_frame = Image.open(osp.join(args.data_root,
@@ -155,7 +110,7 @@ def show_video_predictions(args,
                     (255, 255, 255),
                     1)
         cv2.putText(open_cv_frame,
-                    'speed: {}x'.format(args.speed),
+                    'speed: {}x'.format(speed),
                     (275, 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.3,
@@ -176,7 +131,7 @@ def show_video_predictions(args,
         # since in our model we do not take all of the 24 frames, but only the central frame every chunk_size frames
         delay *= args.chunk_size
         # depending on the speed the video will be displayed faster(e.g. 2x if args.speed == 2.0) or slower
-        delay /= args.speed
+        delay /= speed
         key = cv2.waitKey(int(delay))  # time is in milliseconds
         if key == ord('q'):
             # quit
@@ -186,16 +141,20 @@ def show_video_predictions(args,
             # pause
             cv2.waitKey(-1)  # wait until any key is pressed
         if key == ord('e'):
+            # go faster
             delay /= 2
-            args.speed *= 2
+            speed *= 2
         if key == ord('w'):
+            # go slower
             delay *= 2
-            args.speed /= 2
+            speed /= 2
         if key == ord('a'):
+            # skip backward
             idx -= fps
             if idx < 0:
                 idx = 0
         if key == ord('s'):
+            # skip forward
             idx += fps
 
         idx += 1
@@ -229,9 +188,42 @@ def show_random_videos(args,
         print('lib.utils.visualize.show_random_videos: showing video: ' + video_name)
         show_video_predictions(args, video_name, target, frames_dir=frames_dir, fps=fps)
 
-def soft_argmax(scores):
-    # scores.shape == (batch_size, num_classes).   scores are NOT passed through softmax
-    softmax = F.softmax(scores, dim=1)
-    pos = torch.arange(scores.shape[1]).to(scores.device)
-    softargmax = torch.sum(pos * softmax, dim=1)
-    return softargmax
+def print_stats_classes(args):
+    class_to_count = {}
+    for i in range(args.num_classes):
+        class_to_count[i] = 0
+
+    valid_samples = None
+    if args.phase != '':
+        valid_samples = getattr(args, args.phase + '_session_set')
+
+    TARGETS_BASE_DIR = os.path.join(args.data_root, args.target_labels_dir)
+    tot_samples = 0
+    for video_name in os.listdir(TARGETS_BASE_DIR):
+        if '.npy' not in video_name:
+            continue
+        if valid_samples is not None and video_name[:-4] not in valid_samples:
+            continue
+
+        target = np.load(os.path.join(TARGETS_BASE_DIR, video_name))
+        num_frames = target.shape[0]
+        num_frames = num_frames - (num_frames % args.chunk_size)
+        target = target[:num_frames]
+        # For each chunk, take only the central frame
+        target = target[args.chunk_size // 2::args.chunk_size]
+
+        target = target.argmax(axis=1)
+        unique, counts = np.unique(target, return_counts=True)
+
+        tot_samples += counts.sum()
+
+        for idx, idx_class in enumerate(unique):
+            class_to_count[idx_class] += counts[idx]
+
+    if valid_samples is not None:
+        print('=== PHASE: {} ==='.format(args.phase))
+    else:
+        print('=== ALL DATASET ===')
+    for idx_class, count in class_to_count.items():
+        class_name = args.class_index[idx_class]
+        print('{:15s}:  {:.1f} %'.format(class_name, count / tot_samples * 100))
