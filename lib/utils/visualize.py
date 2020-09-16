@@ -72,7 +72,7 @@ def show_video_predictions(args,
 
             open_cv_frame = cv2.resize(open_cv_frame, (original_W, original_H), interpolation=cv2.INTER_AREA)
 
-        open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 60, 0, 20, 20, borderType=cv2.BORDER_CONSTANT, value=0)
+        open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 60, 0, 30, 30, borderType=cv2.BORDER_CONSTANT, value=0)
         pred_label = args.class_index[enc_pred_metrics[idx]] if enc_score_metrics is not None else 'junk'
         target_label = args.class_index[enc_target_metrics[idx]]
 
@@ -104,21 +104,21 @@ def show_video_predictions(args,
         # [ (idx_frame + 1) / 24 ]    => 24 because frames has been extracted at 24 fps
         cv2.putText(open_cv_frame,
                     '{:.2f}s'.format((idx_frame + 1) / fps),
-                    (275, 40),
+                    (285, 40),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.3,
                     (255, 255, 255),
                     1)
         cv2.putText(open_cv_frame,
                     'speed: {}x'.format(speed),
-                    (275, 20),
+                    (285, 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.3,
                     (255, 255, 255),
                     1)
         cv2.putText(open_cv_frame,
                     str(idx_frame + 1),
-                    (275, 50),
+                    (285, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.3,
                     (255, 255, 255),

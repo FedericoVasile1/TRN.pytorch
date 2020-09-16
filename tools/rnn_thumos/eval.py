@@ -19,6 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 sys.path.append(os.getcwd())
 import _init_paths
 import utils as utl
+from lib.utils.visualize import show_video_predictions
 from configs.thumos import parse_trn_args as parse_args
 from models import build_model
 
@@ -57,11 +58,11 @@ def main(args):
 
     softmax = nn.Softmax(dim=1).to(device)
 
-    if args.show_video_predictions:
+    if args.show_predictions:
         count_frames = 0
         if args.seed_show_predictions != -1:
             random.seed(args.seed_show_predictions)
-        args.test_session_set = random.shuffle(args.test_session_set)
+        random.shuffle(args.test_session_set)
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
@@ -88,10 +89,10 @@ def main(args):
                                                                                  end - start))
 
         if args.show_predictions:
-            utl.show_video_predictions(args,
-                                       session,
-                                       enc_target_metrics[count_frames:count_frames + target.shape[0]],
-                                       enc_score_metrics[count_frames:count_frames + target.shape[0]])
+            show_video_predictions(args,
+                                   session,
+                                   enc_target_metrics[count_frames:count_frames + target.shape[0]],
+                                   enc_score_metrics[count_frames:count_frames + target.shape[0]])
             count_frames += target.shape[0]
 
     save_dir = osp.dirname(args.checkpoint)
