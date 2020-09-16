@@ -19,6 +19,7 @@ def parse_trn_args():
     parser.add_argument('--feature_extractor', default='', type=str)
     parser.add_argument('--put_linear', action='store_true')
     parser.add_argument('--show_predictions', action='store_true')
+    parser.add_argument('--seed_show_predictions', default=-1, type=int)
     parser.add_argument('--chunk_size', default=6, type=int)
     parser.add_argument('--reduce_lr_epoch', default=-1, type=int)
     parser.add_argument('--reduce_lr_count', default=-1, type=int)

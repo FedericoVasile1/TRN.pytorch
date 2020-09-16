@@ -1,11 +1,8 @@
-'''
-PYTHONPATH=/Users/federicovasile/Documents/Tirocinio/trn_repo/TRN.pytorch python tools/trn2_thumos/eval.py --epochs 1 --enc_steps 8 --dec_steps 2 --hidden_size 16 --neurons 8 --feat_vect_dim 512 --data_info data/small_data_info.json --model TRN2V2 --checkpoint tools/trn2_thumos/checkpoints/inputs-camera-epoch-1.pth
-'''
-
 import os
 import os.path as osp
 import sys
 import time
+import random
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -17,10 +14,9 @@ from sklearn.metrics import confusion_matrix
 import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
-from PIL import Image
 
-import cv2
 
+sys.path.append(os.getcwd())
 import _init_paths
 import utils as utl
 from configs.thumos import parse_trn_args as parse_args
@@ -61,7 +57,11 @@ def main(args):
 
     softmax = nn.Softmax(dim=1).to(device)
 
-    count_frames = 0
+    if args.show_video_predictions:
+        count_frames = 0
+        if args.seed_show_predictions != -1:
+            random.seed(args.seed_show_predictions)
+        args.test_session_set = random.shuffle(args.test_session_set)
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
@@ -75,28 +75,36 @@ def main(args):
                     enc_c_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
 
                 camera_input = to_device(camera_inputs[l], device)
-                enc_score, enc_h_n, enc_c_n = model.step(camera_input, enc_h_n, enc_c_n)
+                enc_score, enc_h_n, enc_c_n = model.step(camera_input, torch.zeros(1), enc_h_n, enc_c_n)
 
                 enc_score_metrics.append(softmax(enc_score).cpu().numpy()[0])
                 enc_target_metrics.append(target[l])
 
         end = time.time()
 
-        print('Processed session {}, {:2} of {}, running time {:.2f} sec'.format(
-            session, session_idx, len(args.test_session_set), end - start))
+        print('Processed session {}, {:2} of {}, running time {:.2f} sec'.format(session,
+                                                                                 session_idx,
+                                                                                 len(args.test_session_set),
+                                                                                 end - start))
 
         if args.show_predictions:
-            utl.show_video_predictions(args, camera_inputs, session,
-                                       enc_score_metrics[count_frames:count_frames + target.shape[0]],
-                                       enc_target_metrics[count_frames:count_frames + target.shape[0]])
+            utl.show_video_predictions(args,
+                                       session,
+                                       enc_target_metrics[count_frames:count_frames + target.shape[0]],
+                                       enc_score_metrics[count_frames:count_frames + target.shape[0]])
             count_frames += target.shape[0]
 
     save_dir = osp.dirname(args.checkpoint)
     result_file  = osp.basename(args.checkpoint).replace('.pth', '.json')
     # Compute result for encoder
     utl.compute_result_multilabel(args.class_index,
-                                  enc_score_metrics, enc_target_metrics,
-                                  save_dir, result_file, ignore_class=[0,21], save=True, verbose=True)
+                                  enc_score_metrics,
+                                  enc_target_metrics,
+                                  save_dir,
+                                  result_file,
+                                  ignore_class=[0,21],
+                                  save=True,
+                                  verbose=True)
 
     writer = SummaryWriter()
 

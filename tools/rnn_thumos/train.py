@@ -8,6 +8,7 @@ import torch.nn as nn
 from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 
+sys.path.append(os.getcwd())
 import _init_paths
 import utils as utl
 from configs.thumos import parse_trn_args as parse_args
@@ -128,10 +129,11 @@ def main(args):
                         writer.add_scalar('Loss_iter/val_enc', loss.item(), batch_idx_test)
                         batch_idx_test += 1
 
-                    print('[{:5s}] Epoch: {:2}  Iteration: {:3}  Loss: {:.5f}'.format(phase,
-                                                                                      epoch,
-                                                                                      batch_idx,
-                                                                                      loss.item()))
+                    if args.verbose:
+                        print('[{:5s}] Epoch: {:2}  Iteration: {:3}  Loss: {:.5f}'.format(phase,
+                                                                                          epoch,
+                                                                                          batch_idx,
+                                                                                          loss.item()))
         end = time.time()
 
         if epoch > args.start_epoch:

@@ -7,7 +7,7 @@ def parse_base_args():
     parser.add_argument('--data_info', default='data/data_info.json', type=str)
     parser.add_argument('--checkpoint', default='', type=str)
     parser.add_argument('--start_epoch', default=1, type=int)
-    parser.add_argument('--verbose', action='store_false')
+    parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--debug', action='store_false')
     parser.add_argument('--distributed', action='store_true')
     parser.add_argument('--gpu', default='1', type=str)
