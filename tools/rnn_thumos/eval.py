@@ -2,6 +2,7 @@ import os
 import os.path as osp
 import sys
 import time
+import json
 import random
 from datetime import datetime
 import numpy as np
@@ -21,25 +22,11 @@ import _init_paths
 import utils as utl
 from lib.utils.visualize import show_video_predictions
 from configs.thumos import parse_trn_args as parse_args
+from lib.utils.visualize import plot_perclassap_bar, plot_to_image, add_pr_curve_tensorboard
 from models import build_model
 
 def to_device(x, device):
     return x.unsqueeze(0).to(device)
-
-def add_pr_curve_tensorboard(writer, class_name, class_index, labels, probs_predicted, global_step=0):
-    '''
-    Takes in a "class_index" and plots the corresponding
-    precision-recall curve
-    '''
-    # Labels from all classes must be binarize to the only label of the current class
-    class_labels = labels == class_index
-    # For each sample, take only the probability of the current class
-    class_probs_predicted = probs_predicted[:, class_index]
-
-    writer.add_pr_curve(class_name,
-                        class_labels,
-                        class_probs_predicted,
-                        global_step=global_step)
 
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -109,6 +96,17 @@ def main(args):
 
     writer = SummaryWriter()
 
+    # get per class AP: the function utl.compute_result_multilabel(be sure that it has the parameter save == True) has
+    #  stored a JSON file containing per class AP: we load this json into a dict and add an histogram to tensorboard
+    with open(osp.join(save_dir, result_file), 'r') as f:
+        per_class_ap = json.load(f)['AP']
+    for class_name in per_class_ap:
+        per_class_ap[class_name] = round(per_class_ap[class_name], 2)
+    figure = plot_perclassap_bar(per_class_ap.keys(), per_class_ap.values(), title=args.dataset+': per-class AP')
+    figure = plot_to_image(figure)
+    writer.add_image(args.dataset+': per-class AP', np.transpose(figure, (2, 0, 1)), 0)
+    writer.close()
+
     enc_score_metrics = np.array(enc_score_metrics)
     # Assign cliff diving (5) as diving (8)
     switch_index = np.where(enc_score_metrics[:, 5] > enc_score_metrics[:, 8])[0]
@@ -121,8 +119,11 @@ def main(args):
     for idx_class in range(len(args.class_index)):
         if idx_class == 20 or idx_class == 5:
             continue  # ignore ambiguos class and cliff diving class
-        add_pr_curve_tensorboard(writer, args.class_index[idx_class], idx_class,
-                                 enc_target_metrics, enc_score_metrics)
+        add_pr_curve_tensorboard(writer,
+                                 args.class_index[idx_class],
+                                 idx_class,
+                                 enc_target_metrics,
+                                 enc_score_metrics)
     writer.close()
 
     # For each sample, takes the predicted class based on his scores

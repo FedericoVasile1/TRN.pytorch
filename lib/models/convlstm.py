@@ -23,7 +23,7 @@ class GlobalAveragePooling(nn.Module):
 
     def forward(self, x):
         # The shape of x must be (batch_size, num_channels, height, width)
-        return x.mean(2, 3)
+        return x.mean(dim=(2, 3))
 
 class ConvLSTMCell(nn.Module):
     def __init__(self, input_dim, hidden_dim, kernel_size, bias):
@@ -150,7 +150,7 @@ class ConvLSTM(nn.Module):
         '''
         # NOTICE THAT TO USE THIS WE MUST HAVE hidden_dim[-1] == self.num_classes
         assert hidden_dim[-1] == self.num_classes
-        self.classifier == nn.Sequential(
+        self.classifier = nn.Sequential(
             GlobalAveragePooling(),
         )
         '''

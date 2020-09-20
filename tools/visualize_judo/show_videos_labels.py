@@ -1,3 +1,5 @@
+from torchvision import transforms
+
 import os
 import sys
 import argparse
@@ -59,4 +61,5 @@ if __name__ == '__main__':
                        samples=args.samples if len(videos_list) > args.samples else len(videos_list),
                        frames_dir=args.frames_dir,
                        targets_dir=args.targets_dir,
-                       fps=args.fps)
+                       fps=args.fps,
+                       transform=transform)

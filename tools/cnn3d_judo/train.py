@@ -14,6 +14,15 @@ from configs.thumos import parse_trn_args as parse_args
 from models import build_model
 
 def main(args):
+    # fix between batch_size and enc_steps, due to the way the dataset class works(i.e. this model do not
+    # have a recurrent part, so we do not have the concept of 'enc_steps', so we arrange it manually here
+    # only to make the dataset class working properly)
+    # e.g. args.batch_size == 64
+    args.enc_steps = args.batch_size // 2    # 32
+    args.batch_size = 2                     # 2
+    # now, since after we will fuse batch_size and enc_steps(i.e. batch_size * enc_steps) we will
+    # get back to the original batch_size, i.e. 32 * 2 = 64
+
     this_dir = osp.join(osp.dirname(__file__), '.')
     save_dir = osp.join(this_dir, 'checkpoints')
     if not osp.isdir(save_dir):
@@ -32,8 +41,10 @@ def main(args):
         model = nn.DataParallel(model)
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
+    #TODO: think about whether to weight classes or not
+    criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    lr_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=args.reduce_lr_count, verbose=True)
     if osp.isfile(args.checkpoint):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         for param_group in optimizer.param_groups:
@@ -42,6 +53,7 @@ def main(args):
     softmax = nn.Softmax(dim=1).to(device)
 
     writer = SummaryWriter()
+
     command = 'python ' + ' '.join(sys.argv)
     f = open(writer.log_dir + '/run_command.txt', 'w+')
     f.write(command)
@@ -51,22 +63,21 @@ def main(args):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
         camera_inputs, _, _, _ = dataiter.next()
-        model.train(False)
+        camera_inputs = camera_inputs.view(-1,
+                                           camera_inputs.shape[2],
+                                           camera_inputs.shape[3],
+                                           camera_inputs.shape[4],
+                                           camera_inputs.shape[5])
         writer.add_graph(model, camera_inputs.to(device))
         writer.close()
 
     batch_idx_train = 1
     batch_idx_test = 1
-    count_reduce_val_loss = 0
-    min_val_loss = -1
+    best_val_map = -1
+    epoch_best_val_map = -1
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
-        if epoch == args.reduce_lr_epoch or count_reduce_val_loss == args.reduce_lr_count:
-            if count_reduce_val_loss == args.reduce_lr_count:
-                count_reduce_val_loss = 0
-                print('=== Learning rate reduction due to validation loss stagnation '
-                      'after ' + str(args.reduce_lr_count) + ' epochs ===')
-            else:
-                print('=== Learning rate reduction planned for epoch ' + str(args.reduce_lr_epoch) + ' ===')
+        if epoch == args.reduce_lr_epoch:
+            print('=== Learning rate reduction planned for epoch ' + str(args.reduce_lr_epoch) + ' ===')
             args.lr = args.lr * 0.1
             for param_group in optimizer.param_groups:
                 param_group['lr'] = args.lr
@@ -89,23 +100,28 @@ def main(args):
 
             with torch.set_grad_enabled(training):
                 for batch_idx, (camera_inputs, _, targets, _) in enumerate(data_loaders[phase], start=1):
-                    # camera_inputs.shape == (batch_size, enc_steps, 3, chunk_size, 112, 112 [if starting from frames])
+                    # camera.inputs.shape == (batch_size, enc_steps, C, chunk_size, H, W)
                     # targets.shape == (batch_size, enc_steps, num_classes)
+
+                    # fuse batch_size and enc_steps
+                    camera_inputs = camera_inputs.view(-1,
+                                                       camera_inputs.shape[2],
+                                                       camera_inputs.shape[3],
+                                                       camera_inputs.shape[4],
+                                                       camera_inputs.shape[5])
+                    targets = targets.view(-1, targets.shape[2])
+
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
 
                     if training:
                         optimizer.zero_grad()
 
-                    scores = model(camera_inputs)            # scores.shape == (batch_size, enc_steps, num_classes)
+                    scores = model(camera_inputs)       # scores.shape == (batch_size, num_classes)
 
                     scores = scores.to(device)
                     targets = targets.to(device)
-                    # sum losses along all timesteps
-                    loss = criterion(scores[:, 0], targets[:, 0].max(axis=1)[1])
-                    for step in range(1, camera_inputs.shape[1]):
-                        loss += criterion(scores[:, step], targets[:, step].max(axis=1)[1])
-                    loss /= camera_inputs.shape[1]      # scale by enc_steps
+                    loss = criterion(scores, targets.max(axis=1)[1])
 
                     losses[phase] += loss.item() * batch_size
 
@@ -114,37 +130,30 @@ def main(args):
                         optimizer.step()
 
                     # Prepare metrics
-                    scores = scores.view(-1, args.num_classes)
-                    targets = targets.view(-1, args.num_classes)
                     scores = softmax(scores).cpu().detach().numpy()
                     targets = targets.cpu().detach().numpy()
                     score_metrics[phase].extend(scores)
                     target_metrics[phase].extend(targets)
 
                     if training:
-                        writer.add_scalar('Loss_iter/train_enc', loss.item(), batch_idx_train)
+                        writer.add_scalar('Loss_iter/train', loss.item(), batch_idx_train)
                         batch_idx_train += 1
                     else:
-                        writer.add_scalar('Loss_iter/val_enc', loss.item(), batch_idx_test)
+                        writer.add_scalar('Loss_iter/val', loss.item(), batch_idx_test)
                         batch_idx_test += 1
 
-                    print('[{:5s}] Epoch: {:2}  Iteration: {:3}  Loss: {:.5f}'.format(phase,
-                                                                                      epoch,
-                                                                                      batch_idx,
-                                                                                      loss.item()))
+                    if args.verbose:
+                        print('[{:5s}] Epoch: {:2}  Iteration: {:3}  Loss: {:.5f}'.format(phase,
+                                                                                          epoch,
+                                                                                          batch_idx,
+                                                                                          loss.item()))
         end = time.time()
 
-        if epoch > args.start_epoch:
-            if losses['test'] > min_val_loss:
-                count_reduce_val_loss += 1
-            else:
-                min_val_loss = losses['test']
-                count_reduce_val_loss = 0
-        else:
-            min_val_loss = losses['test']
+        lr_sched.step(losses['val'] / (len(data_loaders['val'].dataset) * args.enc_steps))
 
-        writer.add_scalars('Loss_epoch/train_val_enc',
-                           {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
+        writer.add_scalars('Loss_epoch/train_val',
+                           {phase: losses[phase] / (len(data_loaders[phase].dataset) * args.enc_steps)
+                            for phase in args.phases},
                            epoch)
 
         result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
@@ -158,25 +167,36 @@ def main(args):
             save=True,
         ) for phase in args.phases}
 
-        writer.add_scalars('mAP_epoch/train_val_enc', {phase: mAP[phase] for phase in args.phases}, epoch)
+        writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
 
-        log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f} |'
-        log += ' [test] loss: {:.5f}  mAP: {:.4f}  |\n'
+        log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f}  |'
+        log += ' [test] loss: {:.5f}  mAP: {:.4f}|\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
-                              losses['train'] / len(data_loaders['train'].dataset),
+                              losses['train'] / (len(data_loaders['train'].dataset) * args.enc_steps),
                               mAP['train'],
-                              losses['test'] / len(data_loaders['test'].dataset),
+                              losses['test'] / (len(data_loaders['test'].dataset) * args.enc_steps),
                               mAP['test'],
                               end - start)
         print(log)
 
-        checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-        }, osp.join(save_dir, checkpoint_file))
+        if best_val_map < mAP['val']:
+            best_val_map = mAP['val']
+            epoch_best_val_map = epoch
+
+            checkpoint_file = 'model-{}-feature_extractor-{}.pth'.format(args.mode, args.feature_extractor)
+            torch.save({
+                'val_mAP': best_val_map,
+                'epoch': epoch,
+                'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }, osp.join(save_dir, checkpoint_file))
+
+    str = '--- Best validation mAP is {:.3f}% obtained at epoch {} ---'.format(best_val_map, epoch_best_val_map)
+    print(str)
+    f = open(writer.log_dir + '/run_command.txt', 'a')
+    f.write('\n'+str)
+    f.close()
 
 if __name__ == '__main__':
     main(parse_args())

@@ -7,6 +7,7 @@ def parse_trn_args():
     parser.add_argument('--data_root', default='data/THUMOS', type=str)
     parser.add_argument('--model', default='TRN', type=str)
     parser.add_argument('--inputs', default='camera', type=str)
+    parser.add_argument('--phases', default=['train', 'test'], type=list)
     parser.add_argument('--hidden_size', default=1024, type=int)
     parser.add_argument('--camera_feature', default='resnet3d_112x112', type=str)
     parser.add_argument('--motion_feature', default='', type=str)

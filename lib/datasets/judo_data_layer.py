@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.utils.data as data
 
-class TRNTHUMOSDataLayer(data.Dataset):
+class TRNJUDODataLayer(data.Dataset):
     def __init__(self, args, phase='train'):
         self.data_root = args.data_root
         self.camera_feature = args.camera_feature
@@ -17,7 +17,14 @@ class TRNTHUMOSDataLayer(data.Dataset):
 
         self.inputs = []
         for session in self.sessions:
-            target = np.load(osp.join(self.data_root, 'target_startend' if args.num_classes == 44 else 'target', session+'.npy'))
+            target = np.load(osp.join(self.data_root, 'target_frames_25fps', session+'.npy'))
+            # round to multiple of CHUNK_SIZE
+            num_frames = target.shape[0]
+            num_frames = num_frames - (num_frames % self.CHUNK_SIZE)
+            target = target[:num_frames]
+            # For each chunk, take only the central frame
+            target = target[self.CHUNK_SIZE // 2::self.CHUNK_SIZE]
+
             seed = np.random.randint(self.enc_steps) if self.training else 0
             for start, end in zip(range(seed, target.shape[0] - self.dec_steps, self.enc_steps),
                                   range(seed + self.enc_steps, target.shape[0] - self.dec_steps, self.enc_steps)):

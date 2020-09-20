@@ -1,5 +1,7 @@
 from .thumos_data_layer import TRNTHUMOSDataLayer
 from .thumos_data_layer_e2e import TRNTHUMOSDataLayerE2E
+from .judo_data_layer import TRNJUDODataLayer
+from .judo_data_layer_e2e import TRNJUDODataLayerE2E
 
 _DATA_LAYERS = {
     'TRNTHUMOS': TRNTHUMOSDataLayer,
@@ -14,6 +16,7 @@ _DATA_LAYERS = {
     'DISCRIMINATORCNN3DTHUMOSE2E': TRNTHUMOSDataLayerE2E,
     'DISCRIMINATORCNNTHUMOSE2E': TRNTHUMOSDataLayerE2E,
     'CONVLSTMTHUMOSE2E': TRNTHUMOSDataLayerE2E,
+    'CONVLSTMTHUMOS': TRNTHUMOSDataLayer,
     'CNNTHUMOSE2E': TRNTHUMOSDataLayerE2E,
     'IDUTHUMOS': TRNTHUMOSDataLayer,
     'IDUTHUMOSE2E': TRNTHUMOSDataLayerE2E,
@@ -24,6 +27,14 @@ _DATA_LAYERS = {
     'GRUATTENTIONTHUMOS': TRNTHUMOSDataLayer,
     'DCCLSTMTHUMOS': TRNTHUMOSDataLayer,
     'DCCGRUTHUMOS': TRNTHUMOSDataLayer,
+
+    'TRNJUDO': TRNJUDODataLayer,
+    'TRNJUDOE2E': TRNJUDODataLayerE2E,
+    'LSTMJUDO': TRNJUDODataLayer,
+    'LSTMJUDOE2E': TRNJUDODataLayerE2E,
+    'GRUJUDO': TRNJUDODataLayer,
+    'GRUJUDOE2E': TRNJUDODataLayerE2E,
+    'CNN3DJUDOE2E': TRNJUDODataLayerE2E,
 }
 
 def build_dataset(args, phase):

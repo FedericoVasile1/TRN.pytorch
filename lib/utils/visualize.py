@@ -5,6 +5,8 @@ import cv2
 import numpy as np
 import os.path as osp
 import os
+import matplotlib.pyplot as plt
+import io
 
 def show_video_predictions(args,
                            video_name,
@@ -12,7 +14,8 @@ def show_video_predictions(args,
                            enc_score_metrics=None,
                            attn_weights=None,
                            frames_dir='video_frames_24fps',
-                           fps=24):
+                           fps=24,
+                           transform=None):
     '''
     It shows the video_name together with its ground truth, its predictions(if provided), its attention
      weights(if provided)
@@ -42,6 +45,9 @@ def show_video_predictions(args,
                                         frames_dir,
                                         video_name,
                                         str(idx_frame + 1) + '.jpg')).convert('RGB')
+        if transform is not None:
+            pil_frame = transform(pil_frame)
+
         open_cv_frame = np.array(pil_frame)
 
         # Convert RGB to BGR
@@ -164,7 +170,8 @@ def show_random_videos(args,
                        samples=1,
                        frames_dir='video_frames_24fps',
                        targets_dir='target_frames_24fps',
-                       fps=24):
+                       fps=24,
+                       transform=None):
     '''
     It shows sampled videos from samples_list, randomly sampled. Furthermore, labels are attached to video.
     :param args: ParserArgument object containing main arguments
@@ -186,7 +193,7 @@ def show_random_videos(args,
         target = target[args.chunk_size // 2::args.chunk_size]
 
         print('lib.utils.visualize.show_random_videos: showing video: ' + video_name)
-        show_video_predictions(args, video_name, target, frames_dir=frames_dir, fps=fps)
+        show_video_predictions(args, video_name, target, frames_dir=frames_dir, fps=fps, transform=transform)
 
 def print_stats_classes(args):
     class_to_count = {}
@@ -227,3 +234,46 @@ def print_stats_classes(args):
     for idx_class, count in class_to_count.items():
         class_name = args.class_index[idx_class]
         print('{:15s}:  {:.1f} %'.format(class_name, count / tot_samples * 100))
+
+def plot_perclassap_bar(classes, values, figsize=(8, 5), color='b', title=None, show_image=False):
+    figure = plt.figure(figsize=figsize)
+    plt.bar(classes, values, color=color)
+    plt.title(title, color='black')
+    plt.xlabel('Class')
+    plt.ylabel('AP')
+    if show_image:
+        plt.show()
+    return figure
+
+def plot_to_image(figure):
+    """Converts the matplotlib plot specified by 'figure' to a PNG image and
+    returns it. The supplied figure is closed and inaccessible after this call."""
+    # Save the plot to a PNG in memory.
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    # Closing the figure prevents it from being displayed directly inside
+    # the notebook.
+    plt.close(figure)
+    buf.seek(0)
+    # Convert PNG buffer to numpy array
+    image = np.frombuffer(buf.getvalue(), dtype=np.uint8)
+    buf.close()
+
+    image = cv2.imdecode(image, 1)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    return image
+
+def add_pr_curve_tensorboard(writer, class_name, class_index, labels, probs_predicted, global_step=0):
+    '''
+    Takes in a "class_index" and plots the corresponding
+    precision-recall curve
+    '''
+    # Labels from all classes must be binarize to the only label of the current class
+    class_labels = labels == class_index
+    # For each sample, take only the probability of the current class
+    class_probs_predicted = probs_predicted[:, class_index]
+
+    writer.add_pr_curve(class_name,
+                        class_labels,
+                        class_probs_predicted,
+                        global_step=global_step)

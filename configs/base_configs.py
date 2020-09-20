@@ -17,6 +17,5 @@ def parse_base_args():
     parser.add_argument('--lr', default=5e-04, type=float)
     parser.add_argument('--weight_decay', default=5e-04, type=float)
     parser.add_argument('--seed', default=25, type=int)
-    parser.add_argument('--phases', default=['train', 'test'], type=list)
     parser.add_argument('--speed', default=1.0, type=float)
     return parser
