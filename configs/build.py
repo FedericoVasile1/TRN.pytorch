@@ -25,10 +25,10 @@ def build_data_info(args, basic_build=False):
         raise Exception('The current pipeline do not support rgb and flow fusion between feature maps.'
                         'Use rgb feature maps only or switch to feature vectors if you want to do '
                         'the fusion.')
-    if args.camera_feature == 'video_frames_24fps' and (args.inputs != 'camera' or args.motion_feature != ''):
-        raise Exception('Currently the end to end mode is avaible for rgb input.')
+    if 'video_frames_' in args.camera_feature and (args.inputs != 'camera' or args.motion_feature != ''):
+        raise Exception('Currently the end to end mode is available for rgb input.')
 
-    args.E2E = 'E2E' if args.camera_feature == 'video_frames_24fps' else ''
+    args.E2E = 'E2E' if 'video_frames_' in args.camera_feature else ''
 
     if args.feature_extractor == 'RESNET2+1D' \
             or args.feature_extractor == 'I3D' \

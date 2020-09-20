@@ -7,7 +7,7 @@ from lib.models.i3d import InceptionI3d
 class CNN3D(nn.Module):
     def __init__(self, args):
         super(CNN3D, self).__init__()
-        if args.camera_feature != 'video_frames_24fps':
+        if 'video_frames_' not in args.camera_feature:
             raise Exception('Wrong camera_feature option. The chosen model can only work in end to end training')
 
         if args.model == 'CNN3D' or args.model == 'DISCRIMINATORCNN3D':
