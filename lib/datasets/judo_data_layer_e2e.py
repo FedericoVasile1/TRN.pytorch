@@ -30,15 +30,15 @@ class TRNJUDODataLayerE2E(data.Dataset):
         if args.is_3D:
             if args.feature_extractor == 'I3D':
                 self.transform = transforms.Compose([
-                    transforms.Resize((180, 320)),
-                    transforms.CenterCrop(180),
+                    transforms.Resize((224, 320)),
+                    transforms.CenterCrop(224),
                     transforms.ToTensor(),
                     I3DNormalization(),
                 ])
             else:
                 self.transform = transforms.Compose([
-                    transforms.Resize((180, 320)),
-                    transforms.CenterCrop(180),
+                    transforms.Resize((224, 320)),
+                    transforms.CenterCrop(224),
                     transforms.ToTensor(),
                     transforms.Normalize([0.43216, 0.394666, 0.37645], [0.22803, 0.22145, 0.216989])
                 ])
@@ -46,8 +46,8 @@ class TRNJUDODataLayerE2E(data.Dataset):
             self.is_3D = True
         else:
             self.transform = transforms.Compose([
-                transforms.Resize((180, 320)),
-                transforms.CenterCrop(180),
+                transforms.Resize((224, 320)),
+                transforms.CenterCrop(224),
                 transforms.ToTensor(),
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ])

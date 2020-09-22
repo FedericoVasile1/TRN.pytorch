@@ -56,6 +56,14 @@ if __name__ == '__main__':
     else:
         videos_list = [args.video_name]
 
+    '''
+    transform = transforms.Compose([
+        transforms.Resize((224, 320)),
+        transforms.CenterCrop(224),
+    ])
+    '''
+    transform = None
+
     show_random_videos(args,
                        videos_list,
                        samples=args.samples if len(videos_list) > args.samples else len(videos_list),
