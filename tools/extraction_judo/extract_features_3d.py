@@ -49,7 +49,7 @@ def main():
 
     with torch.set_grad_enabled(False):
         videos_dir = os.listdir(os.path.join(DATA_ROOT, VIDEO_FRAMES))
-        videos_dir = [dir for dir in videos_dir if 'video' in dir]
+        videos_dir = [dir for dir in videos_dir if '.mp4' in dir]
         for dir in videos_dir:
             num_frames = len(os.listdir(os.path.join(DATA_ROOT, VIDEO_FRAMES, dir)))
             num_frames = num_frames - (num_frames % SAMPLE_FRAMES)

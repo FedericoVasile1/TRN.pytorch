@@ -40,8 +40,8 @@ def compute_result_multilabel(class_index, score_metrics, target_metrics, save_d
         switch_index = np.where(score_metrics[:, 5] > score_metrics[:, 8])[0]
         score_metrics[switch_index, 8] = score_metrics[switch_index, 5]
 
-    if ignore_class == [] and not switch:
-        # this is only for DISCRIMINATOR model
+    if (ignore_class == [] and not switch) or ignore_class == [0]:
+        # this is only for DISCRIMINATOR model or for judo dataset
         valid_index = list(range(target_metrics.shape[0]))      # indexes all valid
     else:
         # Remove ambiguous (21)

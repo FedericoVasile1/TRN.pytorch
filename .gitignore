@@ -21,6 +21,7 @@ data/JUDO/video_frames_*
 data/JUDO/target_frames_*
 data/JUDO/data_00
 data/JUDO/metadati.csv
+data/JUDO/i3d_224x224
 
 model_zoo/*
 

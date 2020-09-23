@@ -164,8 +164,9 @@ def main(args):
             target_metrics[phase],
             save_dir,
             result_file[phase],
-            ignore_class=[0, 21],
+            ignore_class=[0],
             save=True,
+            switch=False,
         ) for phase in args.phases}
 
         writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
@@ -193,10 +194,10 @@ def main(args):
                 'optimizer_state_dict': optimizer.state_dict(),
             }, osp.join(save_dir, checkpoint_file))
 
-    str = '--- Best validation mAP is {:.3f}% obtained at epoch {} ---'.format(best_val_map, epoch_best_val_map)
-    print(str)
+    log = '--- Best validation mAP is {:.3f}% obtained at epoch {} ---'.format(best_val_map, epoch_best_val_map)
+    print(log)
     f = open(writer.log_dir + '/run_command.txt', 'a')
-    f.write('\n'+str)
+    f.write('\n'+log)
     f.close()
 
 if __name__ == '__main__':
