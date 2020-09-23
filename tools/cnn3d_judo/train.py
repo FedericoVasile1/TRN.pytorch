@@ -73,7 +73,7 @@ def main(args):
         writer.close()
 
     batch_idx_train = 1
-    batch_idx_test = 1
+    batch_idx_val = 1
     best_val_map = -1
     epoch_best_val_map = -1
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
@@ -140,8 +140,8 @@ def main(args):
                         writer.add_scalar('Loss_iter/train', loss.item(), batch_idx_train)
                         batch_idx_train += 1
                     else:
-                        writer.add_scalar('Loss_iter/val', loss.item(), batch_idx_test)
-                        batch_idx_test += 1
+                        writer.add_scalar('Loss_iter/val', loss.item(), batch_idx_val)
+                        batch_idx_val += 1
 
                     if args.verbose:
                         print('[{:5s}] Epoch: {:2}  Iteration: {:3}  Loss: {:.5f}'.format(phase,
@@ -172,13 +172,13 @@ def main(args):
         writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
 
         log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f}  |'
-        log += ' [test] loss: {:.5f}  mAP: {:.4f}|\n'
+        log += ' [val] loss: {:.5f}  mAP: {:.4f}|\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
                               losses['train'] / (len(data_loaders['train'].dataset) * args.enc_steps),
                               mAP['train'],
-                              losses['test'] / (len(data_loaders['test'].dataset) * args.enc_steps),
-                              mAP['test'],
+                              losses['val'] / (len(data_loaders['val'].dataset) * args.enc_steps),
+                              mAP['val'],
                               end - start)
         print(log)
 
