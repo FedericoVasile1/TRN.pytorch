@@ -186,7 +186,7 @@ def main(args):
             best_val_map = mAP['val']
             epoch_best_val_map = epoch
 
-            checkpoint_file = 'model-{}-feature_extractor-{}.pth'.format(args.mode, args.feature_extractor)
+            checkpoint_file = 'model-{}-feature_extractor-{}.pth'.format(args.model, args.feature_extractor)
             torch.save({
                 'val_mAP': best_val_map,
                 'epoch': epoch,
