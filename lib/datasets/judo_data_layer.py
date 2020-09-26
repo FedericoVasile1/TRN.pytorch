@@ -15,6 +15,10 @@ class TRNJUDODataLayer(data.Dataset):
         self.training = phase=='train'
         self.args_inputs = args.inputs
 
+        if self.camera_feature not in ('i3d_224x224', 'resnet2+1d_224x224'):
+            raise Exception('Wrong --camera_feature option: actually only i3d_224x224 and resnet2+1d_224x224 supported')
+        self.CHUNK_SIZE = 9 if self.camera_feature == 'i3d_224x224' else 6
+
         self.inputs = []
         for session in self.sessions:
             target = np.load(osp.join(self.data_root, 'target_frames_25fps', session+'.npy'))

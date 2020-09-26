@@ -133,6 +133,7 @@ class THUMOSFeatureExtractor(nn.Module):
 
 _FEATURE_EXTRACTORS = {
     'THUMOS': THUMOSFeatureExtractor,
+    'JUDO': THUMOSFeatureExtractor,
 }
 
 def build_feature_extractor(args):
