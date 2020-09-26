@@ -11,19 +11,10 @@ from torch.utils.tensorboard import SummaryWriter
 sys.path.append(os.getcwd())
 import _init_paths
 import utils as utl
-from configs.judo import parse_trn_args as parse_args
+from configs.thumos import parse_trn_args as parse_args
 from models import build_model
 
 def main(args):
-    # fix between batch_size and enc_steps, due to the way the dataset class works(i.e. this model do not
-    # have a recurrent part, so we do not have the concept of 'enc_steps', so we arrange it manually here
-    # only to make the dataset class working properly)
-    # e.g. args.batch_size == 64
-    args.enc_steps = args.batch_size // 2    # 32
-    args.batch_size = 2                     # 2
-    # now, since after we will fuse batch_size and enc_steps(i.e. batch_size * enc_steps) we will
-    # get back to the original batch_size, i.e. 32 * 2 = 64
-
     this_dir = osp.join(osp.dirname(__file__), '.')
     save_dir = osp.join(this_dir, 'checkpoints')
     if not osp.isdir(save_dir):
@@ -62,13 +53,8 @@ def main(args):
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
-        camera_inputs, _, _, _ = dataiter.next()
-        camera_inputs = camera_inputs.view(-1,
-                                           camera_inputs.shape[2],
-                                           camera_inputs.shape[3],
-                                           camera_inputs.shape[4],
-                                           camera_inputs.shape[5])
-        writer.add_graph(model, camera_inputs.to(device))
+        camera_inputs, motion_inputs, _, _ = dataiter.next()
+        writer.add_graph(model, [camera_inputs.to(device), motion_inputs.to(device)])
         writer.close()
 
     batch_idx_train = 1
@@ -99,29 +85,25 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (camera_inputs, _, targets, _) in enumerate(data_loaders[phase], start=1):
-                    # camera.inputs.shape == (batch_size, enc_steps, C, chunk_size, H, W)
+                for batch_idx, (camera_inputs, motion_inputs, targets, _) in enumerate(data_loaders[phase], start=1):
+                    # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim [if starting from features])
                     # targets.shape == (batch_size, enc_steps, num_classes)
-
-                    # fuse batch_size and enc_steps
-                    camera_inputs = camera_inputs.view(-1,
-                                                       camera_inputs.shape[2],
-                                                       camera_inputs.shape[3],
-                                                       camera_inputs.shape[4],
-                                                       camera_inputs.shape[5])
-                    targets = targets.view(-1, targets.shape[2])
-
                     batch_size = camera_inputs.shape[0]
                     camera_inputs = camera_inputs.to(device)
+                    motion_inputs = motion_inputs.to(device)
 
                     if training:
                         optimizer.zero_grad()
 
-                    scores = model(camera_inputs)       # scores.shape == (batch_size, num_classes)
+                    scores = model(camera_inputs, motion_inputs)            # scores.shape == (batch_size, enc_steps, num_classes)
 
                     scores = scores.to(device)
                     targets = targets.to(device)
-                    loss = criterion(scores, targets.max(axis=1)[1])
+                    # sum losses along all timesteps
+                    loss = criterion(scores[:, 0], targets[:, 0].max(axis=1)[1])
+                    for step in range(1, camera_inputs.shape[1]):
+                        loss += criterion(scores[:, step], targets[:, step].max(axis=1)[1])
+                    loss /= camera_inputs.shape[1]      # scale by enc_steps
 
                     losses[phase] += loss.item() * batch_size
 
@@ -130,16 +112,18 @@ def main(args):
                         optimizer.step()
 
                     # Prepare metrics
+                    scores = scores.view(-1, args.num_classes)
+                    targets = targets.view(-1, args.num_classes)
                     scores = softmax(scores).cpu().detach().numpy()
                     targets = targets.cpu().detach().numpy()
                     score_metrics[phase].extend(scores)
                     target_metrics[phase].extend(targets)
 
                     if training:
-                        writer.add_scalar('Loss_iter/train', loss.item(), batch_idx_train)
+                        writer.add_scalar('Loss_iter/train_enc', loss.item(), batch_idx_train)
                         batch_idx_train += 1
                     else:
-                        writer.add_scalar('Loss_iter/val', loss.item(), batch_idx_val)
+                        writer.add_scalar('Loss_iter/val_enc', loss.item(), batch_idx_val)
                         batch_idx_val += 1
 
                     if args.verbose:
@@ -149,11 +133,10 @@ def main(args):
                                                                                           loss.item()))
         end = time.time()
 
-        lr_sched.step(losses['val'] / (len(data_loaders['val'].dataset) * args.enc_steps))
+        lr_sched.step(losses['val'] / len(data_loaders['val'].dataset))
 
-        writer.add_scalars('Loss_epoch/train_val',
-                           {phase: losses[phase] / (len(data_loaders[phase].dataset) * args.enc_steps)
-                            for phase in args.phases},
+        writer.add_scalars('Loss_epoch/train_val_enc',
+                           {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
                            epoch)
 
         result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
@@ -168,15 +151,15 @@ def main(args):
             switch=False,
         ) for phase in args.phases}
 
-        writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
+        writer.add_scalars('mAP_epoch/train_val_enc', {phase: mAP[phase] for phase in args.phases}, epoch)
 
-        log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f}  |'
-        log += ' [val] loss: {:.5f}  mAP: {:.4f}|\n'
+        log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f} |'
+        log += ' [val] loss: {:.5f}  mAP: {:.4f}  |\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
-                              losses['train'] / (len(data_loaders['train'].dataset) * args.enc_steps),
+                              losses['train'] / len(data_loaders['train'].dataset),
                               mAP['train'],
-                              losses['val'] / (len(data_loaders['val'].dataset) * args.enc_steps),
+                              losses['val'] / len(data_loaders['val'].dataset),
                               mAP['val'],
                               end - start)
         print(log)
@@ -185,7 +168,7 @@ def main(args):
             best_val_map = mAP['val']
             epoch_best_val_map = epoch
 
-            checkpoint_file = 'model-{}-feature_extractor-{}.pth'.format(args.model, args.feature_extractor)
+            checkpoint_file = 'model-{}-features-{}.pth'.format(args.inputs, args.camera_feature)
             torch.save({
                 'val_mAP': best_val_map,
                 'epoch': epoch,
@@ -196,7 +179,7 @@ def main(args):
     log = '--- Best validation mAP is {:.3f}% obtained at epoch {} ---'.format(best_val_map, epoch_best_val_map)
     print(log)
     f = open(writer.log_dir + '/run_command.txt', 'a')
-    f.write('\n'+log)
+    f.write('\n' + log)
     f.close()
 
 if __name__ == '__main__':
