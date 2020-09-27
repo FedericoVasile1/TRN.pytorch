@@ -16,6 +16,9 @@ from models import build_model
 
 def main(args):
     this_dir = osp.join(osp.dirname(__file__), '.')
+
+    logger = utl.setup_logger(osp.join(this_dir, 'log.txt'))
+
     save_dir = osp.join(this_dir, 'checkpoints')
     if not osp.isdir(save_dir):
         os.makedirs(save_dir)
@@ -49,6 +52,9 @@ def main(args):
     f = open(writer.log_dir + '/run_command.txt', 'w+')
     f.write(command)
     f.close()
+
+    logger._write(writer.log_dir)
+    logger._write(command)
 
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
@@ -163,6 +169,7 @@ def main(args):
                               mAP['val'],
                               end - start)
         print(log)
+        logger._write(log)
 
         if best_val_map < mAP['val']:
             best_val_map = mAP['val']
@@ -176,8 +183,9 @@ def main(args):
                 'optimizer_state_dict': optimizer.state_dict(),
             }, osp.join(save_dir, checkpoint_file))
 
-    log = '--- Best validation mAP is {:.3f}% obtained at epoch {} ---'.format(best_val_map, epoch_best_val_map)
+    log = '--- Best validation mAP is {:.1f} % obtained at epoch {} ---'.format(best_val_map * 100, epoch_best_val_map)
     print(log)
+    logger._write(log+'\n\n')
     f = open(writer.log_dir + '/run_command.txt', 'a')
     f.write('\n' + log)
     f.close()
