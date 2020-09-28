@@ -2,6 +2,7 @@ import os.path as osp
 import os
 import sys
 import time
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -159,10 +160,10 @@ def main(args):
         log = 'Epoch: ' + str(epoch)
         log += '\n[train] '
         for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
-            log += '| ' + args.class_index[cls] + ' AP: ' + result['train']['AP'][args.class_index[cls]]
+            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['train']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
         log += '\n[val  ] '
         for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
-            log += '| ' + args.class_index[cls] + ' AP: ' + result['val']['AP'][args.class_index[cls]]
+            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['val']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
         log += '\n'
         logger_APs._write(str(log))
 
