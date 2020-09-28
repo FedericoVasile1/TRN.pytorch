@@ -227,7 +227,12 @@ def print_stats_classes(args):
                 if (target[idx:idx+args.enc_steps] == background_vect).all():
                     continue
             target_downsampled.append(target[idx:idx+args.enc_steps])
-        target = torch.cat(target_downsampled)
+        if target_downsampled == []:
+            # we will enter here if and
+            # only if args.downsample == True AND the current video_name has **all the frames** labeled as background
+            # In this case, we skip to the next video since there is no action label to be counted
+            continue
+        target = np.concatenate(target_downsampled)
 
         target = target.argmax(axis=1)
         unique, counts = np.unique(target, return_counts=True)
@@ -243,7 +248,7 @@ def print_stats_classes(args):
         print('=== ALL DATASET ===')
     for idx_class, count in class_to_count.items():
         class_name = args.class_index[idx_class]
-        print('{:15s}:  samples: {:5} ({:.1f} %)'.format(class_name, count, count / tot_samples * 100))
+        print('{:15s}=>  samples: {:8} ({:.1f} %)'.format(class_name, count, count / tot_samples * 100))
 
 def plot_perclassap_bar(classes, values, figsize=(8, 5), color='b', title=None, show_image=False):
     figure = plt.figure(figsize=figsize)
