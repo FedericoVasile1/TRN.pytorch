@@ -61,13 +61,13 @@ def main(args):
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
-            original_target = np.load(osp.join(args.data_root, 'target_frames_25fps', session + '.npy'))
+            target = np.load(osp.join(args.data_root, 'target_frames_25fps', session + '.npy'))
             # round to multiple of CHUNK_SIZE
-            num_frames = original_target.shape[0]
+            num_frames = target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
-            original_target = original_target[:num_frames]
+            target = target[:num_frames]
             # For each chunk, take only the central frame
-            target = original_target[args.chunk_size // 2::args.chunk_size]
+            target = target[args.chunk_size // 2::args.chunk_size]
 
             features_extracted = np.load(osp.join(args.data_root, args.camera_feature, session+'.npy'), mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
@@ -79,10 +79,8 @@ def main(args):
 
                 scores = softmax(scores).cpu().detach().numpy()
                 for i in range(scores.shape[0]):
-                    for c in range(args.chunk_size):
-                        enc_score_metrics.append(scores[i])
-                        enc_target_metrics.append(
-                            original_target[((count+1) - args.batch_size + i) * args.chunk_size + c])
+                    enc_score_metrics.append(scores[i])
+                    enc_target_metrics.append(target[(count+1) - args.batch_size + i])
 
         # do the last forward pass, because there will probably be the last batch with samples < batch_size
         if target.shape[0] % args.batch_size != 0:
@@ -94,10 +92,8 @@ def main(args):
 
             scores = softmax(scores).cpu().detach().numpy()
             for i in range(scores.shape[0]):
-                for c in range(args.chunk_size):
-                    enc_score_metrics.append(scores[i])
-                    enc_target_metrics.append(
-                        original_target[((count + 1) - args.batch_size + i) * args.chunk_size + c])
+                enc_score_metrics.append(scores[i])
+                enc_target_metrics.append(target[(count + 1) - args.batch_size + i])
 
         end = time.time()
 
@@ -106,16 +102,13 @@ def main(args):
                                                                                  len(args.test_session_set),
                                                                                  end - start))
         if args.show_predictions:
-            appo = args.chunk_size
-            args.chunk_size = 1
             show_video_predictions(args,
                                    session,
-                                   enc_score_metrics[count_frames:count_frames + original_target.shape[0]],
-                                   enc_target_metrics[count_frames:count_frames + original_target.shape[0]],
+                                   enc_score_metrics[count_frames:count_frames + target.shape[0]],
+                                   enc_target_metrics[count_frames:count_frames + target.shape[0]],
                                    frames_dir=args.camera_feature,
                                    fps=25)
-            args.chunk_size = appo
-            count_frames += original_target.shape[0]
+            count_frames += target.shape[0]
 
     save_dir = osp.dirname(args.checkpoint)
     result_file  = osp.basename(args.checkpoint).replace('.pth', '.json')

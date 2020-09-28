@@ -44,14 +44,22 @@ def main(args):
 
     softmax = nn.Softmax(dim=1).to(device)
 
-    if args.camera_feature == 'i3d_224x224' and args.chunk_size != 9:
-        raise Exception('Wrong pair of arguments. Regarding --camera_feature == i3d_224x224 we actually'
-                        'only have features extracted with chunk of 9, so put --chunk_size == 9')
-    if args.camera_feature == 'resnet2+1d_224x224' and args.chunk_size != 6:
-        raise Exception('Wrong pair of arguments. Regarding --camera_feature == resnet2+1d_224x224 we actually'
-                        'only have features extracted with chunk of 6, so put --chunk_size == 6')
-    if args.camera_feature not in ('i3d_224x224', 'resnet2+1d_224x224'):
-        raise Exception('Wrong --camera_feature option. Supported values: [i3d_224x224|resnet2+1d_224x224]')
+    if args.feature_extractor == 'I3D':
+        transform = transforms.Compose([
+            transforms.Resize((224, 320)),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            I3DNormalization(),
+        ])
+    elif args.feature_extractor == 'RESNET2+1D':
+        transform = transforms.Compose([
+            transforms.Resize((224, 320)),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize([0.43216, 0.394666, 0.37645], [0.22803, 0.22145, 0.216989])
+        ])
+    else:
+        raise Exception('Wrong feature_extractor option, ' + args.feature_extractor + ' is not supported')
 
     if args.show_predictions:
         count_frames = 0
@@ -61,43 +69,58 @@ def main(args):
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
-            original_target = np.load(osp.join(args.data_root, 'target_frames_25fps', session + '.npy'))
+            target = np.load(osp.join(args.data_root, 'target_frames_25fps', session + '.npy'))
             # round to multiple of CHUNK_SIZE
-            num_frames = original_target.shape[0]
+            num_frames = target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
-            original_target = original_target[:num_frames]
+            target = target[:num_frames]
             # For each chunk, take only the central frame
-            target = original_target[args.chunk_size // 2::args.chunk_size]
+            target = target[args.chunk_size // 2::args.chunk_size]
 
-            features_extracted = np.load(osp.join(args.data_root, args.camera_feature, session+'.npy'), mmap_mode='r')
-            features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
+            batch_samples = None
+            for count in range(target.shape[0]):
+                idx_central_frame = count * args.chunk_size + (args.chunk_size // 2)
+                start_f = idx_central_frame - args.chunk_size // 2
+                end_f = idx_central_frame + args.chunk_size // 2
+                for idx_frame in range(start_f, end_f):
+                    frame = Image.open(osp.join(args.data_root,
+                                                args.camera_feature,
+                                                session,
+                                                str(idx_frame + 1) + '.jpg')).convert('RGB')
+                    frame = transform(frame)
 
-            for count in range(0, target.shape[0], args.batch_size):
-                batch_samples = features_extracted[count:count+args.batch_size]
-                batch_samples = batch_samples.to(device)
-                scores = model.forward(batch_samples)
+                    if batch_samples is None:
+                        batch_samples = torch.zeros(args.batch_size,
+                                                    args.chunk_size,
+                                                    frame.shape[0],
+                                                    frame.shape[1],
+                                                    frame.shape[2],
+                                                    dtype=torch.float32)
+                    batch_samples[count % args.batch_size, idx_frame - start_f] = frame
 
-                scores = softmax(scores).cpu().detach().numpy()
-                for i in range(scores.shape[0]):
-                    for c in range(args.chunk_size):
+                if count % args.batch_size == args.batch_size - 1:
+                    # forward pass
+                    batch_samples = batch_samples.permute(0, 2, 1, 3, 4)
+                    batch_samples = batch_samples.to(device)
+                    scores = model.forward(batch_samples)
+
+                    scores = softmax(scores).cpu().detach().numpy()
+                    for i in range(scores.shape[0]):
                         enc_score_metrics.append(scores[i])
-                        enc_target_metrics.append(
-                            original_target[((count+1) - args.batch_size + i) * args.chunk_size + c])
+                        enc_target_metrics.append(target[(count+1) - args.batch_size + i])
 
+                    batch_samples = None
         # do the last forward pass, because there will probably be the last batch with samples < batch_size
-        if target.shape[0] % args.batch_size != 0:
+        if batch_samples is not None:
             # forward pass
-            idx_last_samples = target.shape[0] - (target.shape[0] % args.batch_size)
-            batch_samples = features_extracted[idx_last_samples:]
+            batch_samples = batch_samples.permute(0, 2, 1, 3, 4)
             batch_samples = batch_samples.to(device)
             scores = model.forward(batch_samples)
 
             scores = softmax(scores).cpu().detach().numpy()
             for i in range(scores.shape[0]):
-                for c in range(args.chunk_size):
-                    enc_score_metrics.append(scores[i])
-                    enc_target_metrics.append(
-                        original_target[((count + 1) - args.batch_size + i) * args.chunk_size + c])
+                enc_score_metrics.append(scores[i])
+                enc_target_metrics.append(target[(count+1) - args.batch_size + i])
 
         end = time.time()
 
@@ -106,16 +129,13 @@ def main(args):
                                                                                  len(args.test_session_set),
                                                                                  end - start))
         if args.show_predictions:
-            appo = args.chunk_size
-            args.chunk_size = 1
             show_video_predictions(args,
                                    session,
-                                   enc_score_metrics[count_frames:count_frames + original_target.shape[0]],
-                                   enc_target_metrics[count_frames:count_frames + original_target.shape[0]],
+                                   enc_score_metrics[count_frames:count_frames + target.shape[0]],
+                                   enc_target_metrics[count_frames:count_frames + target.shape[0]],
                                    frames_dir=args.camera_feature,
                                    fps=25)
-            args.chunk_size = appo
-            count_frames += original_target.shape[0]
+            count_frames += target.shape[0]
 
     save_dir = osp.dirname(args.checkpoint)
     result_file  = osp.basename(args.checkpoint).replace('.pth', '.json')
