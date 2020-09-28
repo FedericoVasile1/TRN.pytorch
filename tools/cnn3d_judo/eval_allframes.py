@@ -102,7 +102,7 @@ def main(args):
                     # forward pass
                     batch_samples = batch_samples.permute(0, 2, 1, 3, 4)
                     batch_samples = batch_samples.to(device)
-                    scores = model.forward(batch_samples)
+                    scores = model(batch_samples)
 
                     scores = softmax(scores).cpu().detach().numpy()
                     for i in range(scores.shape[0]):
@@ -117,7 +117,7 @@ def main(args):
             # forward pass
             batch_samples = batch_samples.permute(0, 2, 1, 3, 4)
             batch_samples = batch_samples.to(device)
-            scores = model.forward(batch_samples)
+            scores = model(batch_samples)
 
             scores = softmax(scores).cpu().detach().numpy()
             for i in range(scores.shape[0]):

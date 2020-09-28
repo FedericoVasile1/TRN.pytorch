@@ -209,7 +209,6 @@ def main(args):
                 'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
             }, osp.join(save_dir, checkpoint_file))
-            checkpoint_file = 'model-{}-feature_extractor-{}.pth'.format(args.model, args.feature_extractor)
             torch.save({
                 'val_mAP': best_val_map,
                 'epoch': epoch,

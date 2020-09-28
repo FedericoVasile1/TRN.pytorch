@@ -187,7 +187,7 @@ def main(args):
             epoch_best_val_map = epoch
 
             # only the best validation map model is saved
-            checkpoint_file = 'model-{}-features-{}.pth'.format(args.inputs, args.camera_feature)
+            checkpoint_file = 'model-{}-features-{}.pth'.format(args.model, args.camera_feature)
             torch.save({
                 'val_mAP': best_val_map,
                 'epoch': epoch,

@@ -57,5 +57,5 @@ class RNNmodel(nn.Module):
     def step(self, camera_input_t, motion_input_t, h_n, c_n):
         out = self.feature_extractor(camera_input_t, motion_input_t)
         h_n, c_n = self.rnn(out, (h_n, c_n))
-        out = self.classifier(h_n)
+        out = self.classifier(self.drop(h_n))
         return out, h_n, c_n

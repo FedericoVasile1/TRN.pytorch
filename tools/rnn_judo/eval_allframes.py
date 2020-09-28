@@ -14,9 +14,7 @@ from sklearn.metrics import confusion_matrix
 
 import torch
 import torch.nn as nn
-from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
-from PIL import Image
 
 sys.path.append(os.getcwd())
 import _init_paths
@@ -25,7 +23,9 @@ from lib.utils.visualize import show_video_predictions
 from configs.judo import parse_trn_args as parse_args
 from lib.utils.visualize import plot_perclassap_bar, plot_to_image, add_pr_curve_tensorboard
 from models import build_model
-from lib.datasets.thumos_data_layer_e2e import I3DNormalization
+
+def to_device(x, device):
+    return x.unsqueeze(0).to(device)
 
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -72,32 +72,18 @@ def main(args):
             features_extracted = np.load(osp.join(args.data_root, args.camera_feature, session+'.npy'), mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
 
-            for count in range(0, target.shape[0], args.batch_size):
-                batch_samples = features_extracted[count:count+args.batch_size]
-                batch_samples = batch_samples.to(device)
-                scores = model.forward(batch_samples)
+            for count in range(target.shape[0]):
+                if count % args.enc_steps == 0:
+                    h_n = to_device(torch.zeros(model.hidden_size), device)
+                    c_n = to_device(torch.zeros(model.hidden_size), device)
 
-                scores = softmax(scores).cpu().detach().numpy()
-                for i in range(scores.shape[0]):
-                    for c in range(args.chunk_size):
-                        enc_score_metrics.append(scores[i])
-                        enc_target_metrics.append(
-                            original_target[((count+1) - args.batch_size + i) * args.chunk_size + c])
+                sample = to_device(features_extracted[count], device)
+                scores, h_n, c_n = model.step(sample, torch.zeros(args.enc_steps, 1), h_n, c_n)
 
-        # do the last forward pass, because there will probably be the last batch with samples < batch_size
-        if target.shape[0] % args.batch_size != 0:
-            # forward pass
-            idx_last_samples = target.shape[0] - (target.shape[0] % args.batch_size)
-            batch_samples = features_extracted[idx_last_samples:]
-            batch_samples = batch_samples.to(device)
-            scores = model.forward(batch_samples)
-
-            scores = softmax(scores).cpu().detach().numpy()
-            for i in range(scores.shape[0]):
+                scores = softmax(scores).cpu().detach().numpy()[0]
                 for c in range(args.chunk_size):
-                    enc_score_metrics.append(scores[i])
-                    enc_target_metrics.append(
-                        original_target[((count + 1) - args.batch_size + i) * args.chunk_size + c])
+                    enc_score_metrics.append(scores)
+                    enc_target_metrics.append(original_target[count * args.chunk_size + c])
 
         end = time.time()
 
