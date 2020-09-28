@@ -48,7 +48,7 @@ def main(args):
         raise Exception('Wrong pair of arguments. Regarding --camera_feature == i3d_224x224 we actually'
                         'only have features extracted with chunk of 9, so put --chunk_size == 9')
     if args.camera_feature == 'resnet2+1d_224x224' and args.chunk_size != 6:
-        raise Exception('Wrong pair of arguments. Regarding --camera_feature == resnet2+1d_224x224 we actually'
+        raise Exception('Wrong pair of arguments. Regarding --camera_feature == resnet2+1d_224x224 we actually '
                         'only have features extracted with chunk of 6, so put --chunk_size == 6')
     if args.camera_feature not in ('i3d_224x224', 'resnet2+1d_224x224'):
         raise Exception('Wrong --camera_feature option. Supported values: [i3d_224x224|resnet2+1d_224x224]')
@@ -98,7 +98,7 @@ def main(args):
                                    session,
                                    enc_score_metrics[count_frames:count_frames + original_target.shape[0]],
                                    enc_target_metrics[count_frames:count_frames + original_target.shape[0]],
-                                   frames_dir=args.camera_feature,
+                                   frames_dir='video_frames_25fps',
                                    fps=25)
             args.chunk_size = appo
             count_frames += original_target.shape[0]

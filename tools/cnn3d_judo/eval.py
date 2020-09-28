@@ -133,7 +133,7 @@ def main(args):
                                    session,
                                    enc_score_metrics[count_frames:count_frames + target.shape[0]],
                                    enc_target_metrics[count_frames:count_frames + target.shape[0]],
-                                   frames_dir=args.camera_feature,
+                                   frames_dir='video_frames_25fps',
                                    fps=25)
             count_frames += target.shape[0]
 
