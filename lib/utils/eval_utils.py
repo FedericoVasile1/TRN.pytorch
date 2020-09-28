@@ -22,7 +22,7 @@ def compute_result_multilabel(class_index,
                               verbose=False,
                               smooth=True,
                               switch=True,
-                              return_ap=False):
+                              return_APs=False):
     result = OrderedDict()
     score_metrics = np.array(score_metrics)
     pred_metrics = np.argmax(score_metrics, axis=1)
@@ -80,8 +80,8 @@ def compute_result_multilabel(class_index,
         if verbose:
             print('Saved the result to {}'.format(osp.join(save_dir, result_file)))
 
-    if return_ap:
-        return result['mAP'], result
+    if return_APs:
+        return result
     else:
         return result['mAP']
 

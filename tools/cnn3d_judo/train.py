@@ -159,7 +159,7 @@ def main(args):
                            epoch)
 
         result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
-        mAP, APs = {phase: utl.compute_result_multilabel(
+        result = {phase: utl.compute_result_multilabel(
             args.class_index,
             score_metrics[phase],
             target_metrics[phase],
@@ -168,19 +168,20 @@ def main(args):
             ignore_class=[0],
             save=True,
             switch=False,
-            return_ap=True,
+            return_APs=True,
         ) for phase in args.phases}
 
-        log = 'Epoch: ' + epoch
+        log = 'Epoch: ' + str(epoch)
         log += '\n[train] '
         for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
-            log += '| ' + args.class_index[cls] + ' AP: ' + APs['train']['AP'][args.class_index[cls]]
+            log += '| ' + args.class_index[cls] + ' AP: ' + result['train']['AP'][args.class_index[cls]]
         log += '\n[val  ] '
         for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
-            log += '| ' + args.class_index[cls] + ' AP: ' + APs['val']['AP'][args.class_index[cls]]
+            log += '| ' + args.class_index[cls] + ' AP: ' + result['val']['AP'][args.class_index[cls]]
         log += '\n'
         logger_APs._write(str(log))
 
+        mAP = {phase: result[phase]['mAP'] for phase in args.phases}
         writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
 
         log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f}  |'
