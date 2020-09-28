@@ -133,10 +133,15 @@ def main(args):
                                                                                  len(args.test_session_set),
                                                                                  end - start))
         if args.show_predictions:
-            utl.show_video_predictions(args,
-                                       session,
-                                       enc_score_metrics[count_frames:count_frames + original_target.shape[0]],
-                                       enc_target_metrics[count_frames:count_frames + original_target.shape[0]])
+            appo = args.chunk_size
+            args.chunk_size = 1
+            show_video_predictions(args,
+                                   session,
+                                   enc_score_metrics[count_frames:count_frames + original_target.shape[0]],
+                                   enc_target_metrics[count_frames:count_frames + original_target.shape[0]],
+                                   frames_dir=args.camera_feature,
+                                   fps=25)
+            args.chunk_size = appo
             count_frames += original_target.shape[0]
 
     save_dir = osp.dirname(args.checkpoint)
