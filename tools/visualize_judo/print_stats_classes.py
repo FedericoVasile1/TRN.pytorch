@@ -22,6 +22,8 @@ if __name__ == '__main__':
     parser.add_argument('--chunk_size', default=6, type=int)
     parser.add_argument('--target_labels_dir', default='target_frames_25fps', type=str)
     parser.add_argument('--phase', default='', type=str)
+    parser.add_argument('--downsample_backgr', action='store_true')
+    parser.add_argument('--enc_steps', default=-1, type=int)
     args = parser.parse_args()
 
     if not os.path.isdir(os.path.join(args.data_root)):
@@ -32,5 +34,8 @@ if __name__ == '__main__':
         raise Exception('{} not found'.format(os.path.join(args.data_root, args.target_labels_dir)))
     if args.phase not in ('train', 'val', 'test', ''):
         raise Exception('Wrong --phase argument. Expected one of: train|val|test')
+    if args.downsample_backgr and args.enc_steps == -1:
+        raise Exception('Wrong pair of arguments: with --downsample_backgr argument also an int for'
+                        '--enc_steps argument must be specified')
 
     print_stats_classes(build_data_info(args, basic_build=True))

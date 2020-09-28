@@ -219,6 +219,16 @@ def print_stats_classes(args):
         # For each chunk, take only the central frame
         target = target[args.chunk_size // 2::args.chunk_size]
 
+        target_downsampled = []
+        for idx in range(0, target.shape[0], args.enc_steps):
+            if args.downsample_backgr:
+                background_vect = np.zeros_like(target[idx:idx+args.enc_steps])
+                background_vect[:, 0] = 1
+                if (target[idx:idx+args.enc_steps] == background_vect).all():
+                    continue
+            target_downsampled.append(target[idx:idx+args.enc_steps])
+        target = torch.cat(target_downsampled)
+
         target = target.argmax(axis=1)
         unique, counts = np.unique(target, return_counts=True)
 
@@ -233,7 +243,7 @@ def print_stats_classes(args):
         print('=== ALL DATASET ===')
     for idx_class, count in class_to_count.items():
         class_name = args.class_index[idx_class]
-        print('{:15s}:  {:.1f} %'.format(class_name, count / tot_samples * 100))
+        print('{:15s}:  samples: {:5} ({:.1f} %)'.format(class_name, count, count / tot_samples * 100))
 
 def plot_perclassap_bar(classes, values, figsize=(8, 5), color='b', title=None, show_image=False):
     figure = plt.figure(figsize=figsize)
