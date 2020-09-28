@@ -22,6 +22,8 @@ if __name__ == '__main__':
     parser.add_argument('--chunk_size', default=6, type=int)
     parser.add_argument('--target_labels_dir', default='target_frames_24fps', type=str)
     parser.add_argument('--phase', default='', type=str)
+    parser.add_argument('--downsample_backgr', action='store_true')
+    parser.add_argument('--enc_steps', default=16, type=int)  # needed only when --downsample_backgr == True
     args = parser.parse_args()
 
     if not os.path.isdir(os.path.join(args.data_root)):

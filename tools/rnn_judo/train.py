@@ -16,9 +16,6 @@ from models import build_model
 
 def main(args):
     this_dir = osp.join(osp.dirname(__file__), '.')
-
-    logger = utl.setup_logger(osp.join(this_dir, 'log.txt'))
-
     save_dir = osp.join(this_dir, 'checkpoints')
     if not osp.isdir(save_dir):
         os.makedirs(save_dir)
@@ -47,14 +44,14 @@ def main(args):
     softmax = nn.Softmax(dim=1).to(device)
 
     writer = SummaryWriter()
+    print('Tensorboard log dir: ' + writer.log_dir)
+
+    logger = utl.setup_logger(osp.join(writer.log_dir, 'log.txt'))
 
     command = 'python ' + ' '.join(sys.argv)
-    f = open(writer.log_dir + '/run_command.txt', 'w+')
-    f.write(command)
-    f.close()
-
-    logger._write(writer.log_dir)
     logger._write(command)
+
+    logger_APs = utl.setup_logger(osp.join(writer.log_dir, 'APs_per_epoch.txt'))
 
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
@@ -146,7 +143,7 @@ def main(args):
                            epoch)
 
         result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
-        mAP = {phase: utl.compute_result_multilabel(
+        mAP, APs = {phase: utl.compute_result_multilabel(
             args.class_index,
             score_metrics[phase],
             target_metrics[phase],
@@ -155,7 +152,18 @@ def main(args):
             ignore_class=[0],
             save=True,
             switch=False,
+            return_ap=True,
         ) for phase in args.phases}
+
+        log = 'Epoch: ' + epoch
+        log += '\n[train] '
+        for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
+            log += '| ' + args.class_index[cls] + ' AP: ' + APs['train']['AP'][args.class_index[cls]]
+        log += '\n[val  ] '
+        for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
+            log += '| ' + args.class_index[cls] + ' AP: ' + APs['val']['AP'][args.class_index[cls]]
+        log += '\n'
+        logger_APs._write(str(log))
 
         writer.add_scalars('mAP_epoch/train_val_enc', {phase: mAP[phase] for phase in args.phases}, epoch)
 
@@ -175,6 +183,7 @@ def main(args):
             best_val_map = mAP['val']
             epoch_best_val_map = epoch
 
+            # only the best validation map model is saved
             checkpoint_file = 'model-{}-features-{}.pth'.format(args.inputs, args.camera_feature)
             torch.save({
                 'val_mAP': best_val_map,
@@ -182,13 +191,16 @@ def main(args):
                 'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
             }, osp.join(save_dir, checkpoint_file))
+            torch.save({
+                'val_mAP': best_val_map,
+                'epoch': epoch,
+                'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }, osp.join(writer.log_dir, checkpoint_file))
 
     log = '--- Best validation mAP is {:.1f} % obtained at epoch {} ---'.format(best_val_map * 100, epoch_best_val_map)
     print(log)
-    logger._write(log+'\n\n')
-    f = open(writer.log_dir + '/run_command.txt', 'a')
-    f.write('\n' + log)
-    f.close()
+    logger._write(log)
 
 if __name__ == '__main__':
     main(parse_args())
