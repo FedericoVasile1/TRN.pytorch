@@ -131,8 +131,8 @@ def main(args):
         if args.show_predictions:
             show_video_predictions(args,
                                    session,
-                                   enc_score_metrics[count_frames:count_frames + target.shape[0]],
                                    enc_target_metrics[count_frames:count_frames + target.shape[0]],
+                                   enc_score_metrics[count_frames:count_frames + target.shape[0]],
                                    frames_dir='video_frames_25fps',
                                    fps=25)
             count_frames += target.shape[0]

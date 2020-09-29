@@ -96,8 +96,8 @@ def main(args):
             args.chunk_size = 1
             show_video_predictions(args,
                                    session,
-                                   enc_score_metrics[count_frames:count_frames + original_target.shape[0]],
                                    enc_target_metrics[count_frames:count_frames + original_target.shape[0]],
+                                   enc_score_metrics[count_frames:count_frames + original_target.shape[0]],
                                    frames_dir='video_frames_25fps',
                                    fps=25)
             args.chunk_size = appo
