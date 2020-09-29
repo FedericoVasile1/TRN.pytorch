@@ -161,9 +161,11 @@ def main(args):
         log += '\n[train] '
         for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
             log += '| ' + args.class_index[cls] + ' AP: ' + str(result['train']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
+        log += '| mAP: ' + str(result['train']['mAP'] * 100)[:4] + ' %'
         log += '\n[val  ] '
         for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
             log += '| ' + args.class_index[cls] + ' AP: ' + str(result['val']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
+        log += '| mAP: ' + str(result['val']['mAP'] * 100)[:4] + ' %'
         log += '\n'
         logger_APs._write(str(log))
 

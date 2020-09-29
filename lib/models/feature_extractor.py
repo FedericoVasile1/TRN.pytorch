@@ -28,7 +28,7 @@ class THUMOSFeatureExtractor(nn.Module):
             raise (RuntimeError('Unknown inputs of {}'.format(args.inputs)))
 
         self.camera_feature = args.camera_feature
-        if args.camera_feature != 'video_frames_24fps':
+        if args.camera_feature != 'video_frames_24fps' and args.camera_feature != 'video_frames_25fps':
             # starting from features extracted
             if args.feat_vect_dim == -1:
                 raise Exception('Specify the dimension of the feature vector via feat_vect_dim option')
@@ -94,8 +94,9 @@ class THUMOSFeatureExtractor(nn.Module):
                 self.feature_extractor.dropout = nn.Identity()
                 self.feature_extractor.logits = nn.Identity()
 
-                for param in self.feature_extractor.parameters():
-                    param.requires_grad = False
+                #for param in self.feature_extractor.parameters():
+                #    param.requires_grad = False
+                self.feature_extractor.freeze_partial_layers()
 
             else:
                 raise Exception('Feature extractor model not supported: '+args.feature_extractor)

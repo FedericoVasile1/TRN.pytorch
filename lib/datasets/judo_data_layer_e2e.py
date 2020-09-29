@@ -23,10 +23,6 @@ class TRNJUDODataLayerE2E(data.Dataset):
         self.dec_steps = args.dec_steps
         self.training = phase=='train'
 
-        #TODO: better check which transform to use
-        # furthermore, better check the numbers in resize/centercrop: now they are the same in all transformers,
-        #  but they should vary a little depending on the model(see the ones of thumos dataset to understand
-        #  what I mean)
         if args.is_3D:
             if args.feature_extractor == 'I3D':
                 self.transform = transforms.Compose([
@@ -142,13 +138,14 @@ class TRNJUDODataLayerE2E(data.Dataset):
             start_f = idx_central_frame - self.CHUNK_SIZE // 2
             end_f = idx_central_frame + self.CHUNK_SIZE // 2
             for idx_frame in range(start_f, end_f):
-                frame = Image.open(
-                    osp.join(self.data_root, self.camera_feature, session, str(idx_frame + 1) + '.jpg')).convert('RGB')
+                frame = Image.open(osp.join(self.data_root,
+                                            self.camera_feature,
+                                            session,
+                                            str(idx_frame + 1) + '.jpg')).convert('RGB')
                 frame = self.transform(frame).to(dtype=torch.float32)
                 if camera_inputs is None:
-                    camera_inputs = torch.zeros(
-                        (end - start, self.CHUNK_SIZE, frame.shape[0], frame.shape[1], frame.shape[2]),
-                        dtype=torch.float32)
+                    camera_inputs = torch.zeros((end - start, self.CHUNK_SIZE, frame.shape[0], frame.shape[1], frame.shape[2]),
+                                                dtype=torch.float32)
                 camera_inputs[count - start, idx_frame - start_f] = frame
 
         # switch channel with chunk_size (3d models want input in this way)
@@ -157,6 +154,8 @@ class TRNJUDODataLayerE2E(data.Dataset):
         if self.motion_feature == '':
             motion_inputs = np.zeros((end - start, self.enc_steps))
         else:
+            # TODO: we have still not considered the possibility to insert optical flow in judo dataset, so
+            # this part below can be deleted
             if self.chunk_size == 6:
                 motion_inputs = np.load(osp.join(self.data_root, self.motion_feature, session + '.npy'), mmap_mode='r')
                 motion_inputs = motion_inputs[start:end]

@@ -79,6 +79,8 @@ def main(args):
 
             batch_samples = None
             for count in range(target.shape[0]):
+                enc_target_metrics.append(target[count])
+
                 idx_central_frame = count * args.chunk_size + (args.chunk_size // 2)
                 start_f = idx_central_frame - args.chunk_size // 2
                 end_f = idx_central_frame + args.chunk_size // 2
@@ -107,7 +109,6 @@ def main(args):
                     scores = softmax(scores).cpu().detach().numpy()
                     for i in range(scores.shape[0]):
                         enc_score_metrics.append(scores[i])
-                        enc_target_metrics.append(target[(count+1) - args.batch_size + i])
 
                     batch_samples = None
         # do the last forward pass, because there will probably be the last batch with samples < batch_size
@@ -120,7 +121,6 @@ def main(args):
             scores = softmax(scores).cpu().detach().numpy()
             for i in range(scores.shape[0]):
                 enc_score_metrics.append(scores[i])
-                enc_target_metrics.append(target[(count+1) - args.batch_size + i])
 
         end = time.time()
 
