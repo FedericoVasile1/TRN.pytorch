@@ -68,7 +68,9 @@ def main():
                     feat_vects_video[idx_frame//SAMPLE_FRAMES] = feat_vect.squeeze(0)
                     sample = torch.zeros(SAMPLE_FRAMES, 3, 180, 320, dtype=torch.float32)
 
+            print('Processed:')
             np.save(os.path.join(DATA_ROOT, VIDEO_FEATURES, str(dir)+'.npy'), feat_vects_video.numpy())
+            print(str(dir))
 
 if __name__ == '__main__':
     main()
