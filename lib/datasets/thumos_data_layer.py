@@ -17,7 +17,16 @@ class TRNTHUMOSDataLayer(data.Dataset):
 
         self.inputs = []
         for session in self.sessions:
-            target = np.load(osp.join(self.data_root, 'target_startend' if args.num_classes == 44 else 'target', session+'.npy'))
+            target = np.load(osp.join(self.data_root,
+                                      'target_startend' if args.num_classes == 44 else 'target_frames_24fps',
+                                      session+'.npy'))
+            # round to multiple of CHUNK_SIZE
+            num_frames = target.shape[0]
+            num_frames = num_frames - (num_frames % args.chunk_size)
+            target = target[:num_frames]
+            # For each chunk, take only the central frame
+            target = target[args.chunk_size // 2::args.chunk_size]
+
             seed = np.random.randint(self.enc_steps) if self.training else 0
             for start, end in zip(range(seed, target.shape[0] - self.dec_steps, self.enc_steps),
                                   range(seed + self.enc_steps, target.shape[0] - self.dec_steps, self.enc_steps)):
