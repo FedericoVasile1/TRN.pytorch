@@ -35,6 +35,7 @@ def main(args):
 
     criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    lr_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=args.reduce_lr_count, verbose=True)
     if osp.isfile(args.checkpoint):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         for param_group in optimizer.param_groups:
@@ -43,10 +44,14 @@ def main(args):
     softmax = nn.Softmax(dim=1).to(device)
 
     writer = SummaryWriter()
+    print('Tensorboard log dir: ' + writer.log_dir)
+
+    logger = utl.setup_logger(osp.join(writer.log_dir, 'log.txt'))
+
     command = 'python ' + ' '.join(sys.argv)
-    f = open(writer.log_dir + '/run_command.txt', 'w+')
-    f.write(command)
-    f.close()
+    logger._write(command)
+
+    logger_APs = utl.setup_logger(osp.join(writer.log_dir, 'APs_per_epoch.txt'))
 
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
@@ -57,16 +62,11 @@ def main(args):
 
     batch_idx_train = 1
     batch_idx_test = 1
-    count_reduce_val_loss = 0
-    min_val_loss = None
+    best_test_mAP = -1
+    epoch_best_test_mAP = -1
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
-        if epoch == args.reduce_lr_epoch or count_reduce_val_loss == args.reduce_lr_count:
-            if count_reduce_val_loss == args.reduce_lr_count:
-                count_reduce_val_loss = 0
-                print('=== Learning rate reduction due to validation loss stagnation '
-                      'after '+str(args.reduce_lr_count)+' epochs ===')
-            else:
-                print('=== Learning rate reduction planned for epoch '+str(args.reduce_lr_epoch)+' ===')
+        if epoch == args.reduce_lr_epoch:
+            print('=== Learning rate reduction planned for epoch ' + str(args.reduce_lr_epoch) + ' ===')
             args.lr = args.lr * 0.1
             for param_group in optimizer.param_groups:
                 param_group['lr'] = args.lr
@@ -136,21 +136,14 @@ def main(args):
                                                                                           loss.item()))
         end = time.time()
 
-        if epoch > args.start_epoch:
-            if losses['test'] > min_val_loss:
-                count_reduce_val_loss += 1
-            else:
-                min_val_loss = losses['test']
-                count_reduce_val_loss = 0
-        else:
-            min_val_loss = losses['test']
+        lr_sched.step(losses['test'] / len(data_loaders['test'].dataset))
 
         writer.add_scalars('Loss_epoch/train_val_enc',
                            {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
                            epoch)
 
         result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
-        mAP = {phase: utl.compute_result_multilabel(
+        result = {phase: utl.compute_result_multilabel(
             args.class_index,
             score_metrics[phase],
             target_metrics[phase],
@@ -158,8 +151,26 @@ def main(args):
             result_file[phase],
             ignore_class=[0, 21],
             save=True,
+            return_APs=True,
         ) for phase in args.phases}
 
+        log = 'Epoch: ' + str(epoch)
+        log += '\n[train] '
+        for cls in range(args.num_classes):
+            if cls == 0 or cls == 21:       # ignore background class and amibiguous class
+                continue
+            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['train']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
+        log += '| mAP: ' + str(result['train']['mAP'] * 100)[:4] + ' %'
+        log += '\n[test ] '
+        for cls in range(args.num_classes):
+            if cls == 0 or cls == 21:       # ignore background class and amibiguous class
+                continue
+            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['test']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
+        log += '| mAP: ' + str(result['test']['mAP'] * 100)[:4] + ' %'
+        log += '\n'
+        logger_APs._write(str(log))
+
+        mAP = {phase: result[phase]['mAP'] for phase in args.phases}
         writer.add_scalars('mAP_epoch/train_val_enc', {phase: mAP[phase] for phase in args.phases}, epoch)
 
         log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f} |'
@@ -172,13 +183,30 @@ def main(args):
                               mAP['test'],
                               end - start)
         print(log)
+        logger._write(log)
 
-        checkpoint_file = 'inputs-{}-epoch-{}.pth'.format(args.inputs, epoch)
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-        }, osp.join(save_dir, checkpoint_file))
+        if best_test_mAP < mAP['test']:
+            best_test_mAP = mAP['test']
+            epoch_best_test_mAP = epoch
+
+            # only the best validation map model is saved
+            checkpoint_file = 'model-{}-features-{}.pth'.format(args.model, args.camera_feature)
+            torch.save({
+                'test_mAP': best_test_mAP,
+                'epoch': epoch,
+                'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }, osp.join(save_dir, checkpoint_file))
+            torch.save({
+                'test_mAP': best_test_mAP,
+                'epoch': epoch,
+                'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }, osp.join(writer.log_dir, checkpoint_file))
+
+    log = '--- Best test mAP is {:.1f} % obtained at epoch {} ---'.format(best_test_mAP * 100, epoch_best_test_mAP)
+    print(log)
+    logger._write(log)
 
 if __name__ == '__main__':
     main(parse_args())

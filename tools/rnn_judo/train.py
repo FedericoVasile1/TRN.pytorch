@@ -2,7 +2,6 @@ import os.path as osp
 import os
 import sys
 import time
-import numpy as np
 
 import torch
 import torch.nn as nn
@@ -63,8 +62,8 @@ def main(args):
 
     batch_idx_train = 1
     batch_idx_val = 1
-    best_val_map = -1
-    epoch_best_val_map = -1
+    best_val_mAP = -1
+    epoch_best_val_mAP = -1
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
         if epoch == args.reduce_lr_epoch:
             print('=== Learning rate reduction planned for epoch ' + str(args.reduce_lr_epoch) + ' ===')
@@ -156,14 +155,17 @@ def main(args):
             return_APs=True,
         ) for phase in args.phases}
 
-
         log = 'Epoch: ' + str(epoch)
         log += '\n[train] '
-        for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
+        for cls in range(args.num_classes):
+            if cls == 0:        # ignore background class
+                continue
             log += '| ' + args.class_index[cls] + ' AP: ' + str(result['train']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
         log += '| mAP: ' + str(result['train']['mAP'] * 100)[:4] + ' %'
         log += '\n[val  ] '
-        for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
+        for cls in range(args.num_classes):
+            if cls == 0:        # ignore background class
+                continue
             log += '| ' + args.class_index[cls] + ' AP: ' + str(result['val']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
         log += '| mAP: ' + str(result['val']['mAP'] * 100)[:4] + ' %'
         log += '\n'
@@ -184,26 +186,26 @@ def main(args):
         print(log)
         logger._write(log)
 
-        if best_val_map < mAP['val']:
-            best_val_map = mAP['val']
-            epoch_best_val_map = epoch
+        if best_val_mAP < mAP['val']:
+            best_val_mAP = mAP['val']
+            epoch_best_val_mAP = epoch
 
             # only the best validation map model is saved
             checkpoint_file = 'model-{}-features-{}.pth'.format(args.model, args.camera_feature)
             torch.save({
-                'val_mAP': best_val_map,
+                'val_mAP': best_val_mAP,
                 'epoch': epoch,
                 'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
             }, osp.join(save_dir, checkpoint_file))
             torch.save({
-                'val_mAP': best_val_map,
+                'val_mAP': best_val_mAP,
                 'epoch': epoch,
                 'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
             }, osp.join(writer.log_dir, checkpoint_file))
 
-    log = '--- Best validation mAP is {:.1f} % obtained at epoch {} ---'.format(best_val_map * 100, epoch_best_val_map)
+    log = '--- Best validation mAP is {:.1f} % obtained at epoch {} ---'.format(best_val_mAP * 100, epoch_best_val_mAP)
     print(log)
     logger._write(log)
 
