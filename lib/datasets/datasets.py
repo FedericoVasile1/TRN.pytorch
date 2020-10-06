@@ -2,6 +2,7 @@ from .thumos_data_layer import TRNTHUMOSDataLayer
 from .thumos_data_layer_e2e import TRNTHUMOSDataLayerE2E
 from .judo_data_layer import TRNJUDODataLayer
 from .judo_data_layer_e2e import TRNJUDODataLayerE2E
+from .latefusion_judo_data_layer_e2e import LateFusion_TRNJUDODataLayerE2E
 
 _DATA_LAYERS = {
     'TRNTHUMOS': TRNTHUMOSDataLayer,
@@ -36,6 +37,7 @@ _DATA_LAYERS = {
     'GRUJUDOE2E': TRNJUDODataLayerE2E,
     'CNN3DJUDOE2E': TRNJUDODataLayerE2E,
     'CNNJUDOE2E': TRNJUDODataLayerE2E,
+    'CNNLATEFUSIONJUDOE2E': LateFusion_TRNJUDODataLayerE2E,
 }
 
 def build_dataset(args, phase):
