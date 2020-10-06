@@ -4,7 +4,7 @@ from torchvision import models
 class CNN(nn.Module):
     def __init__(self, args):
         super(CNN, self).__init__()
-        if args.camera_feature != 'video_frames_24fps':
+        if 'video_frames_' not in args.camera_feature:
             raise Exception('Wrong camera_feature option. The chosen model can only work in end to end training')
 
         if args.model == 'CNN' or 'DISCRIMINATORCNN':
@@ -31,6 +31,13 @@ class CNN(nn.Module):
                     nn.Dropout(p=0.5),
                     nn.Linear(4096, args.num_classes)
                 )
+            elif self.feature_extractor == 'RESNET152':
+                self.feature_extractor = models.resnet152(pretrained=True)
+                for param in self.feature_extractor.parameters():
+                    param.requires_grad = False
+                for param in self.feature_extractor.layer4.parameters():
+                    param.requires_grad = True
+                self.feature_extractor.fc = nn.Linear(self.feature_extractor.fc.in_features, args.num_classes)
             else:
                 raise Exception('Wrong feature_extractor option, ' + args.feature_extractor + ' is not supported')
         else:
