@@ -105,21 +105,28 @@ class TRNJUDODataLayerE2E(data.Dataset):
         camera_inputs = None
         for count in range(start, end):
             idx_frame = count * self.CHUNK_SIZE + (self.CHUNK_SIZE // 2)
-            frame = Image.open(
-                osp.join(self.data_root, self.camera_feature, session, str(idx_frame + 1) + '.jpg')).convert('RGB')
+            frame = Image.open(osp.join(self.data_root,
+                                        self.camera_feature,
+                                        session,
+                                        str(idx_frame + 1) + '.jpg')).convert('RGB')
             frame = self.transform(frame).to(dtype=torch.float32)
             if camera_inputs is None:
                 camera_inputs = torch.zeros((end - start, frame.shape[0], frame.shape[1], frame.shape[2]),
                                             dtype=torch.float32)
             camera_inputs[count - start] = frame
 
-        if self.chunk_size == 6:
-            motion_inputs = np.load(osp.join(self.data_root, self.motion_feature, session + '.npy'), mmap_mode='r')
-            motion_inputs = motion_inputs[start:end]
-        else:
-            warnings.warn('Actually, we only offer optical flow images for args.chunk_size==6'
-                          'Hence change this argument to 6 if you want ot use optical flow, otherwise will be discarded')
+        if self.motion_feature == '':
             motion_inputs = np.zeros((end - start, self.enc_steps))
+        else:
+            # TODO: we have still not considered the possibility to insert optical flow in judo dataset, so
+            #       this part below can be deleted
+            if self.chunk_size == 6:
+                motion_inputs = np.load(osp.join(self.data_root, self.motion_feature, session + '.npy'), mmap_mode='r')
+                motion_inputs = motion_inputs[start:end]
+            else:
+                warnings.warn('Actually, we only offer optical flow images for args.chunk_size==6'
+                              'Hence change this argument to 6 if you want ot use optical flow, otherwise will be discarded')
+                motion_inputs = np.zeros((end - start, self.enc_steps))
         motion_inputs = torch.as_tensor(motion_inputs.astype(np.float32))
 
         enc_target = torch.as_tensor(enc_target.astype(np.float32))
@@ -155,15 +162,15 @@ class TRNJUDODataLayerE2E(data.Dataset):
             motion_inputs = np.zeros((end - start, self.enc_steps))
         else:
             # TODO: we have still not considered the possibility to insert optical flow in judo dataset, so
-            # this part below can be deleted
+            #       this part below can be deleted
             if self.chunk_size == 6:
                 motion_inputs = np.load(osp.join(self.data_root, self.motion_feature, session + '.npy'), mmap_mode='r')
                 motion_inputs = motion_inputs[start:end]
-                motion_inputs = torch.as_tensor(motion_inputs.astype(np.float32))
             else:
                 warnings.warn('Actually, we only offer optical flow images for --chunk_size == 6. '
                               'Hence change this argument to 6 if you want ot use optical flow, otherwise will be discarded')
                 motion_inputs = np.zeros((end - start, self.enc_steps))
+        motion_inputs = torch.as_tensor(motion_inputs.astype(np.float32))
 
         enc_target = torch.as_tensor(enc_target.astype(np.float32))
         dec_target = torch.as_tensor(dec_target.astype(np.float32))
