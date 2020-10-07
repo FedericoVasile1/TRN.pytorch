@@ -249,15 +249,32 @@ def print_stats_classes(args):
     for idx_class, count in class_to_count.items():
         class_name = args.class_index[idx_class]
         print('{:15s}=>  samples: {:8} ({:.1f} %)'.format(class_name, count, count / tot_samples * 100))
+    if args.show_bar or args.save_bar:
+        plot_bar(args.class_index,
+                 list(class_to_count.values()),
+                 'Class',
+                 'Percentage',
+                 show_bar=args.show_bar,
+                 save_bar=args.save_bar)
 
-def plot_perclassap_bar(classes, values, figsize=(8, 5), color='b', title=None, show_image=False):
+def plot_bar(classes, values, xlabel, ylabel, figsize=(8, 5), color='b', title=None, show_bar=False, save_bar=False):
     figure = plt.figure(figsize=figsize)
-    plt.bar(classes, values, color=color)
+    rects = plt.bar(classes, values, color=color)
     plt.title(title, color='black')
-    plt.xlabel('Class')
-    plt.ylabel('AP')
-    if show_image:
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+
+    def autolabel(rects):
+        # attach some text labels
+        for ii, rect in enumerate(rects):
+            height = rect.get_height()
+            plt.text(rect.get_x() + rect.get_width() / 2., 1.0 * height, '%s' % (values[ii]), ha='center', va='bottom')
+    autolabel(rects)
+
+    if show_bar:
         plt.show()
+    if save_bar:
+        plt.savefig('bar_stats_'+title+'.png')
     return figure
 
 def plot_to_image(figure):

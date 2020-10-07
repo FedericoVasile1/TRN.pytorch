@@ -24,6 +24,8 @@ if __name__ == '__main__':
     parser.add_argument('--phase', default='', type=str)
     parser.add_argument('--downsample_backgr', action='store_true')
     parser.add_argument('--enc_steps', default=16, type=int)        # needed only when --downsample_backgr == True
+    parser.add_argument('--show_bar', action='store_true')
+    parser.add_argument('--save_bar', action='store_true')
     args = parser.parse_args()
 
     if not os.path.isdir(os.path.join(args.data_root)):
