@@ -251,9 +251,10 @@ def print_stats_classes(args):
         print('{:15s}=>  samples: {:8} ({:.1f} %)'.format(class_name, count, count / tot_samples * 100))
     if args.show_bar or args.save_bar:
         plot_bar(args.class_index,
-                 list(class_to_count.values()),
+                 [round(i / tot_samples, 3) for i in list(class_to_count.values())],
                  'Class',
                  'Percentage',
+                 title=args.dataset,
                  show_bar=args.show_bar,
                  save_bar=args.save_bar)
 
