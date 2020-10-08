@@ -57,16 +57,18 @@ if __name__ == '__main__':
         video_duration_all = []
 
         for video_name in videos_name:
-            _, segment_list, video_duration = print_stats_video(video_name, args)
-            for name_class, segment_duration in segment_list:
-                class_to_segmentdurations_all[name_class].append(segment_duration)
+            class_to_duration, _, video_duration = print_stats_video(video_name, args)
+            for name_class, duration in class_to_duration.items():
+                if duration == 0:
+                    continue
+                class_to_segmentdurations_all[name_class].append(duration)
             video_duration_all.append(video_duration)
 
         for name_class, list_durations in class_to_segmentdurations_all.items():
             if len(list_durations) > 0:
-                class_to_segmentdurations_all[name_class] = sum(list_durations) / len(list_durations)
+                class_to_segmentdurations_all[name_class] = str(round(sum(list_durations) / len(list_durations), 1)) + ' s'
             else:
-                class_to_segmentdurations_all[name_class] = 0
+                class_to_segmentdurations_all[name_class] = str(0) + ' s'
             # convert the number of frames to number of seconds
             class_to_segmentdurations_all[name_class] = round(class_to_segmentdurations_all[name_class] / args.fps, 1)
 
@@ -74,7 +76,7 @@ if __name__ == '__main__':
         video_duration_all = round(video_duration_all, 1)
 
         print('=== ALL VIDEOS ===')
-        print('MEAN VIDEO DURATION: ', video_duration_all)
+        print('MEAN VIDEO DURATION: ', video_duration_all, ' s')
         print('MEAN DURATION PER CLASS: ', class_to_segmentdurations_all)
 
     else:
