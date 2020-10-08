@@ -69,8 +69,6 @@ if __name__ == '__main__':
                 class_to_segmentdurations_all[name_class] = str(round(sum(list_durations) / len(list_durations), 1)) + ' s'
             else:
                 class_to_segmentdurations_all[name_class] = str(0) + ' s'
-            # convert the number of frames to number of seconds
-            class_to_segmentdurations_all[name_class] = round(class_to_segmentdurations_all[name_class] / args.fps, 1)
 
         video_duration_all = sum(video_duration_all) / len(video_duration_all)
         video_duration_all = round(video_duration_all, 1)
