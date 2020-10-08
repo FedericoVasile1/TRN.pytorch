@@ -46,7 +46,7 @@ if __name__ == '__main__':
         raise Exception('The folder {} should contain the number of fps in its name, or the number '
                         'indicated in its name does not correspond with --fps argument(i.e. they must be '
                         'the same)'.format(args.frames_dir))
-    if args.save_video and args.samples != 1:
+    if args.save_video and (args.samples != 1 and args.video_name == ''):
         raise Exception('Actually we can only save one video, so put --samples == 1')
 
     if args.seed != -1:

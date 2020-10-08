@@ -86,7 +86,7 @@ if __name__ == '__main__':
             video_name = [i for i in videos_name if i[:-4] == args.video_name]
             video_name = video_name[0]
         class_to_segmentdurations, segment_list, video_duration = print_stats_video(video_name, args)
-        print('VIDEO NAME: ', video_name)
+        print('VIDEO NAME: ', video_name[:-4])
         print('VIDEO DURATION: ', video_duration, ' s')
         print('MEAN DURATION PER CLASS: ', class_to_segmentdurations)
         print('VIDEO SEGMENTS: ', segment_list)

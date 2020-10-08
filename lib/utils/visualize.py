@@ -38,7 +38,7 @@ def show_video_predictions(args,
     speed = 1.0
 
     if args.save_video:
-        print('Loading and saving video: ' + video_name + ' . . . .')
+        print('Loading and saving video: ' + video_name + ' . . . .\n.\n.')
         frames = []
     num_frames = enc_target_metrics.shape[0]
     idx = 0
@@ -56,7 +56,7 @@ def show_video_predictions(args,
         # Convert RGB to BGR
         open_cv_frame = open_cv_frame[:, :, ::-1].copy()
 
-        if args.dataset == 'JUDO':
+        if args.dataset == 'JUDO'and not args.save_video:
             H, W, _ = open_cv_frame.shape
             open_cv_frame = cv2.resize(open_cv_frame, (W // 2, H // 2), interpolation=cv2.INTER_AREA)
 
@@ -206,7 +206,8 @@ def show_random_videos(args,
         target = target[:num_frames]
         target = target[args.chunk_size // 2::args.chunk_size]
 
-        print('lib.utils.visualize.show_random_videos: showing video: ' + video_name)
+        if not args.save_video:
+            print('lib.utils.visualize.show_random_videos: showing video: ' + video_name)
         show_video_predictions(args, video_name, target, frames_dir=frames_dir, fps=fps, transform=transform)
 
 def print_stats_classes(args):
