@@ -56,7 +56,7 @@ def show_video_predictions(args,
         # Convert RGB to BGR
         open_cv_frame = open_cv_frame[:, :, ::-1].copy()
 
-        if args.dataset == 'JUDO'and not args.save_video:
+        if args.dataset == 'JUDO':
             H, W, _ = open_cv_frame.shape
             open_cv_frame = cv2.resize(open_cv_frame, (W // 2, H // 2), interpolation=cv2.INTER_AREA)
 
