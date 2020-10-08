@@ -83,7 +83,7 @@ if __name__ == '__main__':
             idx_video_name = np.random.choice(num_videos, size=1, replace=False)[0]
             video_name = videos_name[idx_video_name]
         else:
-            video_name = [i for i in videos_name if i == args.video_name]
+            video_name = [i for i in videos_name if i[:-4] == args.video_name]
             video_name = video_name[0]
         class_to_segmentdurations, segment_list, video_duration = print_stats_video(video_name, args)
         print('VIDEO NAME: ', video_name)

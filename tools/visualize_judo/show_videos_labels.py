@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('--chunk_size', default=6, type=int)
     parser.add_argument('--phase', default='train', type=str)
     parser.add_argument('--video_name', default='', type=str)
+    parser.add_argument('--save_video', action='store_true')
     parser.add_argument('--samples', default=2, type=int)
     parser.add_argument('--seed', default=-1, type=int)
     args = parser.parse_args()
@@ -45,6 +46,8 @@ if __name__ == '__main__':
         raise Exception('The folder {} should contain the number of fps in its name, or the number '
                         'indicated in its name does not correspond with --fps argument(i.e. they must be '
                         'the same)'.format(args.frames_dir))
+    if args.save_video and args.samples != 1:
+        raise Exception('Actually we can only save one video, so put --samples == 1')
 
     if args.seed != -1:
         np.random.seed(args.seed)

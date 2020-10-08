@@ -25,6 +25,8 @@ data/JUDO/i3d_224x224
 data/JUDO/resnet2+1d_224x224
 data/JUDO/i3d_224x224_chunk6
 
+Grand*
+
 model_zoo/*
 
 rgb_imagenet.pt

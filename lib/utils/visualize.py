@@ -37,6 +37,9 @@ def show_video_predictions(args,
 
     speed = 1.0
 
+    if args.save_video:
+        print('Loading and saving video: ' + video_name + ' . . . .')
+        frames = []
     num_frames = enc_target_metrics.shape[0]
     idx = 0
     while idx < num_frames:
@@ -130,40 +133,51 @@ def show_video_predictions(args,
                     (255, 255, 255),
                     1)
 
-        # display the frame to screen
-        cv2.imshow(video_name, open_cv_frame)
-        # e.g. since video are extracted at 24 fps, we will display a frame every 1000[ms] / 24[f] = 41.6[ms]
-        delay = 1000 / fps
-        # since in our model we do not take all of the 24 frames, but only the central frame every chunk_size frames
-        delay *= args.chunk_size
-        # depending on the speed the video will be displayed faster(e.g. 2x if args.speed == 2.0) or slower
-        delay /= speed
-        key = cv2.waitKey(int(delay))  # time is in milliseconds
-        if key == ord('q'):
-            # quit
-            cv2.destroyAllWindows()
-            break
-        if key == ord('p'):
-            # pause
-            cv2.waitKey(-1)  # wait until any key is pressed
-        if key == ord('e'):
-            # go faster
-            delay /= 2
-            speed *= 2
-        if key == ord('w'):
-            # go slower
-            delay *= 2
-            speed /= 2
-        if key == ord('a'):
-            # skip backward
-            idx -= fps
-            if idx < 0:
-                idx = 0
-        if key == ord('s'):
-            # skip forward
-            idx += fps
+        if args.save_video:
+            frames.append(open_cv_frame)
+        else:
+            # display the frame to screen
+            cv2.imshow(video_name, open_cv_frame)
+            # e.g. since video are extracted at 24 fps, we will display a frame every 1000[ms] / 24[f] = 41.6[ms]
+            delay = 1000 / fps
+            # since in our model we do not take all of the 24 frames, but only the central frame every chunk_size frames
+            delay *= args.chunk_size
+            # depending on the speed the video will be displayed faster(e.g. 2x if args.speed == 2.0) or slower
+            delay /= speed
+            key = cv2.waitKey(int(delay))  # time is in milliseconds
+            if key == ord('q'):
+                # quit
+                cv2.destroyAllWindows()
+                break
+            if key == ord('p'):
+                # pause
+                cv2.waitKey(-1)  # wait until any key is pressed
+            if key == ord('e'):
+                # go faster
+                delay /= 2
+                speed *= 2
+            if key == ord('w'):
+                # go slower
+                delay *= 2
+                speed /= 2
+            if key == ord('a'):
+                # skip backward
+                idx -= fps
+                if idx < 0:
+                    idx = 0
+            if key == ord('s'):
+                # skip forward
+                idx += fps
 
         idx += 1
+
+    if args.save_video:
+        H, W, _ = open_cv_frame.shape
+        out = cv2.VideoWriter(video_name+'.avi', cv2.VideoWriter_fourcc(*'DIVX'), args.fps / args.chunk_size, (W, H))
+        for frame in frames:
+            out.write(frame)
+        out.release()
+        print('. . . video saved at ' + os.path.join(os.getcwd(), video_name))
 
 def show_random_videos(args,
                        samples_list,
