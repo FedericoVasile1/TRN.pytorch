@@ -296,6 +296,37 @@ def plot_to_image(figure):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     return image
 
+def print_stats_video(video_name, args):
+    class_to_segmentdurations = {}
+    for i in range(args.num_classes):
+        class_to_segmentdurations[args.class_index[i]] = []
+    segment_list = []
+
+    video_targets = np.load(os.path.join(args.data_root, args.target_labels_dir, video_name))    # shape (num_frames, num_classes)
+    video_targets = video_targets.argmax(axis=1)
+    prev_idx_class = video_targets[0]
+    duration = 1
+    for idx_class in video_targets[1:]:
+        if idx_class != prev_idx_class:
+            class_to_segmentdurations[args.class_index[prev_idx_class]].append(duration)
+            segment_list.append((args.class_index[prev_idx_class], round(duration / args.fps, 1)))
+            duration = 0
+
+        duration += 1
+        prev_idx_class = idx_class
+
+    for name_class, list_durations in class_to_segmentdurations.items():
+        if len(list_durations) > 0:
+            class_to_segmentdurations[name_class] = sum(list_durations) / len(list_durations)
+        else:
+            class_to_segmentdurations[name_class] = 0
+        # convert the number of frames to number of seconds
+        class_to_segmentdurations[name_class] = round(class_to_segmentdurations[name_class] / args.fps, 1)
+
+    video_duration = round(len(video_targets) / args.fps, 1)
+
+    return class_to_segmentdurations, segment_list, video_duration
+
 def add_pr_curve_tensorboard(writer, class_name, class_index, labels, probs_predicted, global_step=0):
     '''
     Takes in a "class_index" and plots the corresponding
