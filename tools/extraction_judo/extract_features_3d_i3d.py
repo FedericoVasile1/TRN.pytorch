@@ -41,11 +41,13 @@ def main():
         I3DNormalization(),
     ])
 
-    SAMPLE_FRAMES = 9     # generate a feature vector every SAMPLE_FRAMES frames
+    #SAMPLE_FRAMES = 9     # generate a feature vector every SAMPLE_FRAMES frames
+    SAMPLE_FRAMES = 6  # generate a feature vector every SAMPLE_FRAMES frames
 
     DATA_ROOT = 'data/JUDO'
     VIDEO_FRAMES = 'video_frames_25fps'   # base folder where the video folders (containing the frames) are
-    VIDEO_FEATURES = 'i3d_224x224'
+    #VIDEO_FEATURES = 'i3d_224x224'
+    VIDEO_FEATURES = 'i3d_224x224_chunk6'
 
     with torch.set_grad_enabled(False):
         videos_dir = os.listdir(os.path.join(DATA_ROOT, VIDEO_FRAMES))

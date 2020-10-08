@@ -31,7 +31,7 @@ class CNN(nn.Module):
                     nn.Dropout(p=0.5),
                     nn.Linear(4096, args.num_classes)
                 )
-            elif self.feature_extractor == 'RESNET152':
+            elif args.feature_extractor == 'RESNET152':
                 self.feature_extractor = models.resnet152(pretrained=True)
                 for param in self.feature_extractor.parameters():
                     param.requires_grad = False

@@ -37,25 +37,31 @@ def main():
     model.train(False)
 
     transform = transforms.Compose([
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
         I3DNormalization(),
     ])
 
-    SAMPLE_FRAMES = 9     # generate a feature vector every SAMPLE_FRAMES frames
+    #SAMPLE_FRAMES = 9     # generate a feature vector every SAMPLE_FRAMES frames
+    SAMPLE_FRAMES = 6  # generate a feature vector every SAMPLE_FRAMES frames
 
     DATA_ROOT = 'data/THUMOS'
     VIDEO_FRAMES = 'video_frames_24fps'   # base folder where the video folders (containing the frames) are
-    VIDEO_FEATURES = 'i3d_180x320_chunk9'
+    #VIDEO_FEATURES = 'i3d_224x224_chunk9'
+    VIDEO_FEATURES = 'i3d_224x224_chunk6'
 
     with torch.set_grad_enabled(False):
         videos_dir = os.listdir(os.path.join(DATA_ROOT, VIDEO_FRAMES))
         videos_dir = [dir for dir in videos_dir if 'video' in dir]
         for dir in videos_dir:
+            if str(dir) + '.npy' in os.listdir(os.path.join(DATA_ROOT, VIDEO_FEATURES)):
+                continue
+
             num_frames = len(os.listdir(os.path.join(DATA_ROOT, VIDEO_FRAMES, dir)))
             num_frames = num_frames - (num_frames % SAMPLE_FRAMES)
 
             feat_vects_video = torch.zeros(num_frames//SAMPLE_FRAMES, FEAT_VECT_DIM, dtype=torch.float32)
-            sample = torch.zeros(SAMPLE_FRAMES, 3, 180, 320, dtype=torch.float32)
+            sample = torch.zeros(SAMPLE_FRAMES, 3, 224, 224, dtype=torch.float32)
             for idx_frame in range(0, num_frames):
                 # idx_frame+1 because frames start from 1.  e.g. 1.jpg
                 frame = Image.open(os.path.join(DATA_ROOT, VIDEO_FRAMES, dir, str(idx_frame+1)+'.jpg')).convert('RGB')
@@ -66,7 +72,7 @@ def main():
                     # forward pass
                     feat_vect = model(sample)     # TODO: load a batch instead of a single sample
                     feat_vects_video[idx_frame//SAMPLE_FRAMES] = feat_vect.squeeze(0)
-                    sample = torch.zeros(SAMPLE_FRAMES, 3, 180, 320, dtype=torch.float32)
+                    sample = torch.zeros(SAMPLE_FRAMES, 3, 224, 224, dtype=torch.float32)
 
             print('Processed:')
             np.save(os.path.join(DATA_ROOT, VIDEO_FEATURES, str(dir)+'.npy'), feat_vects_video.numpy())

@@ -108,10 +108,6 @@ def main(args):
                     enc_scores, dec_scores = model(camera_inputs, motion_inputs)
                     # enc_scores.shape == (batch_size, enc_steps, num_classes)
                     # dec_scores.shape == (batch_size, enc_steps, dec_steps, num_classes)
-                    print('enc_scores: ', enc_scores)
-                    print('enc_targets: ', enc_targets)
-                    print('dec_scores: ', dec_scores)
-                    print('dec_targets: ', dec_targets)
 
                     enc_scores = enc_scores.to(device)
                     enc_targets = enc_targets.to(device)
@@ -122,9 +118,9 @@ def main(args):
                     enc_loss /= camera_inputs.shape[1]  # scale by enc_steps
 
                     dec_scores = dec_scores.to(device)
-                    dec_targets = dec_targets.to(device)
+                    dec_targets = dec_targets.view(dec_targets.shape[0], args.enc_steps, args.dec_steps, dec_targets.shape[2]).to(device)
                     # sum losses along all timesteps for decoder
-                    for enc_step in range(1, camera_inputs.shape[1]):
+                    for enc_step in range(camera_inputs.shape[1]):
                         for dec_step in range(dec_targets.shape[2]):
                             if enc_step == dec_step == 0:
                                 dec_loss = criterion(dec_scores[:, enc_step, dec_step], dec_targets[:, enc_step, dec_step].max(axis=1)[1])

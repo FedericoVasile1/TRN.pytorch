@@ -69,8 +69,7 @@ def main(args):
         camera_inputs = camera_inputs.view(-1,
                                            camera_inputs.shape[2],
                                            camera_inputs.shape[3],
-                                           camera_inputs.shape[4],
-                                           camera_inputs.shape[5])
+                                           camera_inputs.shape[4])
         writer.add_graph(model, camera_inputs.to(device))
         writer.close()
 

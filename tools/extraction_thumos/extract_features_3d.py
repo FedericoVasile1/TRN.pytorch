@@ -33,16 +33,21 @@ def main():
         transforms.Normalize([0.43216, 0.394666, 0.37645], [0.22803, 0.22145, 0.216989])
     ])
 
-    SAMPLE_FRAMES = 6     # generate a feature vector every SAMPLE_FRAMES frames
+    #SAMPLE_FRAMES = 6     # generate a feature vector every SAMPLE_FRAMES frames
+    SAMPLE_FRAMES = 9
 
     DATA_ROOT = 'data/THUMOS'
     VIDEO_FRAMES = 'video_frames_24fps'   # base folder where the video folders (containing the frames) are
-    VIDEO_FEATURES = 'resnet3d_180x320'
+    #VIDEO_FEATURES = 'resnet3d_180x320'
+    VIDEO_FEATURES = 'resnet3d_180x320_chunk9'
 
     with torch.set_grad_enabled(False):
         videos_dir = os.listdir(os.path.join(DATA_ROOT, VIDEO_FRAMES))
         videos_dir = [dir for dir in videos_dir if 'video' in dir]
         for dir in videos_dir:
+            if str(dir) + '.npy' in os.listdir(os.path.join(DATA_ROOT, VIDEO_FEATURES)):
+                continue
+
             num_frames = len(os.listdir(os.path.join(DATA_ROOT, VIDEO_FRAMES, dir)))
             num_frames = num_frames - (num_frames % SAMPLE_FRAMES)
 

@@ -4,13 +4,13 @@ from torchvision import models
 
 class CNN_LateFusion(nn.Module):
     def __init__(self, args):
-        super(CNN, self).__init__()
+        super(CNN_LateFusion, self).__init__()
         if 'video_frames_' not in args.camera_feature:
             raise Exception('Wrong camera_feature option. The chosen model can only work in end to end training')
 
         self.chunk_size = args.chunk_size
 
-        if args.model == 'CNN' or 'DISCRIMINATORCNN':
+        if args.model == 'CNNLATEFUSION':
             if args.feature_extractor == 'RESNET50':
                 self.feature_extractor = models.resnet50(pretrained=True)
                 #for param in self.feature_extractor.parameters():

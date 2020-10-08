@@ -101,4 +101,4 @@ class GeneralizedTRN(nn.Module):
 
         enc_scores = torch.stack(enc_score_stack, dim=1)#.view(-1, self.num_classes)
         dec_scores = torch.stack(dec_score_stack, dim=1)#.view(-1, self.num_classes)
-        return enc_scores, dec_scores
+        return enc_scores, dec_scores.view(dec_scores.shape[0], self.enc_steps, self.dec_steps, dec_scores.shape[2])

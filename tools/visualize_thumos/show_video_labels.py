@@ -3,6 +3,8 @@ import sys
 import argparse
 import numpy as np
 
+from torchvision import transforms
+
 sys.path.append(os.getcwd())
 import _init_paths
 from lib.utils.visualize import show_random_videos

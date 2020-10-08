@@ -312,6 +312,18 @@ class InceptionI3d(nn.Module):
                              use_bias=True,
                              name='logits')
 
+    def replace_from_Mixed_5b(self):
+        end_point = 'Mixed_5b'
+        self.end_points[end_point] = InceptionModule(256 + 320 + 128 + 128, [256, 160, 320, 32, 128, 128],
+                                                     'inception_i3d' + end_point)
+
+        end_point = 'Mixed_5c'
+        self.end_points[end_point] = InceptionModule(256 + 320 + 128 + 128, [384, 192, 384, 48, 128, 128],
+                                                     'inception_i3d' + end_point)
+
+        self.avg_pool = nn.AvgPool3d(kernel_size=[2, 7, 7],
+                                     stride=(1, 1, 1))
+
     def build(self):
         for k in self.end_points.keys():
             self.add_module(k, self.end_points[k])
@@ -348,6 +360,32 @@ class InceptionI3d(nn.Module):
             'Mixed_4e',
             'Mixed_4f',
             'MaxPool3d_5a_2x2',
+            #'Mixed_5b',
+            #'Mixed_5c',
+            #'Logits',
+            #'Predictions',
+        )
+
+        for end_point in LAYERS_TO_FREEZE:
+            for param in self._modules[end_point].parameters():
+                param.requires_grad = False
+
+    def freeze_partial_layers_v2(self):
+        LAYERS_TO_FREEZE = (
+            'Conv3d_1a_7x7',
+            'MaxPool3d_2a_3x3',
+            'Conv3d_2b_1x1',
+            'Conv3d_2c_3x3',
+            'MaxPool3d_3a_3x3',
+            'Mixed_3b',
+            'Mixed_3c',
+            'MaxPool3d_4a_3x3',
+            #'Mixed_4b',
+            #'Mixed_4c',
+            #'Mixed_4d',
+            #'Mixed_4e',
+            #'Mixed_4f',
+            #'MaxPool3d_5a_2x2',
             #'Mixed_5b',
             #'Mixed_5c',
             #'Logits',
