@@ -31,7 +31,7 @@ def main(args):
     column_class = 37
     column_filename = 40  # column AO
     is_first_row = True
-    with open(args.labels_file, encoding="utf16") as csv_file:
+    with open(os.path.join(args.data_root, args.labels_file), encoding="utf16") as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         for row in csv_reader:
             if is_first_row:
@@ -86,9 +86,9 @@ if __name__ == '__main__':
 
     if not os.path.isdir(os.path.join(args.data_root)):
         raise Exception('{} not found'.format(os.path.join(args.data_root)))
-    if not os.path.isdir(os.path.join(args.data_info)):
+    if not os.path.isfile(os.path.join(args.data_info)):
         raise Exception('{} not found'.format(os.path.join(args.data_info)))
-    if not os.path.isdir(os.path.join(args.data_root, args.labels_file)):
+    if not os.path.isfile(os.path.join(args.data_root, args.labels_file)):
         raise Exception('{} not found'.format(os.path.join(args.data_root, args.labels_file)))
     if not os.path.isdir(os.path.join(args.data_root, args.extracted_frames_dir)):
         raise Exception('{} not found'.format(os.path.join(args.data_root, args.extracted_frames_dir)))

@@ -25,6 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', default=-1, type=int) # in case of single video
                                                         # visualization(i.e. --all_videos==False) this is the seed
                                                         # by means we sample the video
+    parser.add_argument('--video_name', default='', type=str)   # in order to visualize a particular video
     parser.add_argument('--fps', default=25, type=int)
     #parser.add_argument('--show_bar', action='store_true')
     #parser.add_argument('--save_bar', action='store_true')
@@ -40,6 +41,8 @@ if __name__ == '__main__':
         raise Exception('The folder {} should contain the number of fps in its name, or the number '
                         'indicated in its name does not correspond with --fps argument(i.e. they must be '
                         'the same)'.format(args.target_labels_dir))
+    if args.video_name != '' and (args.all_videos or args.seed != -1):
+        raise Exception('When specifying a --video_name you do not have to specify --all_videos or --seed options')
 
     if args.seed != -1:
         np.random.seed(args.seed)
@@ -54,9 +57,9 @@ if __name__ == '__main__':
         video_duration_all = []
 
         for video_name in videos_name:
-            class_to_segmentdurations, _, video_duration = print_stats_video(video_name, args)
-            for name_class, list_durations in class_to_segmentdurations_all.items():
-                class_to_segmentdurations_all[name_class].extend(class_to_segmentdurations[name_class])
+            _, segment_list, video_duration = print_stats_video(video_name, args)
+            for name_class, segment_duration in segment_list:
+                class_to_segmentdurations_all[name_class].append(segment_duration)
             video_duration_all.append(video_duration)
 
         for name_class, list_durations in class_to_segmentdurations_all.items():
@@ -70,14 +73,18 @@ if __name__ == '__main__':
         video_duration_all = sum(video_duration_all) / len(video_duration_all)
         video_duration_all = round(video_duration_all, 1)
 
-        print('ALL DATASET')
+        print('=== ALL VIDEOS ===')
         print('MEAN VIDEO DURATION: ', video_duration_all)
         print('MEAN DURATION PER CLASS: ', class_to_segmentdurations_all)
 
     else:
-        num_videos = len(videos_name)
-        idx_video_name = np.random.choice(num_videos, size=1, replace=False)[0]
-        video_name = videos_name[idx_video_name]
+        if args.video_name == '':
+            num_videos = len(videos_name)
+            idx_video_name = np.random.choice(num_videos, size=1, replace=False)[0]
+            video_name = videos_name[idx_video_name]
+        else:
+            video_name = [i for i in videos_name if i == args.video_name]
+            video_name = video_name[0]
         class_to_segmentdurations, segment_list, video_duration = print_stats_video(video_name, args)
         print('VIDEO NAME: ', video_name)
         print('VIDEO DURATION: ', video_duration, ' s')
