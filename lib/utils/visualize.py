@@ -291,6 +291,7 @@ def plot_bar(classes, values, xlabel, ylabel, figsize=(8, 5), color='b', title=N
         plt.show()
     if save_bar:
         plt.savefig('bar_stats_'+title+'.png')
+        print('Bar saved at ' + os.path.join(os.getcwd(), 'bar_stats_'+title+'.png'))
     return figure
 
 def plot_to_image(figure):

@@ -27,8 +27,6 @@ if __name__ == '__main__':
                                                         # by means we sample the video
     parser.add_argument('--video_name', default='', type=str)   # in order to visualize a particular video
     parser.add_argument('--fps', default=25, type=int)
-    #parser.add_argument('--show_bar', action='store_true')
-    #parser.add_argument('--save_bar', action='store_true')
     args = parser.parse_args()
 
     if not os.path.isdir(os.path.join(args.data_root)):
