@@ -2,8 +2,6 @@ import os
 import sys
 import argparse
 
-import numpy as np
-
 sys.path.append(os.getcwd())
 import _init_paths
 from configs.build import build_data_info

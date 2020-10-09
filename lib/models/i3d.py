@@ -182,8 +182,14 @@ class InceptionI3d(nn.Module):
         'Predictions',
     )
 
-    def __init__(self, num_classes=400, spatial_squeeze=True,
-                 final_endpoint='Logits', name='inception_i3d', in_channels=3, dropout_keep_prob=0.5):
+    def __init__(self,
+                 chunk_size,
+                 num_classes=400,
+                 spatial_squeeze=True,
+                 final_endpoint='Logits',
+                 name='inception_i3d',
+                 in_channels=3,
+                 dropout_keep_prob=0.5):
         """Initializes I3D model instance.
         Args:
           num_classes: The number of outputs in the logit layer (default 400, which
@@ -208,6 +214,7 @@ class InceptionI3d(nn.Module):
         self._num_classes = num_classes
         self._spatial_squeeze = spatial_squeeze
         self._final_endpoint = final_endpoint
+        self._name = name
         self.logits = None
 
         if self._final_endpoint not in self.VALID_ENDPOINTS:
@@ -289,7 +296,7 @@ class InceptionI3d(nn.Module):
         if self._final_endpoint == end_point: return
 
         end_point = 'Logits'
-        self.avg_pool = nn.AvgPool3d(kernel_size=[2, 7, 7],
+        self.avg_pool = nn.AvgPool3d(kernel_size=[2 if chunk_size >= 9 else 1, 7, 7],
                                      stride=(1, 1, 1))
         self.dropout = nn.Dropout(dropout_keep_prob)
         self.logits = Unit3D(in_channels=384 + 384 + 128 + 128, output_channels=self._num_classes,
@@ -298,7 +305,7 @@ class InceptionI3d(nn.Module):
                              activation_fn=None,
                              use_batch_norm=False,
                              use_bias=True,
-                             name='logits')
+                             name=name + end_point)
 
         self.build()
 
@@ -310,9 +317,9 @@ class InceptionI3d(nn.Module):
                              activation_fn=None,
                              use_batch_norm=False,
                              use_bias=True,
-                             name='logits')
+                             name=self._name + 'Logits')
 
-    def replace_from_Mixed_5b(self):
+    def replace_Mixed_5b_5c(self):
         end_point = 'Mixed_5b'
         self.end_points[end_point] = InceptionModule(256 + 320 + 128 + 128, [256, 160, 320, 32, 128, 128],
                                                      'inception_i3d' + end_point)
@@ -320,9 +327,6 @@ class InceptionI3d(nn.Module):
         end_point = 'Mixed_5c'
         self.end_points[end_point] = InceptionModule(256 + 320 + 128 + 128, [384, 192, 384, 48, 128, 128],
                                                      'inception_i3d' + end_point)
-
-        self.avg_pool = nn.AvgPool3d(kernel_size=[2, 7, 7],
-                                     stride=(1, 1, 1))
 
     def build(self):
         for k in self.end_points.keys():
