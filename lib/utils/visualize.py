@@ -369,9 +369,9 @@ def get_segments(labels, class_index, fps, chunk_size):
     prev_idx_class = labels[0]
     for idx_frame, idx_class in enumerate(labels[1:], start=1):
         if idx_class != prev_idx_class:
-            real_idx_frame = idx_frame * chunk_size + chunk_size // 2
+            real_idx_frame = (idx_frame - 1) * chunk_size + chunk_size // 2
             time_seconds = '%.1f' % (real_idx_frame / fps)
-            segments_list.append((time_seconds + ' s', class_index[idx_class]))
+            segments_list.append((time_seconds + ' s', class_index[prev_idx_class]))
 
         prev_idx_class = idx_class
     return segments_list
