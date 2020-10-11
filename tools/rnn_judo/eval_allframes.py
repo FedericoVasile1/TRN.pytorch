@@ -64,7 +64,7 @@ def main(args):
         args.test_session_set = [args.video_name]
     if args.save_video:
         # when this option is activated, we only evaluate and save one video, without showing it.
-        args.test_session_set = args.test_session_set[0]
+        args.test_session_set = args.test_session_set[:1]
         args.show_predictions = False
     if args.show_predictions:
         count_frames = 0
@@ -85,8 +85,8 @@ def main(args):
 
             for count in range(target.shape[0]):
                 if count % args.enc_steps == 0:
-                    h_n = to_device(torch.zeros(model.hidden_size), device, dtype=features_extracted.dtype)
-                    c_n = to_device(torch.zeros(model.hidden_size), device, dtype=features_extracted.dtype)
+                    h_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
+                    c_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
 
                 sample = to_device(features_extracted[count], device)
                 score, h_n, c_n = model.step(sample, torch.zeros(1), h_n, c_n)
@@ -116,18 +116,21 @@ def main(args):
 
     if args.save_video:
         # here the video will be saved
+        appo = args.chunk_size
+        args.chunk_size = 1
         show_video_predictions(args,
                                session,
                                target_metrics,
                                score_metrics,
                                frames_dir='video_frames_25fps',
                                fps=25)
+        args.chunk_size = appo
         # print some stats about the video labels and predictions, then kill the program
         print('\n=== LABEL SEGMENTS ===')
-        segments_list = get_segments(target_metrics)
+        segments_list = get_segments(target_metrics, args.class_index, 25, args.chunk_size)
         print(segments_list)
         print('\n=== SCORE SEGMENTS ===')
-        segments_list = get_segments(score_metrics)
+        segments_list = get_segments(score_metrics, args.class_index, 25, args.chunk_size)
         print(segments_list)
 
         print('\n=== RESULTS CONSIDERING BACKGROUND CLASS ===')

@@ -173,7 +173,7 @@ def show_video_predictions(args,
 
     if args.save_video:
         H, W, _ = open_cv_frame.shape
-        out = cv2.VideoWriter(video_name+'.avi', cv2.VideoWriter_fourcc(*'DIVX'), args.fps / args.chunk_size, (W, H))
+        out = cv2.VideoWriter(video_name+'.avi', cv2.VideoWriter_fourcc(*'DIVX'), fps / args.chunk_size, (W, H))
         for frame in frames:
             out.write(frame)
         out.release()
