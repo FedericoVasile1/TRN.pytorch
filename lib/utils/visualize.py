@@ -177,7 +177,7 @@ def show_video_predictions(args,
         for frame in frames:
             out.write(frame)
         out.release()
-        print('. . . video saved at ' + os.path.join(os.getcwd(), video_name))
+        print('. . . video saved at ' + os.path.join(os.getcwd(), video_name+'.avi'))
 
 def show_random_videos(args,
                        samples_list,
@@ -273,13 +273,16 @@ def print_stats_classes(args):
                  show_bar=args.show_bar,
                  save_bar=args.save_bar)
 
-def plot_bar(classes, values, xlabel, ylabel, figsize=(8, 5), color='b', title=None, show_bar=False, save_bar=False):
+def plot_bar(classes, values, xlabel=None, ylabel=None, figsize=(8, 5), color='b', title=None, show_bar=False, save_bar=False):
     figure = plt.figure(figsize=figsize)
     rects = plt.bar(classes, values, color=color)
     plt.title(title, color='black')
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    if xlabel is not None:
+        plt.xlabel(xlabel)
+    if ylabel is not None:
+        plt.ylabel(ylabel)
 
+    # this function is to put the value on top of its corresponding column
     def autolabel(rects):
         # attach some text labels
         for ii, rect in enumerate(rects):
@@ -357,3 +360,18 @@ def add_pr_curve_tensorboard(writer, class_name, class_index, labels, probs_pred
                         class_labels,
                         class_probs_predicted,
                         global_step=global_step)
+
+def get_segments(labels, class_index, fps, chunk_size):
+    # labels: a list in which each element is a (num_classes,) tensor
+    labels = np.argmax(np.array(labels), axis=1)
+    segments_list = []
+
+    prev_idx_class = labels[0]
+    for idx_frame, idx_class in enumerate(labels[1:], start=1):
+        if idx_class != prev_idx_class:
+            real_idx_frame = idx_frame * chunk_size + chunk_size // 2
+            time_seconds = '%.1f' % (real_idx_frame / fps)
+            segments_list.append((time_seconds + ' s', class_index[idx_class]))
+
+        prev_idx_class = idx_class
+    return segments_list

@@ -24,9 +24,8 @@ def compute_result_multilabel(class_index,
                               switch=True,
                               return_APs=False):
     result = OrderedDict()
-    score_metrics = np.array(score_metrics)
-    pred_metrics = np.argmax(score_metrics, axis=1)
-    target_metrics = np.array(target_metrics)
+    score_metrics = np.array(score_metrics)         # score_metrics.shape == (num_samples, num_classes)
+    target_metrics = np.array(target_metrics)       # target_metrics.shape == (num_samples, num_classes)
 
     ###################################################################################################################
     # We follow (Shou et al., 2017) and adopt their per-frame evaluation method of THUMOS'14 datset.

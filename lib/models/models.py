@@ -7,7 +7,6 @@ from .idu import IDU
 from .rulstm import RULSTM
 from .rnn_attention import RNNAttention
 from .dcc_rnn import DCCRNN
-from .cnnlatefusion import CNN_LateFusion
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -25,7 +24,6 @@ _META_ARCHITECTURES = {
     'GRUATTENTION': RNNAttention,
     'DCCLSTM': DCCRNN,
     'DCCGRU': DCCRNN,
-    'CNNLATEFUSION': CNN_LateFusion
 }
 
 def build_model(args):
