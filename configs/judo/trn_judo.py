@@ -24,5 +24,5 @@ def parse_trn_args():
     parser.add_argument('--save_video', action='store_true')
     parser.add_argument('--video_name', default='', type=str)
     parser.add_argument('--reduce_lr_epoch', default=-1, type=int)
-    parser.add_argument('--reduce_lr_count', default=10, type=int)
+    parser.add_argument('--reduce_lr_count', default=30, type=int)
     return build_data_info(parser.parse_args())
