@@ -12,17 +12,19 @@ __all__ = [
     'compute_result',
 ]
 
-def compute_result_multilabel(class_index,
+def compute_result_multilabel(dataset_name,
+                              class_index,
                               score_metrics,
                               target_metrics,
                               save_dir,
                               result_file,
-                              ignore_class=[0],
-                              save=True,
+                              save,
+                              ignore_class,
+                              return_APs,
+                              samples_all_valid,
                               verbose=False,
                               smooth=True,
-                              switch=True,
-                              return_APs=False):
+                              switch=True):
     result = OrderedDict()
     score_metrics = np.array(score_metrics)         # score_metrics.shape == (num_samples, num_classes)
     target_metrics = np.array(target_metrics)       # target_metrics.shape == (num_samples, num_classes)
@@ -44,31 +46,35 @@ def compute_result_multilabel(class_index,
         score_metrics = np.copy(probsmooth)
 
     # Assign cliff diving (5) as diving (8)
-    if switch:
+    if switch and dataset_name == 'THUMOS':
+        # ONLY FOR THUMOS DATASET
         switch_index = np.where(score_metrics[:, 5] > score_metrics[:, 8])[0]
         score_metrics[switch_index, 8] = score_metrics[switch_index, 5]
 
-    if (ignore_class == [] and not switch) or ignore_class == [0]:
-        # this is only for DISCRIMINATOR model or for judo dataset
+    if samples_all_valid:
         valid_index = list(range(target_metrics.shape[0]))      # indexes all valid
-    else:
+    elif dataset_name == 'THUMOS':
+        # ONLY FOR THUMOS DATASET
         # Remove ambiguous (21)
         valid_index = np.where(target_metrics[:, 21] != 1)[0]
 
     # Compute AP
     result['AP'] = OrderedDict()
     for cls in range(len(class_index)):
-        if cls not in ignore_class:
-            result['AP'][class_index[cls]] = average_precision_score(
-                (target_metrics[valid_index, cls]==1).astype(np.int),
-                score_metrics[valid_index, cls])
-            if verbose:
-                print('{} AP: {:.5f}'.format(class_index[cls], result['AP'][class_index[cls]]))
+        result['AP'][class_index[cls]] = average_precision_score((target_metrics[valid_index, cls]==1).astype(np.int),
+                                                                 score_metrics[valid_index, cls])
+        if verbose:
+            print('{} AP: {:.5f}'.format(class_index[cls], result['AP'][class_index[cls]]))
 
-    # Compute mAP
-    result['mAP'] = np.mean(list(result['AP'].values()))
+    # Compute mAP considering also ignored classes
+    result['mAP_all_cls'] = np.mean(list(result['AP'].values()))
     if verbose:
-        print('mAP: {:.5f}'.format(result['mAP']))
+        print('mAP all classes: {:.5f}'.format(result['mAP_all_cls']))
+    # Compute mAP without considering ignored classes
+    valid_APs = [result['AP'][class_index[cls]] for cls in range(len(class_index)) if cls not in ignore_class]
+    result['mAP_valid_cls'] = np.mean(valid_APs)
+    if verbose:
+        print('mAP valid classes: {:.5f}'.format(result['mAP_valid_cls']))
 
     # Save
     if save:
@@ -82,7 +88,7 @@ def compute_result_multilabel(class_index,
     if return_APs:
         return result
     else:
-        return result['mAP']
+        return result['mAP_valid_cls']
 
 def compute_result(class_index, score_metrics, target_metrics, save_dir, result_file,
                    ignore_class=[0], save=True, verbose=False):

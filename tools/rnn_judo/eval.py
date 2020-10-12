@@ -56,7 +56,7 @@ def main(args):
 
     if not args.show_predictions and not args.save_video:
         # i.e. we want to do a full evaluation of the test set and then compute stuff like confusion matrix, etc..
-        tensorboard_dir = args.checkpoint.split['/'][:-1]
+        tensorboard_dir = args.checkpoint.split('/')[:-1]
         eval_dir = osp.join(*tensorboard_dir, 'eval')
         if osp.isdir(eval_dir):
             shutil.rmtree(eval_dir)
