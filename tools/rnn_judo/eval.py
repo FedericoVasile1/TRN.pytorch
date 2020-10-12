@@ -201,6 +201,9 @@ def main(args):
     sn.heatmap(df_cm, annot=True, linewidths=.2, fmt="d")
     plt.ylabel('Actual class')
     plt.xlabel('Predicted class')
+    plt.yticks(rotation=45)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
     writer.add_figure('eval_judo_conf-mat_unnorm.jpg', fig)
 
     # Log normalized confusion matrix for encoder
@@ -212,6 +215,9 @@ def main(args):
     sn.heatmap(df_cm, annot=True, linewidths=.2)
     plt.ylabel('Actual class')
     plt.xlabel('Predicted class')
+    plt.yticks(rotation=45)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
     writer.add_figure('eval_judo_conf-mat_norm.jpg', fig)
 
     writer.close()

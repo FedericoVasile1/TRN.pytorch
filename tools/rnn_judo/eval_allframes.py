@@ -206,18 +206,24 @@ def main(args):
     sn.heatmap(df_cm, annot=True, linewidths=.2, fmt="d")
     plt.ylabel('Actual class')
     plt.xlabel('Predicted class')
-    writer.add_figure('eval_allframes_judo_conf-mat_unnorm.jpg', fig)
+    plt.yticks(rotation=45)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    writer.add_figure('eval-allframes_judo_conf-mat_unnorm.jpg', fig)
 
     # Log normalized confusion matrix for encoder
     conf_mat_norm = conf_mat.astype('float') / conf_mat.sum(axis=1)[:, np.newaxis]
     df_cm = pd.DataFrame(conf_mat_norm,
                          index=[i for i in args.class_index],
                          columns=[i for i in args.class_index])
-    fig = plt.figure(figsize=(26, 26))
+    fig = plt.figure(figsize=(6, 6))
     sn.heatmap(df_cm, annot=True, linewidths=.2)
     plt.ylabel('Actual class')
     plt.xlabel('Predicted class')
-    writer.add_figure('eval_allframes_judo_conf-mat_norm.jpg', fig)
+    plt.yticks(rotation=45)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    writer.add_figure('eval-allframes_judo_conf-mat_norm.jpg', fig)
 
     writer.close()
 
