@@ -15,10 +15,6 @@ from configs.judo import parse_trn_args as parse_args
 from models import build_model
 
 def main(args):
-    this_dir = osp.join(osp.dirname(__file__), '.')
-    save_dir = osp.join(this_dir, 'checkpoints')
-    if not osp.isdir(save_dir):
-        os.makedirs(save_dir)
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     utl.set_seed(int(args.seed))
@@ -142,36 +138,34 @@ def main(args):
                            {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
                            epoch)
 
-        result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
         result = {phase: utl.compute_result_multilabel(
+            args.dataset,
             args.class_index,
             score_metrics[phase],
             target_metrics[phase],
-            save_dir,
-            result_file[phase],
+            save_dir=None,
+            result_file=None,
+            save=False,
             ignore_class=[0],
-            save=True,
-            switch=False,
             return_APs=True,
+            samples_all_valid=True,
         ) for phase in args.phases}
 
         log = 'Epoch: ' + str(epoch)
         log += '\n[train] '
         for cls in range(args.num_classes):
-            if cls == 0:        # ignore background class
-                continue
             log += '| ' + args.class_index[cls] + ' AP: ' + str(result['train']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
-        log += '| mAP: ' + str(result['train']['mAP'] * 100)[:4] + ' %'
+        log += '| mAP_all_cls: ' + str(result['train']['mAP_all_cls'] * 100)[:4] + ' %'
+        log += '| mAP_valid_cls: ' + str(result['train']['mAP_valid_cls'] * 100)[:4] + ' %'
         log += '\n[val  ] '
         for cls in range(args.num_classes):
-            if cls == 0:        # ignore background class
-                continue
             log += '| ' + args.class_index[cls] + ' AP: ' + str(result['val']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
-        log += '| mAP: ' + str(result['val']['mAP'] * 100)[:4] + ' %'
+        log += '| mAP_all_cls: ' + str(result['val']['mAP_all_cls'] * 100)[:4] + ' %'
+        log += '| mAP_valid_cls: ' + str(result['val']['mAP_valid_cls'] * 100)[:4] + ' %'
         log += '\n'
         logger_APs._write(str(log))
 
-        mAP = {phase: result[phase]['mAP'] for phase in args.phases}
+        mAP = {phase: result[phase]['mAP_valid_cls'] for phase in args.phases}
         writer.add_scalars('mAP_epoch/train_val_enc', {phase: mAP[phase] for phase in args.phases}, epoch)
 
         log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f} |'
@@ -192,12 +186,6 @@ def main(args):
 
             # only the best validation map model is saved
             checkpoint_file = 'model-{}-features-{}.pth'.format(args.model, args.camera_feature)
-            torch.save({
-                'val_mAP': best_val_mAP,
-                'epoch': epoch,
-                'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-            }, osp.join(save_dir, checkpoint_file))
             torch.save({
                 'val_mAP': best_val_mAP,
                 'epoch': epoch,

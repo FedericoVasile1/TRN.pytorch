@@ -1,9 +1,9 @@
 import os
+import shutil
 import os.path as osp
 import sys
 import time
 import random
-import json
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -54,10 +54,21 @@ def main(args):
     model.load_state_dict(checkpoint['model_state_dict'])
     model.train(False)
 
+    if not args.show_predictions and not args.save_video:
+        # i.e. we want to do a full evaluation of the test set and then compute stuff like confusion matrix, etc..
+        tensorboard_dir = args.checkpoint.split['/'][:-1]
+        eval_dir = osp.join(*tensorboard_dir, 'eval')
+        if osp.isdir(eval_dir):
+            shutil.rmtree(eval_dir)
+        os.mkdir(eval_dir)
+        writer = SummaryWriter(log_dir=eval_dir)
+        logger = utl.setup_logger(osp.join(writer.log_dir, 'log.txt'))
+        command = 'python ' + ' '.join(sys.argv)
+        logger._write(command)
+
     softmax = nn.Softmax(dim=1).to(device)
 
-    if args.seed != -1:
-        utl.set_seed(int(args.seed))
+    utl.set_seed(int(args.seed))
     random.shuffle(args.test_session_set)
 
     if args.video_name != '':
@@ -125,50 +136,39 @@ def main(args):
         print('\n=== SCORE SEGMENTS ===')
         segments_list = get_segments(score_metrics, args.class_index, 25, args.chunk_size)
         print(segments_list)
-
-        print('\n=== RESULTS CONSIDERING BACKGROUND CLASS ===')
-        utl.compute_result_multilabel(args.class_index,
+        print('\n=== RESULTS ===')
+        utl.compute_result_multilabel(args.dataset,
+                                      args.class_index,
                                       score_metrics,
                                       target_metrics,
-                                      None,
-                                      None,
-                                      ignore_class=[],
+                                      save_dir=None,
+                                      result_file=None,
                                       save=False,
-                                      switch=False,
-                                      verbose=True)
-        print('\n=== RESULTS W/O CONSIDERING BACKGROUND CLASS ===')
-        utl.compute_result_multilabel(args.class_index,
-                                      score_metrics,
-                                      target_metrics,
-                                      None,
-                                      None,
                                       ignore_class=[0],
-                                      save=False,
-                                      switch=False,
-                                      verbose=True)
+                                      return_APs=False,
+                                      samples_all_valid=True,
+                                      verbose=True, )
         return
 
-    save_dir = osp.dirname(args.checkpoint)
-    result_file  = osp.basename(args.checkpoint).replace('.pth', '.json')
-    # Compute result for encoder
-    utl.compute_result_multilabel(args.class_index,
-                                  score_metrics,
-                                  target_metrics,
-                                  save_dir,
-                                  result_file,
-                                  ignore_class=[0],
-                                  save=True,
-                                  switch=False,
-                                  verbose=True)
+    result = utl.compute_result_multilabel(args.dataset,
+                                           args.class_index,
+                                           score_metrics,
+                                           target_metrics,
+                                           save_dir=None,
+                                           result_file=None,
+                                           save=False,
+                                           ignore_class=[0],
+                                           return_APs=True,
+                                           samples_all_valid=True,
+                                           verbose=True,)
+    logger._write(result)
 
-    writer = SummaryWriter()
-
-    # get per class AP: the function utl.compute_result_multilabel(be sure that it has the parameter save == True) has
-    #  stored a JSON file containing per class AP: we load this json into a dict and add an histogram to tensorboard
-    with open(osp.join(save_dir, result_file), 'r') as f:
-        per_class_ap = json.load(f)['AP']
-    for class_name in per_class_ap:
-        per_class_ap[class_name] = round(per_class_ap[class_name], 2)
+    per_class_ap = {}
+    for cls in range(args.num_classes):
+        if cls == 0:
+            # ignore background class
+            continue
+        per_class_ap[args.class_index[cls]] = round(result['AP'][args.class_index[cls]], 2)
     figure = plot_bar(per_class_ap.keys(), per_class_ap.values(), title=args.dataset + ': per-class AP')
     figure = plot_to_image(figure)
     writer.add_image(args.dataset + ': per-class AP', np.transpose(figure, (2, 0, 1)), 0)
