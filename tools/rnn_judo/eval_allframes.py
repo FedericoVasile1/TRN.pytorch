@@ -1,6 +1,7 @@
 import os
 import shutil
 import os.path as osp
+import json
 import sys
 import time
 import random
@@ -166,15 +167,15 @@ def main(args):
                                            return_APs=True,
                                            samples_all_valid=True,
                                            verbose=True, )
-    logger._write(result)
+    logger._write(json.dumps(result, indent=2))
 
     per_class_ap = {}
     for cls in range(args.num_classes):
-        if cls == 0:
-            # ignore background class
-            continue
+        #if cls == 0:
+        #    # ignore background class
+        #    continue
         per_class_ap[args.class_index[cls]] = round(result['AP'][args.class_index[cls]], 2)
-    figure = plot_bar(per_class_ap.keys(), per_class_ap.values(), title=args.dataset + ': per-class AP')
+    figure = plot_bar(per_class_ap.keys(), list(per_class_ap.values()), title=args.dataset + ': per-class AP')
     figure = plot_to_image(figure)
     writer.add_image(args.dataset + ': per-class AP', np.transpose(figure, (2, 0, 1)), 0)
     writer.close()
@@ -201,12 +202,11 @@ def main(args):
     df_cm = pd.DataFrame(conf_mat,
                          index=[i for i in args.class_index],
                          columns=[i for i in args.class_index])
-    fig = plt.figure(figsize=(26, 26))
+    fig = plt.figure(figsize=(6, 6))
     sn.heatmap(df_cm, annot=True, linewidths=.2, fmt="d")
     plt.ylabel('Actual class')
     plt.xlabel('Predicted class')
-    timestamp = str(datetime.now())[:-7]
-    writer.add_figure(timestamp+'_conf-mat_unnorm.jpg', fig)
+    writer.add_figure('eval_allframes_judo_conf-mat_unnorm.jpg', fig)
 
     # Log normalized confusion matrix for encoder
     conf_mat_norm = conf_mat.astype('float') / conf_mat.sum(axis=1)[:, np.newaxis]
@@ -217,7 +217,7 @@ def main(args):
     sn.heatmap(df_cm, annot=True, linewidths=.2)
     plt.ylabel('Actual class')
     plt.xlabel('Predicted class')
-    writer.add_figure(timestamp + '_conf-mat_norm.jpg', fig)
+    writer.add_figure('eval_allframes_judo_conf-mat_norm.jpg', fig)
 
     writer.close()
 
