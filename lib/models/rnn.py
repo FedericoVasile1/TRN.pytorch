@@ -29,7 +29,8 @@ class RNNmodel(nn.Module):
             self.model = 'GRU'
         else:
             raise Exception('Model ' + args.model + ' here is not supported')
-        self.drop = nn.Identity()#nn.Dropout(args.dropout)
+        self.drop_before = nn.Dropout(args.dropout)
+        self.drop_after = nn.Dropout(args.dropout)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
     def forward(self, camera_input, motion_input):
@@ -48,14 +49,14 @@ class RNNmodel(nn.Module):
             motion_input_t = motion_input[:, step]
             out = self.feature_extractor(camera_input_t, motion_input_t)
 
-            h_n, c_n = self.rnn(out, (h_n, c_n))
-            out = self.classifier(self.drop(h_n))  # out.shape == (batch_size, num_classes)
+            h_n, c_n = self.rnn(self.drop_before(out), (h_n, c_n))
+            out = self.classifier(self.drop_after(h_n))  # out.shape == (batch_size, num_classes)
 
             scores[:, step, :] = out
         return scores
 
     def step(self, camera_input_t, motion_input_t, h_n, c_n):
         out = self.feature_extractor(camera_input_t, motion_input_t)
-        h_n, c_n = self.rnn(out, (h_n, c_n))
-        out = self.classifier(self.drop(h_n))
+        h_n, c_n = self.rnn(self.drop_before(out), (h_n, c_n))
+        out = self.classifier(self.drop_after(h_n))
         return out, h_n, c_n
