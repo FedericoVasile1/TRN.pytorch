@@ -30,7 +30,7 @@ def main(args):
     model = model.to(device)
 
     criterion = nn.CrossEntropyLoss().to(device)
-    actback_criterion = nn.CrossEntropyLoss.to(device)
+    actback_criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     lr_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=args.reduce_lr_count, verbose=True)
     if osp.isfile(args.checkpoint):
@@ -97,7 +97,7 @@ def main(args):
 
                     scores = model(camera_inputs, motion_inputs)            # scores.shape == (batch_size, enc_steps, num_classes)
 
-                    scores = scores.to(device)
+                    scores, act_back_scores = scores.to(device)
                     targets = targets.to(device)
                     # sum losses along all timesteps
                     loss = criterion(scores[:, 0], targets[:, 0].max(axis=1)[1])
@@ -105,12 +105,9 @@ def main(args):
                         loss += criterion(scores[:, step], targets[:, step].max(axis=1)[1])
                     loss /= camera_inputs.shape[1]      # scale by enc_steps
 
-                    # convert scores to action and background, all the action scores are summed
-                    act_back_scores = torch.zeros(scores.shape[0], scores.shape[1], 2)
-                    act_back_scores[:, :, 0] = scores[:, :, 0]
-                    act_back_scores[:, :, 1] = scores[:, :, [1,2,3,4]].sum(dim=2)
                     # convert targets to action and background
-                    act_back_targets = torch.zeros(targets.shape[0], targets.shape[1], 2)
+                    act_back_targets = torch.zeros(targets.shape[0], targets.shape[1], 2).to(device=targets.device,
+                                                                                             dtype=targets.dtype)
                     act_back_targets[:, :, 0] = targets[:, :, 0]
                     act_back_targets[:, : ,1] = targets[:, :, [1,2,3,4]].sum(dim=2)
                     # sum losses along all timesteps

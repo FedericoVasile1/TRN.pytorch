@@ -32,6 +32,7 @@ class RNNmodel(nn.Module):
         self.drop_before = nn.Dropout(args.dropout)
         self.drop_after = nn.Dropout(args.dropout)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
+        self.act_back_classifier = nn.Linear(self.hidden_size, 2)
 
     def forward(self, camera_input, motion_input):
         # camera_input.shape == (batch_size, enc_steps, feat_vect_dim)
@@ -44,6 +45,7 @@ class RNNmodel(nn.Module):
                           device=camera_input.device,
                           dtype=camera_input.dtype) if self.model == 'LSTM' else torch.zeros(1)
         scores = torch.zeros(camera_input.shape[0], camera_input.shape[1], self.num_classes, dtype=camera_input.dtype)
+        act_back_scores = torch.zeros(camera_input.shape[0], camera_input.shape[1], 2, dtype=camera_input.dtype)
         for step in range(self.enc_steps):
             camera_input_t = camera_input[:, step]
             motion_input_t = motion_input[:, step]
@@ -51,9 +53,11 @@ class RNNmodel(nn.Module):
 
             h_n, c_n = self.rnn(self.drop_before(out), (h_n, c_n))
             out = self.classifier(self.drop_after(h_n))  # out.shape == (batch_size, num_classes)
+            act_back_out = self.act_back_classifier(self.drop_after(h_n))
 
             scores[:, step, :] = out
-        return scores
+            act_back_scores[:, step, :] = act_back_out
+        return scores, act_back_scores
 
     def step(self, camera_input_t, motion_input_t, h_n, c_n):
         out = self.feature_extractor(camera_input_t, motion_input_t)
