@@ -24,7 +24,7 @@ class RNNmodel(nn.Module):
         if args.model == 'LSTM':
             self.rnn = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
             self.model = 'LSTM'
-        elif args.model == 'GRU':
+        elif args.model == 'GRU' or args.model == 'GRUMULTITASK':
             self.rnn = MyGRUCell(self.feature_extractor.fusion_size, self.hidden_size)
             self.model = 'GRU'
         else:
