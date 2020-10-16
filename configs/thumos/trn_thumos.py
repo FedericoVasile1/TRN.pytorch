@@ -13,7 +13,7 @@ def parse_trn_args():
     parser.add_argument('--motion_feature', default='', type=str)
     parser.add_argument('--enc_steps', default=64, type=int)
     parser.add_argument('--dec_steps', default=8, type=int)
-    parser.add_argument('--dropout', default=0.1, type=float)
+    parser.add_argument('--dropout', default=0.0, type=float)
     parser.add_argument('--downsample_backgr', action='store_true')
     parser.add_argument('--neurons', default=128, type=int)
     parser.add_argument('--feat_vect_dim', default=-1, type=int)

@@ -12,7 +12,6 @@ _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
     'LSTM': RNNmodel,
     'GRU': RNNmodel,
-    'GRUMULTITASK': RNNmodel,
     'CNN3D': CNN3D,
     'CONVLSTM': ConvLSTM,
     'DISCRIMINATORCONVLSTM': ConvLSTM,
