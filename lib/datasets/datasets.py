@@ -38,6 +38,7 @@ _DATA_LAYERS = {
     'CNNJUDOE2E': TRNJUDODataLayerE2E,
     'CONVLSTMJUDO': TRNJUDODataLayer,
     'TWOLAYERSGRUJUDO': TRNJUDODataLayer,
+    'I3DNONLOCALJUDOE2E': TRNJUDODataLayerE2E,
 }
 
 def build_dataset(args, phase):

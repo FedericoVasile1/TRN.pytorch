@@ -8,6 +8,7 @@ from .rulstm import RULSTM
 from .rnn_attention import RNNAttention
 from .dcc_rnn import DCCRNN
 from .twolayersgru import TWOLAYERSGRU
+from .i3d_nonlocal.i3d_nonlocal import I3dNonLocal
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -26,6 +27,7 @@ _META_ARCHITECTURES = {
     'DCCLSTM': DCCRNN,
     'DCCGRU': DCCRNN,
     'TWOLAYERSGRU': TWOLAYERSGRU,
+    'I3DNONLOCAL': I3dNonLocal,
 }
 
 def build_model(args):
