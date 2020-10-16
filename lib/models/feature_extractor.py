@@ -101,7 +101,7 @@ class THUMOSFeatureExtractor(nn.Module):
             else:
                 raise Exception('Feature extractor model not supported: '+args.feature_extractor)
 
-        if self.with_camera and self.with_motion and args.camera_feature != 'resnet3d_featuremaps':
+        if self.with_camera and self.with_motion and args.camera_feature != 'resnet2+1d_featuremaps':
             MOTION_FEAT_VECT = self.feat_vect_dim       # modify here if needed
             self.feat_vect_dim += MOTION_FEAT_VECT
 

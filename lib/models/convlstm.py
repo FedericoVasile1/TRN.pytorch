@@ -99,37 +99,64 @@ class ConvLSTM(nn.Module):
     """
     def __init__(self, args):
         super(ConvLSTM, self).__init__()
-        if args.camera_feature != 'resnet3d_featuremaps' and args.camera_feature != 'video_frames_24fps':
+        if args.camera_feature not in ('resnet2+1d_featuremaps', 'video_frames_24fps',
+                                       'i3d_featuremaps_mixed4f_chunk9', 'video_frames_25fps'):
             raise Exception('Wrong camera_feature option, this model supports only feature maps. '
-                            'Change this option to \'resnet3d_featuremaps\' or switch to end to end training with the '
-                            'following options: --camera_feature video_frames_24fps --feature_extractor RESNET2+1D')
+                            'Change this option to one of {resnet2+1d_featuremaps | i3d_featuremaps_mixed4f_chunk9} '
+                            'or switch to end to end training with one of the following options: '
+                            '{video_frames_24fps | video_frames_25fps}')
+        if args.dataset == 'THUMOS' and args.camera_feature != 'resnet2+1d_featuremaps':
+            raise Exception('For THUMOS dataset we only have \'resnet2+1d_featuremaps\', so use these')
+        if args.dataset == 'JUDO' and args.camera_feature != 'i3d_featuremaps_mixed4f_chunk9':
+            raise Exception('For JUDO dataset we only have \'i3d_featuremaps_mixed4f_chunk9\', so use these')
 
         #  TODO: These hyperparameters values are temporarily hard-coded; they should be set via command line
         #   arguments and so assigned here via args.<..argument..>
-        hidden_dim = [64]
-        kernel_size = [(3, 3)]
-        num_layers = 1
-        bias = True
+        HIDDEN_DIM = [64]
+        KERNEL_SIZE = [(3, 3)]
+        NUM_LAYERS = 1
+        BIAS = True
 
-        self._check_kernel_size_consistency(kernel_size)
+        self._check_kernel_size_consistency(KERNEL_SIZE)
 
         # Make sure that both `kernel_size` and `hidden_dim` are lists having len == num_layers
-        kernel_size = self._extend_for_multilayer(kernel_size, num_layers)
-        hidden_dim = self._extend_for_multilayer(hidden_dim, num_layers)
-        if not len(kernel_size) == len(hidden_dim) == num_layers:
+        KERNEL_SIZE = self._extend_for_multilayer(KERNEL_SIZE, NUM_LAYERS)
+        HIDDEN_DIM = self._extend_for_multilayer(HIDDEN_DIM, NUM_LAYERS)
+        if not len(KERNEL_SIZE) == len(HIDDEN_DIM) == NUM_LAYERS:
             raise ValueError('Inconsistent list length.')
 
         self.num_classes = args.num_classes
-        self.hidden_dim = hidden_dim
-        self.kernel_size = kernel_size
-        self.num_layers = num_layers
-        self.bias = bias
+        self.hidden_dim = HIDDEN_DIM
+        self.kernel_size = KERNEL_SIZE
+        self.num_layers = NUM_LAYERS
+        self.bias = BIAS
         self.steps = args.enc_steps
 
         self.feature_extractor = build_feature_extractor(args)
-        # HARD-CODED: the feature extractors actually supported all returns feature maps of shape (512, 7, 7)
-        self.input_dim = 512
-        self.H, self.W = (7, 7)
+
+        if args.dataset == 'THUMOS':
+            if args.camera_feature == 'resnet2+1d_featuremaps':
+                # HARD-CODED: the feature extractors actually supported all returns feature maps of shape (512, 7, 7)
+                self.input_dim = 512
+                self.H, self.W = (7, 7)
+                self.temporal_downsample = nn.Identity()
+            else:
+                raise Exception('No support for the specified --camera_feature option')
+        elif args.dataset == 'JUDO':
+            if args.camera_feature == 'i3d_featuremaps_mixed4f_chunk9':
+                # here the input feature maps have shape (C, T, H, W) == (832, 3, 14, 14). Since here the
+                #  ConvLSTM works with 2d convolutions, we need to remove the temporal component from the
+                #  input feature maps; i.e. downsample from 3 to 1
+                self.temporal_downsample = nn.Sequential(
+                    nn.AvgPool3d(kernel_size=[3, 1, 1], stride=(1, 1, 1)),
+                    SqueezeChunk(),
+                )
+                self.input_dim = 832
+                self.H, self.W = (14, 14)
+            else:
+                raise Exception('No support for the specified --camera_feature option')
+        else:
+            raise Exception('Unknow dataset')
 
         cell_list = []
         for i in range(0, self.num_layers):
@@ -143,7 +170,7 @@ class ConvLSTM(nn.Module):
 
         self.classifier = nn.Sequential(
             Flatten(),      # TODO try also other variants, such as global average pooling
-            nn.Linear(hidden_dim[-1] * self.H * self.W, self.num_classes),
+            nn.Linear(HIDDEN_DIM[-1] * self.H * self.W, self.num_classes),
         )
 
         # TODO: try also this variant below
@@ -178,7 +205,9 @@ class ConvLSTM(nn.Module):
             input_t = input_tensor[:, step]
 
             feature_maps = self.feature_extractor(input_t, torch.zeros(1).cpu())
-            # feature_maps.shape == (batch_size, 512, 7, 7)
+            # feature_maps.shape == (batch_size, CC, HH, WW)
+
+            input_t = self.temporal_downsample(input_t)
 
             for layer_idx in range(self.num_layers):
                 h, c = hidden_state[layer_idx]
