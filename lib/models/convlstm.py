@@ -207,7 +207,7 @@ class ConvLSTM(nn.Module):
             feature_maps = self.feature_extractor(input_t, torch.zeros(1).cpu())
             # feature_maps.shape == (batch_size, CC, HH, WW)
 
-            input_t = self.temporal_downsample(input_t)
+            feature_maps = self.temporal_downsample(feature_maps)
 
             for layer_idx in range(self.num_layers):
                 h, c = hidden_state[layer_idx]

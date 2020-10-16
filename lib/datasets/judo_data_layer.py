@@ -6,10 +6,11 @@ import torch.utils.data as data
 
 class TRNJUDODataLayer(data.Dataset):
     def __init__(self, args, phase='train'):
-        if args.camera_feature not in ('i3d_224x224_chunk9', 'resnet2+1d_224x224_chunk6', 'i3d_224x224_chunk6'):
-            raise Exception('Wrong --camera_feature option: actually only i3d_224x224_chunk9, i3d_224x224_chunk6 and '
-                            'resnet2+1d_224x224_chunk6 supported')
-        self.CHUNK_SIZE = 9 if args.camera_feature == 'i3d_224x224_chunk9' else 6
+        if args.camera_feature not in ('i3d_224x224_chunk9', 'resnet2+1d_224x224_chunk6', 'i3d_224x224_chunk6',
+                                       'i3d_featuremaps_mixed4f_chunk9'):
+            raise Exception('Wrong --camera_feature option: actually only i3d_224x224_chunk9, i3d_224x224_chunk6, '
+                            'i3d_featuremaps_mixed4f_chunk9 and resnet2+1d_224x224_chunk6 supported')
+        self.CHUNK_SIZE = 9 if 'chunk9' in args.camera_feature else 6
 
         self.data_root = args.data_root
         self.camera_feature = args.camera_feature

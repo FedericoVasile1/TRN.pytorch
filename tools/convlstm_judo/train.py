@@ -8,9 +8,10 @@ import torch.nn as nn
 from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 
+sys.path.append(os.getcwd())
 import _init_paths
 import utils as utl
-from configs.thumos import parse_trn_args as parse_args
+from configs.judo import parse_trn_args as parse_args
 from models import build_model
 
 def main(args):
