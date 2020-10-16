@@ -7,6 +7,7 @@ from .idu import IDU
 from .rulstm import RULSTM
 from .rnn_attention import RNNAttention
 from .dcc_rnn import DCCRNN
+from .twolayersgru import TWOLAYERSGRU
 
 _META_ARCHITECTURES = {
     'TRN': GeneralizedTRN,
@@ -24,6 +25,7 @@ _META_ARCHITECTURES = {
     'GRUATTENTION': RNNAttention,
     'DCCLSTM': DCCRNN,
     'DCCGRU': DCCRNN,
+    'TWOLAYERSGRU': TWOLAYERSGRU,
 }
 
 def build_model(args):
