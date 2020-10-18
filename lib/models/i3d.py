@@ -189,8 +189,7 @@ class InceptionI3d(nn.Module):
                  final_endpoint='Logits',
                  name='inception_i3d',
                  in_channels=3,
-                 dropout_keep_prob=0.5,
-                 build=True):
+                 dropout_keep_prob=0.5):
         """Initializes I3D model instance.
         Args:
           num_classes: The number of outputs in the logit layer (default 400, which
@@ -307,8 +306,7 @@ class InceptionI3d(nn.Module):
                              use_batch_norm=False,
                              use_bias=True,
                              name=name + end_point)
-        if build:
-            self.build()
+        self.build()
 
     def replace_logits(self, num_classes):
         self._num_classes = num_classes

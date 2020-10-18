@@ -25,7 +25,7 @@ class CNN3D(nn.Module):
 
                 # choose which part of the network to train, now it's all trainable
             elif args.feature_extractor == 'I3DNONLOCAL':
-                self.feature_extractor = I3dNonLocal()
+                self.feature_extractor = I3dNonLocal(args)
 
             else:
                 raise Exception('Wrong feature_extractor option, ' + args.feature_extractor + ' is not supported')

@@ -8,7 +8,7 @@ class I3dNonLocal(nn.Module):
     def __init__(self, args):
         super(I3dNonLocal, self).__init__()
 
-        self.model = InceptionI3d(chunk_size=9, build=False)
+        self.model = InceptionI3d(chunk_size=9)
         self.model.load_state_dict(torch.load('rgb_imagenet.pt'))
         self.model.replace_logits(args.num_classes)
         self.freeze_partial_layers()
@@ -43,6 +43,7 @@ class I3dNonLocal(nn.Module):
             'Predictions',
         )
 
+        del self.model._modules
         self.build()
 
     def forward(self, x):
