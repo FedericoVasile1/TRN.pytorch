@@ -189,7 +189,8 @@ class InceptionI3d(nn.Module):
                  final_endpoint='Logits',
                  name='inception_i3d',
                  in_channels=3,
-                 dropout_keep_prob=0.5):
+                 dropout_keep_prob=0.5,
+                 build=True):
         """Initializes I3D model instance.
         Args:
           num_classes: The number of outputs in the logit layer (default 400, which
@@ -306,8 +307,8 @@ class InceptionI3d(nn.Module):
                              use_batch_norm=False,
                              use_bias=True,
                              name=name + end_point)
-
-        self.build()
+        if build:
+            self.build()
 
     def replace_logits(self, num_classes):
         self._num_classes = num_classes
@@ -335,7 +336,7 @@ class InceptionI3d(nn.Module):
     def forward(self, x):
         for end_point in self.VALID_ENDPOINTS:
             if end_point in self.end_points:
-                x = self.end_points[end_point](x)  # use _modules to work with dataparallel
+                x = self._modules[end_point](x)  # use _modules to work with dataparallel
 
         logits = self.logits(self.dropout(self.avg_pool(x)))
         if self._spatial_squeeze:
