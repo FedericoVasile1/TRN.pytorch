@@ -32,6 +32,7 @@ def build_data_info(args, basic_build=False):
 
     if args.feature_extractor == 'RESNET2+1D' \
             or args.feature_extractor == 'I3D' \
+            or args.feature_extractor == 'I3DNONLOCAL' \
             or args.model == 'CNN3D' \
             or args.model == 'DISCRIMINATORCNN3D' \
             or (args.model == 'CONVLSTM' and args.feature_extractor == 'RESNET2+1D') \

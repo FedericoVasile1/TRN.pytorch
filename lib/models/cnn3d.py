@@ -3,6 +3,7 @@ import torch.nn as nn
 from torchvision import models
 
 from lib.models.i3d import InceptionI3d
+from lib.models.i3d_nonlocal.i3d_nonlocal import I3dNonLocal
 
 class CNN3D(nn.Module):
     def __init__(self, args):
@@ -23,6 +24,9 @@ class CNN3D(nn.Module):
                 self.feature_extractor.replace_logits(args.num_classes)
 
                 # choose which part of the network to train, now it's all trainable
+            elif args.feature_extractor == 'I3DNONLOCAL':
+                self.feature_extractor = I3dNonLocal()
+
             else:
                 raise Exception('Wrong feature_extractor option, ' + args.feature_extractor + ' is not supported')
         else:

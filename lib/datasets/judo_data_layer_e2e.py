@@ -24,7 +24,7 @@ class TRNJUDODataLayerE2E(data.Dataset):
         self.training = phase=='train'
 
         if args.is_3D:
-            if args.feature_extractor == 'I3D':
+            if args.feature_extractor == 'I3D' or args.feature_extractor == 'I3DNONLOCAL':
                 self.transform = transforms.Compose([
                     transforms.Resize((224, 320)),
                     transforms.CenterCrop(224),

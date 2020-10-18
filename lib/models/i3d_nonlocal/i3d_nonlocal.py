@@ -16,7 +16,7 @@ class I3dNonLocal(nn.Module):
         self.model.end_points['nl1'] = NONLocalBlock3D(832)        # after mixed4f
         self.model.end_points['nl2'] = NONLocalBlock3D(832)        # after mixed4f
         self.model.end_points['nl3'] = NONLocalBlock3D(832)        # after mixed5b
-        self.model.end_points['nl4'] = NONLocalBlock3D(1024)        # after mixed5c
+        self.model.end_points['nl4'] = NONLocalBlock3D(1024)       # after mixed5c
 
         self.model.VALID_ENDPOINTS = (
             'Conv3d_1a_7x7',

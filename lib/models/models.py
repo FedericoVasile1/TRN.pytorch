@@ -27,7 +27,6 @@ _META_ARCHITECTURES = {
     'DCCLSTM': DCCRNN,
     'DCCGRU': DCCRNN,
     'TWOLAYERSGRU': TWOLAYERSGRU,
-    'I3DNONLOCAL': I3dNonLocal,
 }
 
 def build_model(args):
