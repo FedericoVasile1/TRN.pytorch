@@ -17,7 +17,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_root', default='data/JUDO', type=str)
     parser.add_argument('--data_info', default='data/data_info.json', type=str)
-    parser.add_argument('--chunk_size', default=6, type=int)
+    parser.add_argument('--chunk_size', default=9, type=int)
     parser.add_argument('--target_labels_dir', default='target_frames_25fps', type=str)
     parser.add_argument('--phase', default='', type=str)
     parser.add_argument('--downsample_backgr', action='store_true')

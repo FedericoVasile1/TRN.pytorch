@@ -48,8 +48,10 @@ class RNNmodel(nn.Module):
             camera_input_t = camera_input[:, step]
             motion_input_t = motion_input[:, step]
             out = self.feature_extractor(camera_input_t, motion_input_t)
+            if step == 0:
+                out = self.drop_before(out)
 
-            h_n, c_n = self.rnn(self.drop_before(out), (h_n, c_n))
+            h_n, c_n = self.rnn(out, (h_n, c_n))
             out = self.classifier(self.drop_after(h_n))  # out.shape == (batch_size, num_classes)
 
             scores[:, step, :] = out
@@ -57,6 +59,10 @@ class RNNmodel(nn.Module):
 
     def step(self, camera_input_t, motion_input_t, h_n, c_n):
         out = self.feature_extractor(camera_input_t, motion_input_t)
-        h_n, c_n = self.rnn(self.drop_before(out), (h_n, c_n))
+        appo = torch.zeros_like(out)
+        if torch.all(torch.eq(appo, out)):
+            out = self.drop_before(out)
+
+        h_n, c_n = self.rnn(out, (h_n, c_n))
         out = self.classifier(self.drop_after(h_n))
         return out, h_n, c_n
