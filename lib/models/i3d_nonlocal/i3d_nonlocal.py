@@ -36,14 +36,10 @@ class I3dNonLocal(nn.Module):
             'nl2',
             'MaxPool3d_5a_2x2',
             'Mixed_5b',
-            'nl3'
+            'nl3',
             'Mixed_5c',
             'nl4',
-            'Logits',
-            'Predictions',
         )
-
-        del self.model._modules
         self.build()
 
     def forward(self, x):
