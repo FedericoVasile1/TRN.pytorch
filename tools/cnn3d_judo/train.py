@@ -25,10 +25,6 @@ def main(args):
     # now, since after we will fuse batch_size and enc_steps(i.e. batch_size * enc_steps) we will
     # get back to the original batch_size, i.e. 32 * 2 = 64
 
-    this_dir = osp.join(osp.dirname(__file__), '.')
-    save_dir = osp.join(this_dir, 'checkpoints')
-    if not osp.isdir(save_dir):
-        os.makedirs(save_dir)
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     utl.set_seed(int(args.seed))
@@ -57,6 +53,7 @@ def main(args):
     print('Tensorboard log dir: ' + writer.log_dir)
 
     logger = utl.setup_logger(osp.join(writer.log_dir, 'log.txt'))
+
     command = 'python ' + ' '.join(sys.argv)
     logger._write(command)
 
@@ -105,7 +102,6 @@ def main(args):
                 for batch_idx, (camera_inputs, _, targets, _) in enumerate(data_loaders[phase], start=1):
                     # camera.inputs.shape == (batch_size, enc_steps, C, chunk_size, H, W)
                     # targets.shape == (batch_size, enc_steps, num_classes)
-
                     # fuse batch_size and enc_steps
                     camera_inputs = camera_inputs.view(-1,
                                                        camera_inputs.shape[2],
@@ -159,32 +155,36 @@ def main(args):
                             for phase in args.phases},
                            epoch)
 
-        result_file = {phase: 'phase-{}-epoch-{}.json'.format(phase, epoch) for phase in args.phases}
         result = {phase: utl.compute_result_multilabel(
+            args.dataset,
             args.class_index,
             score_metrics[phase],
             target_metrics[phase],
-            save_dir,
-            result_file[phase],
+            save_dir=None,
+            result_file=None,
+            save=False,
             ignore_class=[0],
-            save=True,
-            switch=False,
             return_APs=True,
+            samples_all_valid=True,
         ) for phase in args.phases}
 
         log = 'Epoch: ' + str(epoch)
         log += '\n[train] '
-        for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
-            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['train']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
-        log += '| mAP: ' + str(result['train']['mAP'] * 100)[:4] + ' %'
+        for cls in range(args.num_classes):
+            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['train']['AP'][args.class_index[cls]] * 100)[
+                                                            :4] + ' %'
+        log += '| mAP_all_cls: ' + str(result['train']['mAP_all_cls'] * 100)[:4] + ' %'
+        log += '| mAP_valid_cls: ' + str(result['train']['mAP_valid_cls'] * 100)[:4] + ' %'
         log += '\n[val  ] '
-        for cls in range(1, args.num_classes):  # starts from 1 in order to drop background class
-            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['val']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
-        log += '| mAP: ' + str(result['val']['mAP'] * 100)[:4] + ' %'
+        for cls in range(args.num_classes):
+            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['val']['AP'][args.class_index[cls]] * 100)[
+                                                            :4] + ' %'
+        log += '| mAP_all_cls: ' + str(result['val']['mAP_all_cls'] * 100)[:4] + ' %'
+        log += '| mAP_valid_cls: ' + str(result['val']['mAP_valid_cls'] * 100)[:4] + ' %'
         log += '\n'
         logger_APs._write(str(log))
 
-        mAP = {phase: result[phase]['mAP'] for phase in args.phases}
+        mAP = {phase: result[phase]['mAP_valid_cls'] for phase in args.phases}
         writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
 
         log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f}  |'
@@ -204,13 +204,7 @@ def main(args):
             epoch_best_val_map = epoch
 
             # only the best validation map model is saved
-            checkpoint_file = 'model-{}-feature_extractor-{}.pth'.format(args.model, args.feature_extractor)
-            torch.save({
-                'val_mAP': best_val_map,
-                'epoch': epoch,
-                'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-            }, osp.join(save_dir, checkpoint_file))
+            checkpoint_file = 'model-{}_feature_extractor-{}.pth'.format(args.model, args.feature_extractor)
             torch.save({
                 'val_mAP': best_val_map,
                 'epoch': epoch,
