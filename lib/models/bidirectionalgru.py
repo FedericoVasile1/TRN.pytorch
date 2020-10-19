@@ -3,9 +3,9 @@ import torch.nn as nn
 
 from .feature_extractor import build_feature_extractor
 
-class TWOLAYERSGRU(nn.Module):
+class BIDIRECTIONALGRU(nn.Module):
     def __init__(self, args):
-        super(TWOLAYERSGRU, self).__init__()
+        super(BIDIRECTIONALGRU, self).__init__()
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.enc_steps = args.enc_steps
@@ -14,10 +14,10 @@ class TWOLAYERSGRU(nn.Module):
 
         self.rnn = nn.GRU(input_size=self.feature_extractor.fusion_size,
                           hidden_size=self.hidden_size,
-                          num_layers=2,
+                          num_layers=1,
                           batch_first=True,
                           dropout=args.dropout,
-                          bidirectional=False)
+                          bidirectional=True)
 
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 

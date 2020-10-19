@@ -7,7 +7,7 @@ from .idu import IDU
 from .rulstm import RULSTM
 from .rnn_attention import RNNAttention
 from .dcc_rnn import DCCRNN
-from .twolayersgru import TWOLAYERSGRU
+from .bidirectionalgru import BIDIRECTIONALGRU
 from .i3d_nonlocal.i3d_nonlocal import I3dNonLocal
 
 _META_ARCHITECTURES = {
@@ -26,7 +26,7 @@ _META_ARCHITECTURES = {
     'GRUATTENTION': RNNAttention,
     'DCCLSTM': DCCRNN,
     'DCCGRU': DCCRNN,
-    'TWOLAYERSGRU': TWOLAYERSGRU,
+    'BIDIRECTIONALGRU': BIDIRECTIONALGRU,
 }
 
 def build_model(args):

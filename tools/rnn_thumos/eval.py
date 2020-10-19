@@ -31,8 +31,8 @@ def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    enc_score_metrics = []
-    enc_target_metrics = []
+    score_metrics = []
+    target_metrics = []
 
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint)
@@ -52,20 +52,27 @@ def main(args):
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
-            camera_inputs = np.load(osp.join(args.data_root, args.camera_feature, session+'.npy'), mmap_mode='r')
-            camera_inputs = torch.as_tensor(camera_inputs.astype(np.float32))
-            target = np.load(osp.join(args.data_root, 'target', session+'.npy'))
+            target = np.load(osp.join(args.data_root, 'target_frames_24fps', session+'.npy'))
+            # round to multiple of CHUNK_SIZE
+            num_frames = target.shape[0]
+            num_frames = num_frames - (num_frames % args.chunk_size)
+            target = target[:num_frames]
+            # For each chunk, take only the central frame
+            target = target[args.chunk_size // 2::args.chunk_size]
 
-            for l in range(target.shape[0]):
-                if l % args.enc_steps == 0:
-                    enc_h_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
-                    enc_c_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
+            features_extracted = np.load(osp.join(args.data_root, args.camera_feature, session+'.npy'), mmap_mode='r')
+            features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
 
-                camera_input = to_device(camera_inputs[l], device)
-                enc_score, enc_h_n, enc_c_n = model.step(camera_input, torch.zeros(1), enc_h_n, enc_c_n)
+            for count in range(target.shape[0]):
+                if count % args.enc_steps == 0:
+                    h_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
+                    c_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
 
-                enc_score_metrics.append(softmax(enc_score).cpu().numpy()[0])
-                enc_target_metrics.append(target[l])
+                sample = to_device(features_extracted[count], device)
+                score, h_n, c_n = model.step(sample, torch.zeros(1), h_n, c_n)
+
+                score_metrics.append(softmax(score).cpu().numpy()[0])
+                target_metrics.append(target[count])
 
         end = time.time()
 
@@ -77,16 +84,18 @@ def main(args):
         if args.show_predictions:
             show_video_predictions(args,
                                    session,
-                                   enc_target_metrics[count_frames:count_frames + target.shape[0]],
-                                   enc_score_metrics[count_frames:count_frames + target.shape[0]])
+                                   target_metrics[count_frames:count_frames + target.shape[0]],
+                                   score_metrics[count_frames:count_frames + target.shape[0]],
+                                   frames_dir='video_frames_24fps',
+                                   fps=24)
             count_frames += target.shape[0]
 
     save_dir = osp.dirname(args.checkpoint)
     result_file  = osp.basename(args.checkpoint).replace('.pth', '.json')
     # Compute result for encoder
     utl.compute_result_multilabel(args.class_index,
-                                  enc_score_metrics,
-                                  enc_target_metrics,
+                                  score_metrics,
+                                  target_metrics,
                                   save_dir,
                                   result_file,
                                   ignore_class=[0,21],
@@ -103,35 +112,35 @@ def main(args):
         per_class_ap[class_name] = round(per_class_ap[class_name], 2)
     figure = plot_perclassap_bar(per_class_ap.keys(), per_class_ap.values(), title=args.dataset+': per-class AP')
     figure = plot_to_image(figure)
-    writer.add_image(args.dataset+': per-class AP', np.transpose(figure, (2, 0, 1)), 0)
+    writer.add_image(args.dataset+': per-class_AP', np.transpose(figure, (2, 0, 1)), 0)
     writer.close()
 
-    enc_score_metrics = np.array(enc_score_metrics)
+    score_metrics = np.array(score_metrics)
     # Assign cliff diving (5) as diving (8)
-    switch_index = np.where(enc_score_metrics[:, 5] > enc_score_metrics[:, 8])[0]
-    enc_score_metrics[switch_index, 8] = enc_score_metrics[switch_index, 5]
+    switch_index = np.where(score_metrics[:, 5] > score_metrics[:, 8])[0]
+    score_metrics[switch_index, 8] = score_metrics[switch_index, 5]
     # Prepare variables
-    enc_score_metrics = torch.tensor(enc_score_metrics)  # shape == (num_videos * num_frames_in_video, num_classes)
-    enc_target_metrics = torch.max(torch.tensor(enc_target_metrics), 1)[1]  # shape == (num_videos * num_frames_in_video)
+    score_metrics = torch.tensor(score_metrics)  # shape == (num_videos * num_frames_in_video, num_classes)
+    target_metrics = torch.max(torch.tensor(target_metrics), 1)[1]  # shape == (num_videos * num_frames_in_video)
 
     # Log precision recall curve for encoder
     for idx_class in range(len(args.class_index)):
-        if idx_class == 20 or idx_class == 5:
+        if idx_class == 21 or idx_class == 5:
             continue  # ignore ambiguos class and cliff diving class
         add_pr_curve_tensorboard(writer,
                                  args.class_index[idx_class],
                                  idx_class,
-                                 enc_target_metrics,
-                                 enc_score_metrics)
+                                 target_metrics,
+                                 score_metrics)
     writer.close()
 
     # For each sample, takes the predicted class based on his scores
-    enc_pred_metrics = torch.max(enc_score_metrics, 1)[1]
+    enc_pred_metrics = torch.max(score_metrics, 1)[1]
 
     args.class_index.pop(5)
 
     # Log unnormalized confusion matrix for encoder
-    conf_mat = confusion_matrix(enc_target_metrics, enc_pred_metrics)
+    conf_mat = confusion_matrix(target_metrics, enc_pred_metrics)
     df_cm = pd.DataFrame(conf_mat,
                          index=[i for i in args.class_index],
                          columns=[i for i in args.class_index])
