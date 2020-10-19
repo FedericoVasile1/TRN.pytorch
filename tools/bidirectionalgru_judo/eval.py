@@ -110,8 +110,12 @@ def main(args):
                 target_metrics.append(target[count])                    # target[count].shape == (num_classes,)
 
             if samples != []:
+                appo = len(samples)
+                for i in range(appo, args.enc_steps):
+                    samples.append(torch.zeros_like(features_extracted[0]))
                 samples = torch.stack(samples).unsqueeze(0).to(device)
-                scores = model(samples, torch.zeros(1))
+                scores = model(samples, torch.zeros(samples.shape[0], samples.shape[1], 1))
+                scores = scores[:, :appo]
                 scores = scores.view(-1, args.num_classes)
                 scores = softmax(scores).cpu().detach().numpy()[0]
                 score_metrics.extend(scores)
