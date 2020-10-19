@@ -26,7 +26,7 @@ class GlobalAveragePooling(nn.Module):
         return x.mean(dim=(2, 3))
 
 class ConvLSTMCell(nn.Module):
-    def __init__(self, input_dim, hidden_dim, kernel_size, bias):
+    def __init__(self, input_dim, hidden_dim, kernel_size, bias, stride):
         """
         Initialize ConvLSTM cell.
         Parameters
@@ -46,7 +46,7 @@ class ConvLSTMCell(nn.Module):
         self.hidden_dim = hidden_dim
 
         self.kernel_size = kernel_size
-        self.padding = kernel_size[0] // 2, kernel_size[1] // 2     # in order to preserve spatial dimensions
+        self.padding = kernel_size[0] // 2, kernel_size[1] // 2     # in order to preserve spatial dimensions(it's true only if stride==1)
         self.bias = bias
 
         self.conv = nn.Conv2d(in_channels=self.input_dim + self.hidden_dim,     # we will concat input and hidden state
@@ -100,21 +100,21 @@ class ConvLSTM(nn.Module):
     def __init__(self, args):
         super(ConvLSTM, self).__init__()
         if args.camera_feature not in ('resnet2+1d_featuremaps', 'video_frames_24fps',
-                                       'i3d_featuremaps_mixed4f_chunk9', 'video_frames_25fps'):
+                                       'i3d_featuremaps_mixed4f_chunk9', 'i3d_featuremaps_mixed5c_chunk9', 'video_frames_25fps'):
             raise Exception('Wrong camera_feature option, this model supports only feature maps. '
                             'Change this option to one of {resnet2+1d_featuremaps | i3d_featuremaps_mixed4f_chunk9} '
                             'or switch to end to end training with one of the following options: '
                             '{video_frames_24fps | video_frames_25fps}')
         if args.dataset == 'THUMOS' and args.camera_feature != 'resnet2+1d_featuremaps':
             raise Exception('For THUMOS dataset we only have \'resnet2+1d_featuremaps\', so use these')
-        if args.dataset == 'JUDO' and args.camera_feature != 'i3d_featuremaps_mixed4f_chunk9':
+        if args.dataset == 'JUDO' and args.camera_feature not in ('i3d_featuremaps_mixed4f_chunk9', 'i3d_featuremaps_mixed5c_chunk9'):
             raise Exception('For JUDO dataset we only have \'i3d_featuremaps_mixed4f_chunk9\', so use these')
 
         #  TODO: These hyperparameters values are temporarily hard-coded; they should be set via command line
         #   arguments and so assigned here via args.<..argument..>
-        HIDDEN_DIM = [64]
-        KERNEL_SIZE = [(3, 3)]
-        NUM_LAYERS = 1
+        HIDDEN_DIM = [256, 256, 512]
+        KERNEL_SIZE = [(1, 1), (3, 3), (1, 1)]
+        NUM_LAYERS = 3
         BIAS = True
 
         self._check_kernel_size_consistency(KERNEL_SIZE)
@@ -153,6 +153,16 @@ class ConvLSTM(nn.Module):
                 )
                 self.input_dim = 832
                 self.H, self.W = (14, 14)
+            elif args.camera_feature == 'i3d_featuremaps_mixed5c_chunk9':
+                # here the input feature maps have shape (C, T, H, W) == (832, 3, 14, 14). Since here the
+                #  ConvLSTM works with 2d convolutions, we need to remove the temporal component from the
+                #  input feature maps; i.e. downsample from 3 to 1
+                self.temporal_downsample = nn.Sequential(
+                    nn.AvgPool3d(kernel_size=[2, 1, 1], stride=(1, 1, 1)),
+                    SqueezeChunk(),
+                )
+                self.input_dim = 1024
+                self.H, self.W = (4, 4)
             else:
                 raise Exception('No support for the specified --camera_feature option')
         else:
@@ -165,22 +175,24 @@ class ConvLSTM(nn.Module):
             cell_list.append(ConvLSTMCell(input_dim=cur_input_dim,
                                           hidden_dim=self.hidden_dim[i],
                                           kernel_size=self.kernel_size[i],
-                                          bias=self.bias))
+                                          bias=self.bias,
+                                          stride=2 if i == 1 else 1))
         self.cell_list = nn.ModuleList(cell_list)
 
+        '''
         self.classifier = nn.Sequential(
             Flatten(),      # TODO try also other variants, such as global average pooling
             nn.Linear(HIDDEN_DIM[-1] * self.H * self.W, self.num_classes),
         )
+        '''
 
         # TODO: try also this variant below
-        '''
         # NOTICE THAT TO USE THIS WE MUST HAVE hidden_dim[-1] == self.num_classes
-        assert hidden_dim[-1] == self.num_classes
+        #assert hidden_dim[-1] == self.num_classes
         self.classifier = nn.Sequential(
             GlobalAveragePooling(),
+            nn.Linear(HIDDEN_DIM[-1], self.num_classes),
         )
-        '''
 
     def forward(self, input_tensor):
         """
