@@ -33,13 +33,3 @@ class BIDIRECTIONALGRU(nn.Module):
             scores[:, step, :] = self.classifier(h_ts[:, step, :])
 
         return scores
-
-    def step(self, camera_input_t, motion_input_t, h_t):
-        out = self.feature_extractor(camera_input_t, motion_input_t)
-        appo = torch.zeros_like(out)
-        if torch.all(torch.eq(appo, out)):
-            out = self.drop_before(out)
-
-        h_t, _ = self.rnn(out.unsqueeze(1), h_t).squeeze(1)
-        out = self.classifier(self.drop_after(h_t))
-        return out, h_t
