@@ -103,7 +103,7 @@ def main(args):
                     scores = model(samples, torch.zeros(samples.shape[0], samples.shape[1], 1))
 
                     scores = scores.view(-1, args.num_classes)
-                    scores = softmax(scores).cpu().detach().numpy()[0]
+                    scores = softmax(scores).cpu().detach().numpy()
                     score_metrics.extend(scores)                             # scores.shape == (enc_steps, num_classes)
                     samples = []
 
@@ -117,7 +117,7 @@ def main(args):
                 scores = model(samples, torch.zeros(samples.shape[0], samples.shape[1], 1))
                 scores = scores[:, :appo]
                 scores = scores.view(-1, args.num_classes)
-                scores = softmax(scores).cpu().detach().numpy()[0]
+                scores = softmax(scores).cpu().detach().numpy()
                 score_metrics.extend(scores)
 
         end = time.time()

@@ -95,17 +95,36 @@ def main(args):
             features_extracted = np.load(osp.join(args.data_root, args.camera_feature, session+'.npy'), mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
 
+            samples = []
             for count in range(target.shape[0]):
-                if count % args.enc_steps == 0:
-                    h_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
+                samples.append(features_extracted[count])
 
-                sample = to_device(features_extracted[count], device)
-                score, h_n = model.step(sample, torch.zeros(1), h_n)
+                if count % args.enc_steps == 0 and count != 0:
+                    samples = torch.stack(samples).unsqueeze(0).to(device)
+                    scores = model(samples, torch.zeros(samples.shape[0], samples.shape[1], 1))
 
-                score = softmax(score).cpu().detach().numpy()[0]
+                    scores = scores.view(-1, args.num_classes)
+                    scores = softmax(scores).cpu().detach().numpy()
+                    for s in range(len(scores)):
+                        for c in range(args.chunk_size):
+                            score_metrics.append(scores[s])
+                    samples = []
+
                 for c in range(args.chunk_size):
-                    score_metrics.append(score)
                     target_metrics.append(original_target[count * args.chunk_size + c])
+
+            if samples != []:
+                appo = len(samples)
+                for i in range(appo, args.enc_steps):
+                    samples.append(torch.zeros_like(features_extracted[0]))
+                samples = torch.stack(samples).unsqueeze(0).to(device)
+                scores = model(samples, torch.zeros(samples.shape[0], samples.shape[1], 1))
+                scores = scores[:, :appo]
+                scores = scores.view(-1, args.num_classes)
+                scores = softmax(scores).cpu().detach().numpy()
+                for s in range(len(scores)):
+                    for c in range(args.chunk_size):
+                        score_metrics.append(scores[s])
 
         end = time.time()
 
