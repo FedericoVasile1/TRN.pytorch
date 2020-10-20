@@ -26,7 +26,7 @@ class GlobalAveragePooling(nn.Module):
         return x.mean(dim=(2, 3))
 
 class ConvLSTMCell(nn.Module):
-    def __init__(self, input_dim, hidden_dim, kernel_size, bias, stride):
+    def __init__(self, input_dim, hidden_dim, kernel_size, bias):
         """
         Initialize ConvLSTM cell.
         Parameters
@@ -46,14 +46,13 @@ class ConvLSTMCell(nn.Module):
         self.hidden_dim = hidden_dim
 
         self.kernel_size = kernel_size
-        self.padding = kernel_size[0] // 2, kernel_size[1] // 2     # in order to preserve spatial dimensions(it's true only if stride==1)
+        self.padding = kernel_size[0] // 2, kernel_size[1] // 2     # in order to preserve spatial dimensions
         self.bias = bias
 
         self.conv = nn.Conv2d(in_channels=self.input_dim + self.hidden_dim,     # we will concat input and hidden state
                               out_channels=4 * self.hidden_dim,      # 4 gates
                               kernel_size=self.kernel_size,
                               padding=self.padding,
-                              stride=1,
                               bias=self.bias)
 
     def forward(self, input_tensor, cur_state):
@@ -162,7 +161,7 @@ class ConvLSTM(nn.Module):
                     SqueezeChunk(),
                 )
                 self.input_dim = 1024
-                self.H, self.W = (4, 4)
+                self.H, self.W = (7, 7)
             else:
                 raise Exception('No support for the specified --camera_feature option')
         else:
@@ -175,8 +174,7 @@ class ConvLSTM(nn.Module):
             cell_list.append(ConvLSTMCell(input_dim=cur_input_dim,
                                           hidden_dim=self.hidden_dim[i],
                                           kernel_size=self.kernel_size[i],
-                                          bias=self.bias,
-                                          stride=2 if i == 1 else 1))
+                                          bias=self.bias))
         self.cell_list = nn.ModuleList(cell_list)
 
         '''

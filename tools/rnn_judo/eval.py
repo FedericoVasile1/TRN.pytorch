@@ -11,7 +11,7 @@ import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, classification_report
 
 import torch
 import torch.nn as nn
@@ -149,6 +149,9 @@ def main(args):
                                       return_APs=False,
                                       samples_all_valid=True,
                                       verbose=True, )
+        score_metrics = torch.tensor(score_metrics).argmax(dim=1)
+        target_metrics = torch.tensor(target_metrics).argmax(dim=1)
+        print(classification_report(target_metrics, score_metrics, target_names=args.class_index))
         return
 
     result = utl.compute_result_multilabel(args.dataset,
@@ -162,6 +165,13 @@ def main(args):
                                            return_APs=True,
                                            samples_all_valid=True,
                                            verbose=True,)
+    # round to 4 decimal points
+    for key, value in result.items():
+        if key == 'AP':
+            for key2, value2 in result[key].items():
+                result[key][key2] = '%.4f' % result[key][key2]
+        else:
+            result[key] = '%.4f' % result[key][key2]
     logger._write(json.dumps(result, indent=2))
 
     per_class_ap = {}
@@ -175,10 +185,9 @@ def main(args):
     writer.add_image(args.dataset + ': per-class AP', np.transpose(figure, (2, 0, 1)), 0)
     writer.close()
 
-    score_metrics = np.array(score_metrics)
     # Prepare variables
     score_metrics = torch.tensor(score_metrics)  # shape == (num_videos * num_frames_in_video, num_classes)
-    target_metrics = torch.max(torch.tensor(target_metrics), 1)[1]  # shape == (num_videos * num_frames_in_video)
+    target_metrics = torch.tensor(target_metrics).argmax(dim=1)  # shape == (num_videos * num_frames_in_video)
 
     # Log precision recall curve for encoder
     for idx_class in range(len(args.class_index)):
@@ -190,10 +199,13 @@ def main(args):
     writer.close()
 
     # For each sample, takes the predicted class based on his scores
-    enc_pred_metrics = torch.max(score_metrics, 1)[1]
+    pred_metrics = score_metrics.argmax(dim=1)
+
+    result = classification_report(target_metrics, pred_metrics, target_names=args.class_index, output_dict=True)
+    logger._write(json.dumps(result, indent=2))
 
     # Log unnormalized confusion matrix for encoder
-    conf_mat = confusion_matrix(target_metrics, enc_pred_metrics)
+    conf_mat = confusion_matrix(target_metrics, pred_metrics)
     df_cm = pd.DataFrame(conf_mat,
                          index=[i for i in args.class_index],
                          columns=[i for i in args.class_index])
