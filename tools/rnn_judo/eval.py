@@ -149,9 +149,6 @@ def main(args):
                                       return_APs=False,
                                       samples_all_valid=True,
                                       verbose=True, )
-        score_metrics = torch.tensor(score_metrics).argmax(dim=1)
-        target_metrics = torch.tensor(target_metrics).argmax(dim=1)
-        print(classification_report(target_metrics, score_metrics, target_names=args.class_index))
         return
 
     result = utl.compute_result_multilabel(args.dataset,
@@ -165,13 +162,6 @@ def main(args):
                                            return_APs=True,
                                            samples_all_valid=True,
                                            verbose=True,)
-    # round to 4 decimal points
-    for key, value in result.items():
-        if key == 'AP':
-            for key2, value2 in result[key].items():
-                result[key][key2] = '%.4f' % result[key][key2]
-        else:
-            result[key] = '%.4f' % result[key][key2]
     logger._write(json.dumps(result, indent=2))
 
     per_class_ap = {}
