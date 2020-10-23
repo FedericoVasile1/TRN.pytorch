@@ -41,8 +41,4 @@ def build_data_info(args, basic_build=False):
     else:
         args.is_3D = False
 
-    if args.dataset == 'THUMOS' and args.camera_feature == 'i3d_224x224_chunk9' and args.chunk_size != 9:
-        raise Exception('Wrong chunk_size option. With camera_feature == i3d_224x224_chunk9, you must '
-                        'have chunk_size == 9')
-
     return args
