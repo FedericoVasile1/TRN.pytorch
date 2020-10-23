@@ -46,7 +46,6 @@ def main():
 
     DATA_ROOT = 'data/JUDO'
     VIDEO_FRAMES = 'video_frames_25fps'   # base folder where the video folders (containing the frames) are
-    #VIDEO_FEATURES = 'i3d_224x224'
     VIDEO_FEATURES = 'i3d_224x224_chunk6'
 
     with torch.set_grad_enabled(False):

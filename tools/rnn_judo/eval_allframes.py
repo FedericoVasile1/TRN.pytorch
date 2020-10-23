@@ -5,7 +5,6 @@ import json
 import sys
 import time
 import random
-from datetime import datetime
 import numpy as np
 import pandas as pd
 import seaborn as sn
@@ -28,18 +27,11 @@ def to_device(x, device):
     return x.unsqueeze(0).to(device)
 
 def main(args):
-    if args.camera_feature == 'i3d_224x224_chunk9' and args.chunk_size != 9:
-        raise Exception('Wrong pair of arguments. With --camera_feature == i3d_224x224_chunk9 you have to '
-                        'put --chunk_size == 9')
-    if args.camera_feature == 'i3d_224x224_chunk6' and args.chunk_size != 6:
-        raise Exception('Wrong pair of arguments. With --camera_feature == i3d_224x224_chunk6 you have to '
-                        'put --chunk_size == 6')
-    if args.camera_feature == 'resnet2+1d_224x224_chunk6' and args.chunk_size != 6:
-        raise Exception('Wrong pair of arguments. With --camera_feature == resnet2+1d_224x224_chunk6 you have to '
-                        'put --chunk_size == 6')
-    if args.camera_feature not in ('i3d_224x224_chunk9', 'i3d_224x224_chunk6', 'resnet2+1d_224x224_chunk6'):
+    if not args.camera_feature.endswith('chunk'+str(args.chunk_size)):
+        raise Exception('Wrong pair of argumets. --camera_feature and --chunk_size indicate a different chunk size')
+    if args.camera_feature not in ('i3d_224x224_chunk9', 'i3d_224x224_chunk6', 'resnet2+1d_224x224_chunk6', 'i3d_224x224_chunk12'):
         raise Exception('Wrong --camera_feature option. Supported '
-                        'values: {i3d_224x224_chunk6|i3d_224x224_chunk9|resnet2+1d_224x224_chunk6]')
+                        'values: {i3d_224x224_chunk6|i3d_224x224_chunk9|resnet2+1d_224x224_chunk6|i3d_224x224_chunk12}')
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -114,6 +106,7 @@ def main(args):
                                                                                  session_idx,
                                                                                  len(args.test_session_set),
                                                                                  end - start))
+
         if args.show_predictions:
             appo = args.chunk_size
             args.chunk_size = 1

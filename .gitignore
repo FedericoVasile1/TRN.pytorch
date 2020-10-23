@@ -27,6 +27,8 @@ data/JUDO/resnet2+1d_224x224_chunk9
 data/JUDO/i3d_224x224_chunk6
 data/JUDO/i3d_224x224_chunk9
 data/JUDO/i3d_featuremaps_mixed4f_chunk9
+data/JUDO/i3d_featuremaps_mixed5c_chunk9
+data/JUDO/i3d_224x224_chunk12
 
 Grand*
 

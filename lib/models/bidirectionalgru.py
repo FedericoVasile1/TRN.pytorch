@@ -25,7 +25,8 @@ class BIDIRECTIONALGRU(nn.Module):
         scores = torch.zeros(camera_input.shape[0], camera_input.shape[1], self.num_classes, dtype=camera_input.dtype)
 
         for step in range(self.enc_steps):
-            camera_input[:, step, :] = self.feature_extractor(camera_input[:, step], motion_input[:, step])    # second parameter is junk
+            # second parameter is junk, i.e. we do not use optical flow
+            camera_input[:, step, :] = self.feature_extractor(camera_input[:, step], motion_input[:, step])
 
         h_ts, _ = self.rnn(camera_input)        # h_ts.shape == (batch_size, enc_steps, hidden_dim)
 

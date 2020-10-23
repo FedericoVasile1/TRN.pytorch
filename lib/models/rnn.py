@@ -59,6 +59,9 @@ class RNNmodel(nn.Module):
 
     def step(self, camera_input_t, motion_input_t, h_n, c_n):
         out = self.feature_extractor(camera_input_t, motion_input_t)
+
+        # to check if we are at the first timestep of the sequence, we exploit the fact that at the first
+        #  timestep the hidden state is all zeros.
         appo = torch.zeros_like(out)
         if torch.all(torch.eq(appo, out)):
             out = self.drop_before(out)

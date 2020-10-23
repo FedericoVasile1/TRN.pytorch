@@ -23,7 +23,7 @@ def main():
     os.environ['CUDA_VISIBLE_DEVICES'] = str(1)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = InceptionI3d(chunk_size=9)
+    model = InceptionI3d()
     model.load_state_dict(torch.load('rgb_imagenet.pt'))
     model.VALID_ENDPOINTS = model.VALID_ENDPOINTS[:-5]      # until Mixed_4f
     model.avg_pool = nn.Identity()

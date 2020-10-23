@@ -1,16 +1,16 @@
 import os
+import shutil
 import os.path as osp
 import sys
 import time
 import json
 import random
-from datetime import datetime
 import numpy as np
 import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, classification_report
 
 import torch
 import torch.nn as nn
@@ -19,15 +19,20 @@ from torch.utils.tensorboard import SummaryWriter
 sys.path.append(os.getcwd())
 import _init_paths
 import utils as utl
-from lib.utils.visualize import show_video_predictions
 from configs.thumos import parse_trn_args as parse_args
-from lib.utils.visualize import plot_perclassap_bar, plot_to_image, add_pr_curve_tensorboard
+from lib.utils.visualize import plot_bar, plot_to_image, add_pr_curve_tensorboard, get_segments, show_video_predictions
 from models import build_model
 
 def to_device(x, device):
     return x.unsqueeze(0).to(device)
 
 def main(args):
+    if not args.camera_feature.endswith('chunk'+str(args.chunk_size)):
+        raise Exception('Wrong pair of argumets. --camera_feature and --chunk_size indicate a different chunk size')
+    if args.camera_feature not in ('i3d_224x224_chunk9', 'i3d_224x224_chunk6', 'resnet2+1d_112x112_chunk6'):
+        raise Exception('Wrong --camera_feature option. Supported '
+                        'values: {i3d_224x224_chunk6|i3d_224x224_chunk9|resnet2+1d_112x112_chunk6}')
+
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -42,13 +47,32 @@ def main(args):
     model.load_state_dict(checkpoint['model_state_dict'])
     model.train(False)
 
+    if not args.show_predictions and not args.save_video:
+        # i.e. we want to do a full evaluation of the test set and then compute stuff like confusion matrix, etc..
+        tensorboard_dir = args.checkpoint.split('/')[:-1]
+        eval_dir = osp.join(*tensorboard_dir, 'eval_allframes')
+        if osp.isdir(eval_dir):
+            shutil.rmtree(eval_dir)
+        os.mkdir(eval_dir)
+        writer = SummaryWriter(log_dir=eval_dir)
+        logger = utl.setup_logger(osp.join(writer.log_dir, 'log.txt'))
+        command = 'python ' + ' '.join(sys.argv)
+        logger._write(command)
+
     softmax = nn.Softmax(dim=1).to(device)
 
+    utl.set_seed(int(args.seed))
+    random.shuffle(args.test_session_set)
+
+    if args.video_name != '':
+        args.test_session_set = [args.video_name]
+    if args.save_video:
+        # when this option is activated, we only evaluate and save one video, without showing it.
+        args.test_session_set = args.test_session_set[:1]
+        args.show_predictions = False
     if args.show_predictions:
         count_frames = 0
-        if args.seed_show_predictions != -1:
-            random.seed(args.seed_show_predictions)
-        random.shuffle(args.test_session_set)
+
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
@@ -84,46 +108,78 @@ def main(args):
                                                                                  end - start))
 
         if args.show_predictions:
+            appo = args.chunk_size
+            args.chunk_size = 1
             show_video_predictions(args,
                                    session,
-                                   target_metrics[count_frames:count_frames + target.shape[0]],
-                                   score_metrics[count_frames:count_frames + target.shape[0]],
+                                   target_metrics[count_frames:count_frames + original_target.shape[0]],
+                                   score_metrics[count_frames:count_frames + original_target.shape[0]],
                                    frames_dir='video_frames_24fps',
                                    fps=24)
-            count_frames += target.shape[0]
+            args.chunk_size = appo
+            count_frames += original_target.shape[0]
 
-    save_dir = osp.dirname(args.checkpoint)
-    result_file  = osp.basename(args.checkpoint).replace('.pth', '.json')
-    # Compute result for encoder
-    utl.compute_result_multilabel(args.class_index,
-                                  score_metrics,
-                                  target_metrics,
-                                  save_dir,
-                                  result_file,
-                                  ignore_class=[0,21],
-                                  save=True,
-                                  verbose=True)
+    if args.save_video:
+        # here the video will be saved
+        args.chunk_size = 1
+        show_video_predictions(args,
+                               session,
+                               target_metrics,
+                               score_metrics,
+                               frames_dir='video_frames_24fps',
+                               fps=24)
+        # print some stats about the video labels and predictions, then kill the program
+        print('\n=== LABEL SEGMENTS ===')
+        segments_list = get_segments(target_metrics, args.class_index, 24, args.chunk_size)
+        print(segments_list)
+        print('\n=== SCORE SEGMENTS ===')
+        segments_list = get_segments(score_metrics, args.class_index, 24, args.chunk_size)
+        print(segments_list)
+        print('\n=== RESULTS ===')
+        utl.compute_result_multilabel(args.dataset,
+                                      args.class_index,
+                                      score_metrics,
+                                      target_metrics,
+                                      save_dir=None,
+                                      result_file=None,
+                                      save=False,
+                                      ignore_class=[0, 21],
+                                      return_APs=False,
+                                      samples_all_valid=False,
+                                      verbose=True, )
+        return
 
-    writer = SummaryWriter()
+    result = utl.compute_result_multilabel(args.dataset,
+                                           args.class_index,
+                                           score_metrics,
+                                           target_metrics,
+                                           save_dir=None,
+                                           result_file=None,
+                                           save=False,
+                                           ignore_class=[0, 21],
+                                           return_APs=True,
+                                           samples_all_valid=False,
+                                           verbose=True, )
+    logger._write(json.dumps(result, indent=2))
 
-    # get per class AP: the function utl.compute_result_multilabel(be sure that it has the parameter save == True) has
-    #  stored a JSON file containing per class AP: we load this json into a dict and add an histogram to tensorboard
-    with open(osp.join(save_dir, result_file), 'r') as f:
-        per_class_ap = json.load(f)['AP']
-    for class_name in per_class_ap:
-        per_class_ap[class_name] = round(per_class_ap[class_name], 2)
-    figure = plot_perclassap_bar(per_class_ap.keys(), per_class_ap.values(), title=args.dataset+': per-class AP')
+    per_class_ap = {}
+    for cls in range(args.num_classes):
+        # if cls == 0 or cls == 21:
+        #    # ignore background class
+        #    continue
+        per_class_ap[args.class_index[cls]] = round(result['AP'][args.class_index[cls]], 2)
+    figure = plot_bar(per_class_ap.keys(), list(per_class_ap.values()), title=args.dataset + ': per-class AP')
     figure = plot_to_image(figure)
-    writer.add_image(args.dataset+': per-class_AP', np.transpose(figure, (2, 0, 1)), 0)
+    writer.add_image(args.dataset + ': per-class AP', np.transpose(figure, (2, 0, 1)), 0)
     writer.close()
 
+    # Prepare variables
     score_metrics = np.array(score_metrics)
     # Assign cliff diving (5) as diving (8)
     switch_index = np.where(score_metrics[:, 5] > score_metrics[:, 8])[0]
     score_metrics[switch_index, 8] = score_metrics[switch_index, 5]
-    # Prepare variables
     score_metrics = torch.tensor(score_metrics)  # shape == (num_videos * num_frames_in_video, num_classes)
-    target_metrics = torch.max(torch.tensor(target_metrics), 1)[1]  # shape == (num_videos * num_frames_in_video)
+    target_metrics = torch.tensor(target_metrics).argmax(dim=1)  # shape == (num_videos * num_frames_in_video)
 
     # Log precision recall curve for encoder
     for idx_class in range(len(args.class_index)):
@@ -137,12 +193,16 @@ def main(args):
     writer.close()
 
     # For each sample, takes the predicted class based on his scores
-    enc_pred_metrics = torch.max(score_metrics, 1)[1]
+    pred_metrics = score_metrics.argmax(dim=1)
 
+    result = classification_report(target_metrics, pred_metrics, target_names=args.class_index, output_dict=True)
+    logger._write(json.dumps(result, indent=2))
+
+    # drop cliff diving class
     args.class_index.pop(5)
 
     # Log unnormalized confusion matrix for encoder
-    conf_mat = confusion_matrix(target_metrics, enc_pred_metrics)
+    conf_mat = confusion_matrix(target_metrics, pred_metrics)
     df_cm = pd.DataFrame(conf_mat,
                          index=[i for i in args.class_index],
                          columns=[i for i in args.class_index])
@@ -150,8 +210,10 @@ def main(args):
     sn.heatmap(df_cm, annot=True, linewidths=.2, fmt="d")
     plt.ylabel('Actual class')
     plt.xlabel('Predicted class')
-    timestamp = str(datetime.now())[:-7]
-    writer.add_figure(timestamp+'_conf-mat_unnorm.jpg', fig)
+    plt.yticks(rotation=45)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    writer.add_figure('eval-allframes_thumos_conf-mat_unnorm.jpg', fig)
 
     # Log normalized confusion matrix for encoder
     conf_mat_norm = conf_mat.astype('float') / conf_mat.sum(axis=1)[:, np.newaxis]
@@ -162,7 +224,10 @@ def main(args):
     sn.heatmap(df_cm, annot=True, linewidths=.2)
     plt.ylabel('Actual class')
     plt.xlabel('Predicted class')
-    writer.add_figure(timestamp + '_conf-mat_norm.jpg', fig)
+    plt.yticks(rotation=45)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    writer.add_figure('eval-allframes_thumos_conf-mat_norm.jpg', fig)
 
     writer.close()
 
