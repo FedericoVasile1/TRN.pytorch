@@ -7,6 +7,12 @@ import torch.nn.functional as F
 
 import numpy as np
 
+class I3DNormalization(object):
+    def __call__(self, sample):
+        sample *= 255       # get back from range [0, 1] to [0, 255]
+        sample = sample / 128 - 1
+        return sample
+
 class MaxPool3dSamePadding(nn.MaxPool3d):
 
     def compute_pad(self, dim, s):

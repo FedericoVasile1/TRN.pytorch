@@ -18,7 +18,7 @@ def main(args):
     # have a recurrent part, so we do not have the concept of 'enc_steps', so we arrange it manually here
     # only to make the dataset class working properly)
     # e.g. args.batch_size == 64
-    args.enc_steps = args.batch_size // 2  # 32
+    args.steps = args.batch_size // 2  # 32
     args.batch_size = 2  # 2
     # now, since after we will fuse batch_size and enc_steps(i.e. batch_size * enc_steps) we will
     # get back to the original batch_size, i.e. 32 * 2 = 64
@@ -158,7 +158,7 @@ def main(args):
             min_val_loss = losses['test']
 
         writer.add_scalars('Loss_epoch/train_val_enc',
-                           {phase: losses[phase] / (len(data_loaders[phase].dataset) * args.enc_steps)
+                           {phase: losses[phase] / (len(data_loaders[phase].dataset) * args.steps)
                             for phase in args.phases},
                            epoch)
 
@@ -179,9 +179,9 @@ def main(args):
         log += ' [test] loss: {:.5f}  mAP: {:.4f}  |\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
-                              losses['train'] / (len(data_loaders['train'].dataset) * args.enc_steps),
+                              losses['train'] / (len(data_loaders['train'].dataset) * args.steps),
                               mAP['train'],
-                              losses['test'] / (len(data_loaders['test'].dataset) * args.enc_steps),
+                              losses['test'] / (len(data_loaders['test'].dataset) * args.steps),
                               mAP['test'],
                               end - start)
         print(log)

@@ -4,13 +4,13 @@ import numpy as np
 import torch
 import torch.utils.data as data
 
-class TRNTHUMOSDataLayer(data.Dataset):
+class THUMOSDataLayer(data.Dataset):
     def __init__(self, args, phase='train'):
         self.data_root = args.data_root
-        self.camera_feature = args.camera_feature
+        self.camera_feature = args.model_input
         self.motion_feature = args.motion_feature
         self.sessions = getattr(args, phase+'_session_set')
-        self.enc_steps = args.enc_steps
+        self.enc_steps = args.steps
         self.dec_steps = args.dec_steps
         self.training = phase=='train'
         self.args_inputs = args.inputs

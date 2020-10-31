@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import math
 
 from .feature_extractor import build_feature_extractor
-from .rnn import MyGRUCell
+from .rnn import _MyGRUCell
 
 class ScaledDotProductAttention(nn.Module):
     '''
@@ -52,7 +52,7 @@ class RNNAttention(nn.Module):
     """
     def __init__(self, args):
         super(RNNAttention, self).__init__()
-        if args.camera_feature != 'resnet3d_featuremaps' and args.camera_feature != 'video_frames_24fps':
+        if args.model_input != 'resnet3d_featuremaps' and args.model_input != 'video_frames_24fps':
             raise Exception('Wrong camera_feature option, this model supports only feature maps. '
                             'Change this option to \'resnet3d_featuremaps\' or switch to end to end training with the '
                             'following options: --camera_feature video_frames_24fps --feature_extractor RESNET2+1D')
@@ -61,7 +61,7 @@ class RNNAttention(nn.Module):
 
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
-        self.enc_steps = args.enc_steps
+        self.enc_steps = args.steps
 
         # The feature_extractor outputs feature maps of shape (batch_size, 512, 7, 7)
         self.feature_extractor = build_feature_extractor(args)
@@ -77,7 +77,7 @@ class RNNAttention(nn.Module):
             self.rnn = nn.LSTMCell(self.feature_extractor.fusion_size + self.hidden_size, self.hidden_size)
             self.model = 'LSTMATTENTION'
         elif args.model == 'GRUATTENTION':
-            self.rnn = MyGRUCell(self.feature_extractor.fusion_size + self.hidden_size, self.hidden_size)
+            self.rnn = _MyGRUCell(self.feature_extractor.fusion_size + self.hidden_size, self.hidden_size)
             self.model = 'GRUATTENTION'
         else:
             raise Exception('Model ' + args.model + ' here is not supported')

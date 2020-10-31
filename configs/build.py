@@ -5,40 +5,69 @@ __all__ = ['build_data_info']
 
 def build_data_info(args, basic_build=False):
     args.dataset = osp.basename(osp.normpath(args.data_root))
+
+    if args.dataset == 'THUMOS':
+        with open(args.data_info, 'r') as f:
+            data_info = json.load(f)[args.dataset]
+        args.train_session_set = data_info['train_session_set']
+        args.test_session_set = data_info['test_session_set']
+    elif args.dataset == 'JUDO':
+        if args.use_trimmed == args.use_untrimmed == False:
+            raise Exception('At least one between --use_trimmed and --use_untrimmed must be used')
+        if args.eval_on_untrimmed and (args.use_trimmed == False or args.use_untrimmed == False):
+            raise Exception('Wrong --eval_on_untrimmed option. With --eval_on_untrimmed you'
+                            'must have --use_trimmed and --use_untrimmed')
+
+        args.train_session_set, args.val_session_set, args.test_session_set = ({}, {}, {})
+        with open(args.data_info, 'r') as f:
+            data_info = json.load(f)[args.dataset]
+            if args.use_trimmed:
+                args.train_session_set['TRIMMED'] = data_info['TRIMMED']['train_session_set']
+                args.val_session_set['TRIMMED'] = data_info['TRIMMED']['val_session_set']
+                args.test_session_set['TRIMMED'] = data_info['TRIMMED']['test_session_set']
+            if args.use_untrimmed:
+                args.train_session_set['UNTRIMMED'] = data_info['UNTRIMMED']['train_session_set']
+                args.val_session_set['UNTRIMMED'] = data_info['UNTRIMMED']['val_session_set']
+                args.test_session_set['UNTRIMMED'] = data_info['UNTRIMMED']['test_session_set']
+    else:
+        raise Exception('Wrong --data_root option. Unknow dataset')
+
     with open(args.data_info, 'r') as f:
         data_info = json.load(f)[args.dataset]
-    args.train_session_set = data_info['train_session_set']
-    args.val_session_set = data_info['val_session_set'] if 'val_session_set' in data_info else None
-    args.test_session_set = data_info['test_session_set']
-    args.class_index = data_info['class_index']
-    args.num_classes = len(args.class_index)
+        args.class_index = data_info['class_index']
+        args.num_classes = len(args.class_index)
 
     if basic_build:
         return args
 
-    if args.inputs == 'motion':
-        raise Exception('Optical flow only is not supported')
-    if args.inputs == 'multistream' and args.motion_feature == '':
-        raise Exception('No --motion_features option provided; with --inputs == multistream a --motion_feature'
-                        'option must be provided.')
-    if args.camera_feature == 'resnet3d_featuremaps' and (args.inputs != 'camera' or args.motion_feature != ''):
-        raise Exception('The current pipeline do not support rgb and flow fusion between feature maps.'
-                        'Use rgb feature maps only or switch to feature vectors if you want to do '
-                        'the fusion.')
-    if 'video_frames_' in args.camera_feature and (args.inputs != 'camera' or args.motion_feature != ''):
-        raise Exception('Currently the end to end mode is available for rgb input.')
+    # the raw frames folder always starts with this string
+    #  e.g. video_frames_25fps/1.jpg
+    #       video_frames_25fps/2.jpg
+    #       .....
+    BASE_FOLDER_RAW_FRAMES = 'video_frames_'
+    # the features pre-extracted folder finishes with this string
+    #  e.g. i3d_224x224_chunk9/video1.npy
+    #       i3d_224x224_chunk9/video2.npy
+    #       ....
+    #       where videoN.npy.shape == (num_frames_in_video/chunk_size, feature_vector_dim)
+    BASE_FOLDER_FEAT_EXTR = '_chunk'+str(args.chunk_size)
 
-    args.E2E = 'E2E' if 'video_frames_' in args.camera_feature else ''
-
-    if args.feature_extractor == 'RESNET2+1D' \
-            or args.feature_extractor == 'I3D' \
-            or args.feature_extractor == 'I3DNONLOCAL' \
-            or args.model == 'CNN3D' \
-            or args.model == 'DISCRIMINATORCNN3D' \
-            or (args.model == 'CONVLSTM' and args.feature_extractor == 'RESNET2+1D') \
-            or (args.model == 'DISCRIMINATORCONVLSTM' and args.feature_extractor == 'RESNET2+1D'):
-        args.is_3D = True
+    if args.model_input.startswith(BASE_FOLDER_RAW_FRAMES):
+        if args.chunk_size == -1:
+            raise Exception('Wrong --chunk_size option. Specify the number of consecutive frames that the feature '
+                            'extractor will take as input at a time(e.g. --chunk_size 16)')
+        # we do end to end learning(i.e. start from raw frames)
+        args.E2E = 'E2E'
+        # depending on the type of the feature extractor(i.e. 2D or 3D) we will have a different
+        #  behavior for the Dataset class(e.g. check lib/datasets/judo_data_layer.__getitem__)
+        args.is_3D = True if args.model == 'CNN3D' else False
+    elif not args.model_input.endswith(BASE_FOLDER_FEAT_EXTR):
+        raise Exception('Wrong --model_input or --chunk_size option. They must indicate the same chunk size')
+    elif args.feat_vect_dim == -1:
+        raise Exception('Wrong --feat_vect_dim option. When starting from features pre-extracted, the dimension '
+                        'of the feature vector must be specified')
     else:
-        args.is_3D = False
+        # no end to end learning because we are starting from features pre-extracted
+        args.E2E = ''
 
     return args

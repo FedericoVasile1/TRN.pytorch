@@ -84,7 +84,7 @@ def main(args):
                 end_f = idx_central_frame + args.chunk_size // 2
                 for idx_frame in range(start_f, end_f):
                     frame = Image.open(osp.join(args.data_root,
-                                                args.camera_feature,
+                                                args.model_input,
                                                 session,
                                                 str(idx_frame + 1) + '.jpg')).convert('RGB')
                     frame = transform(frame)

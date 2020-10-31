@@ -56,7 +56,7 @@ class SelfAttention(nn.Module):
     '''
     def __init__(self, args):
         super(SelfAttention, self).__init__()
-        if args.camera_feature != 'resnet3d_featuremaps' and args.camera_feature != 'video_frames_24fps':
+        if args.model_input != 'resnet3d_featuremaps' and args.model_input != 'video_frames_24fps':
             raise Exception('Wrong camera_feature option, this model supports only feature maps. '
                             'Change this option to \'resnet3d_featuremaps\' or switch to end to end training with the '
                             'following options: --camera_feature video_frames_24fps --feature_extractor RESNET2+1D')

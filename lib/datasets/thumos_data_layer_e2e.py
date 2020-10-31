@@ -13,13 +13,13 @@ class I3DNormalization(object):
         sample = sample / 128 - 1
         return sample
 
-class TRNTHUMOSDataLayerE2E(data.Dataset):
+class THUMOSDataLayerE2E(data.Dataset):
     def __init__(self, args, phase='train'):
         self.data_root = args.data_root
-        self.camera_feature = args.camera_feature
+        self.camera_feature = args.model_input
         self.motion_feature = args.motion_feature
         self.sessions = getattr(args, phase+'_session_set')
-        self.enc_steps = args.enc_steps
+        self.enc_steps = args.steps
         self.dec_steps = args.dec_steps
         self.training = phase=='train'
 

@@ -99,7 +99,7 @@ def main(args):
                     end_f = idx_central_frame + args.chunk_size // 2
                     for idx_frame in range(start_f, end_f):
                         frame = Image.open(
-                            osp.join(args.data_root, args.camera_feature, session, str(idx_frame + 1) + '.jpg')).convert(
+                            osp.join(args.data_root, args.model_input, session, str(idx_frame + 1) + '.jpg')).convert(
                             'RGB')
                         frame = transform(frame)
                         camera_input[idx_frame - start_f] = frame
@@ -108,7 +108,7 @@ def main(args):
                     camera_input = torch.zeros(3, 224, 224, dtype=torch.float32)
                     idx_central_frame = l * args.chunk_size + (args.chunk_size // 2)
                     frame = Image.open(
-                        osp.join(args.data_root, args.camera_feature, session, str(idx_central_frame + 1) + '.jpg')).convert(
+                        osp.join(args.data_root, args.model_input, session, str(idx_central_frame + 1) + '.jpg')).convert(
                         'RGB')
                     camera_input = transform(frame)
                 else:
@@ -116,7 +116,7 @@ def main(args):
 
                 camera_input = to_device(camera_input, device)
 
-                if l % args.enc_steps == 0:
+                if l % args.steps == 0:
                     enc_h_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_input.dtype)
                     enc_c_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_input.dtype)
 

@@ -8,7 +8,7 @@ class BIDIRECTIONALGRU(nn.Module):
         super(BIDIRECTIONALGRU, self).__init__()
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
-        self.enc_steps = args.enc_steps
+        self.steps = args.steps
 
         self.feature_extractor = build_feature_extractor(args)
 
@@ -21,16 +21,15 @@ class BIDIRECTIONALGRU(nn.Module):
 
         self.classifier = nn.Linear(self.hidden_size * 2, self.num_classes)
 
-    def forward(self, camera_input, motion_input):
-        scores = torch.zeros(camera_input.shape[0], camera_input.shape[1], self.num_classes, dtype=camera_input.dtype)
+    def forward(self, x):
+        scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
 
-        for step in range(self.enc_steps):
-            # second parameter is junk, i.e. we do not use optical flow
-            camera_input[:, step, :] = self.feature_extractor(camera_input[:, step], motion_input[:, step])
+        for step in range(self.steps):
+            x[:, step, :] = self.feature_extractor(x[:, step])
 
-        h_ts, _ = self.rnn(camera_input)        # h_ts.shape == (batch_size, enc_steps, hidden_dim)
+        h_ts, _ = self.rnn(x)        # h_ts.shape == (batch_size, enc_steps, hidden_dim)
 
-        for step in range(self.enc_steps):
+        for step in range(self.steps):
             scores[:, step, :] = self.classifier(h_ts[:, step, :])
 
         return scores

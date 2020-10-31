@@ -235,13 +235,13 @@ def print_stats_classes(args):
         target = target[args.chunk_size // 2::args.chunk_size]
 
         target_downsampled = []
-        for idx in range(0, target.shape[0], args.enc_steps):
+        for idx in range(0, target.shape[0], args.steps):
             if args.downsample_backgr:
-                background_vect = np.zeros_like(target[idx:idx+args.enc_steps])
+                background_vect = np.zeros_like(target[idx:idx+args.steps])
                 background_vect[:, 0] = 1
-                if (target[idx:idx+args.enc_steps] == background_vect).all():
+                if (target[idx:idx+args.steps] == background_vect).all():
                     continue
-            target_downsampled.append(target[idx:idx+args.enc_steps])
+            target_downsampled.append(target[idx:idx+args.steps])
         if target_downsampled == []:
             # we will enter here if and
             # only if args.downsample == True AND the current video_name has **all the frames** labeled as background

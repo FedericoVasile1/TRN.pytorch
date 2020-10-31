@@ -27,9 +27,9 @@ def to_device(x, device):
     return x.unsqueeze(0).to(device)
 
 def main(args):
-    if not args.camera_feature.endswith('chunk'+str(args.chunk_size)):
+    if not args.model_input.endswith('chunk' + str(args.chunk_size)):
         raise Exception('Wrong pair of argumets. --camera_feature and --chunk_size indicate a different chunk size')
-    if args.camera_feature not in ('i3d_224x224_chunk9', 'i3d_224x224_chunk6', 'resnet2+1d_112x112_chunk6'):
+    if args.model_input not in ('i3d_224x224_chunk9', 'i3d_224x224_chunk6', 'resnet2+1d_112x112_chunk6'):
         raise Exception('Wrong --camera_feature option. Supported '
                         'values: {i3d_224x224_chunk6|i3d_224x224_chunk9|resnet2+1d_112x112_chunk6}')
 
@@ -84,11 +84,11 @@ def main(args):
             # For each chunk, take only the central frame
             target = target[args.chunk_size // 2::args.chunk_size]
 
-            features_extracted = np.load(osp.join(args.data_root, args.camera_feature, session+'.npy'), mmap_mode='r')
+            features_extracted = np.load(osp.join(args.data_root, args.model_input, session + '.npy'), mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
 
             for count in range(target.shape[0]):
-                if count % args.enc_steps == 0:
+                if count % args.steps == 0:
                     h_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
                     c_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
 

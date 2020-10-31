@@ -3,29 +3,29 @@ import torch.nn as nn
 
 from .feature_extractor import build_feature_extractor
 
-class MyGRUCell(nn.GRUCell):
+class _MyGRUCell(nn.GRUCell):
     """
     This model has been created for the only purpose of having a forward signature equal to the one
     of the LSTMCell model, by doing this we only need a single code pipeline for both lstm and gru models.
     """
     def forward(self, x, states):
         h_n, _ = states
-        return super(MyGRUCell, self).forward(x, h_n), torch.zeros(1)
+        return super(_MyGRUCell, self).forward(x, h_n), torch.zeros(1)
 
 class RNNmodel(nn.Module):
     def __init__(self, args):
         super(RNNmodel, self).__init__()
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
-        self.enc_steps = args.enc_steps
+        self.steps = args.steps
 
         self.feature_extractor = build_feature_extractor(args)
 
         if args.model == 'LSTM':
             self.rnn = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
             self.model = 'LSTM'
-        elif args.model == 'GRU' or args.model == 'GRUMULTITASK':
-            self.rnn = MyGRUCell(self.feature_extractor.fusion_size, self.hidden_size)
+        elif args.model == 'GRU':
+            self.rnn = _MyGRUCell(self.feature_extractor.fusion_size, self.hidden_size)
             self.model = 'GRU'
         else:
             raise Exception('Model ' + args.model + ' here is not supported')
@@ -33,21 +33,20 @@ class RNNmodel(nn.Module):
         self.drop_after = nn.Dropout(args.dropout)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
-    def forward(self, camera_input, motion_input):
+    def forward(self, x):
         # camera_input.shape == (batch_size, enc_steps, feat_vect_dim)
-        h_n = torch.zeros(camera_input.shape[0],
+        h_n = torch.zeros(x.shape[0],
                           self.hidden_size,
-                          device=camera_input.device,
-                          dtype=camera_input.dtype)
-        c_n = torch.zeros(camera_input.shape[0],
+                          device=x.device,
+                          dtype=x.dtype)
+        c_n = torch.zeros(x.shape[0],
                           self.hidden_size,
-                          device=camera_input.device,
-                          dtype=camera_input.dtype) if self.model == 'LSTM' else torch.zeros(1)
-        scores = torch.zeros(camera_input.shape[0], camera_input.shape[1], self.num_classes, dtype=camera_input.dtype)
-        for step in range(self.enc_steps):
-            camera_input_t = camera_input[:, step]
-            motion_input_t = motion_input[:, step]
-            out = self.feature_extractor(camera_input_t, motion_input_t)
+                          device=x.device,
+                          dtype=x.dtype) if self.model == 'LSTM' else torch.zeros(1)
+        scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
+        for step in range(self.steps):
+            x_t = x[:, step]
+            out = self.feature_extractor(x_t)
             if step == 0:
                 out = self.drop_before(out)
 
@@ -57,8 +56,8 @@ class RNNmodel(nn.Module):
             scores[:, step, :] = out
         return scores
 
-    def step(self, camera_input_t, motion_input_t, h_n, c_n):
-        out = self.feature_extractor(camera_input_t, motion_input_t)
+    def step(self, x_t, h_n, c_n):
+        out = self.feature_extractor(x_t)
 
         # to check if we are at the first timestep of the sequence, we exploit the fact that at the first
         #  timestep the hidden state is all zeros.

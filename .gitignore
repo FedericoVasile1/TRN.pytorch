@@ -29,6 +29,8 @@ data/JUDO/i3d_224x224_chunk9
 data/JUDO/i3d_featuremaps_mixed4f_chunk9
 data/JUDO/i3d_featuremaps_mixed5c_chunk9
 data/JUDO/i3d_224x224_chunk12
+data/JUDO_TRIMMED/i3d_224x224_chunk9
+data/JUDO_TRIMMED/video_frames_25fps
 
 Grand*
 

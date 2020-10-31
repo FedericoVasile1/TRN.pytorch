@@ -4,22 +4,25 @@ from torchvision import models
 class CNN(nn.Module):
     def __init__(self, args):
         super(CNN, self).__init__()
-        if 'video_frames_' not in args.camera_feature:
+        if 'video_frames_' not in args.model_input:
             raise Exception('Wrong camera_feature option. The chosen model can only work in end to end training')
 
-        if args.model == 'CNN' or 'DISCRIMINATORCNN':
+        if args.model == 'CNN':
             if args.feature_extractor == 'RESNET50':
                 self.feature_extractor = models.resnet50(pretrained=True)
+                # TODO choose which part of the network to train, now it's all trainable
                 #for param in self.feature_extractor.parameters():
                 #    param.requires_grad = False
                 self.feature_extractor.fc = nn.Linear(self.feature_extractor.fc.in_features, args.num_classes)
             elif args.feature_extractor == 'RESNET34':
                 self.feature_extractor = models.resnet34(pretrained=True)
+                # TODO choose which part of the network to train, now it's all trainable
                 #for param in self.feature_extractor.parameters():
                 #    param.requires_grad = False
                 self.feature_extractor.fc = nn.Linear(self.feature_extractor.fc.in_features, args.num_classes)
             elif args.feature_extractor == 'VGG16':
                 self.feature_extractor = models.vgg16(pretrained=True)
+                # TODO choose which part of the network to train, now it's all trainable
                 #for param in self.feature_extractor.parameters():
                 #    param.requires_grad = False
                 self.feature_extractor.classifier = nn.Sequential(

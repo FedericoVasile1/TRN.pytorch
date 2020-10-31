@@ -66,14 +66,14 @@ def main(args):
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
-            camera_inputs = np.load(osp.join(args.data_root, args.camera_feature, session + '.npy'), mmap_mode='r')
+            camera_inputs = np.load(osp.join(args.data_root, args.model_input, session + '.npy'), mmap_mode='r')
             camera_inputs = torch.as_tensor(camera_inputs.astype(np.float32))
             target = np.load(osp.join(args.data_root, 'target', session + '.npy'))
             assert camera_inputs.shape[0] == target.shape[0]
 
             attn_weights = torch.zeros(target.shape[0], 1, 7, 7, dtype=torch.float32)
             for l in range(camera_inputs.shape[0]):
-                if l % args.enc_steps == 0:
+                if l % args.steps == 0:
                     enc_h_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
                     enc_c_n = torch.zeros(1, model.hidden_size, device=device, dtype=camera_inputs.dtype)
 

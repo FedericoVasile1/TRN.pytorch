@@ -27,9 +27,9 @@ def to_device(x, device):
     return x.unsqueeze(0).to(device)
 
 def main(args):
-    if not args.camera_feature.endswith('chunk' + str(args.chunk_size)):
+    if not args.model_input.endswith('chunk' + str(args.chunk_size)):
         raise Exception('Wrong pair of argumets. --camera_feature and --chunk_size indicate a different chunk size')
-    if args.camera_feature not in ('i3d_224x224_chunk9', 'i3d_224x224_chunk6', 'resnet2+1d_224x224_chunk6', 'i3d_224x224_chunk12'):
+    if args.model_input not in ('i3d_224x224_chunk9', 'i3d_224x224_chunk6', 'resnet2+1d_224x224_chunk6', 'i3d_224x224_chunk12'):
         raise Exception('Wrong --camera_feature option. Supported '
                         'values: {i3d_224x224_chunk6|i3d_224x224_chunk9|resnet2+1d_224x224_chunk6|i3d_224x224_chunk12}')
 
@@ -84,14 +84,14 @@ def main(args):
             # For each chunk, take only the central frame
             target = target[args.chunk_size // 2::args.chunk_size]
 
-            features_extracted = np.load(osp.join(args.data_root, args.camera_feature, session+'.npy'), mmap_mode='r')
+            features_extracted = np.load(osp.join(args.data_root, args.model_input, session + '.npy'), mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
 
             samples = []
             for count in range(target.shape[0]):
                 samples.append(features_extracted[count])
 
-                if count % args.enc_steps == 0 and count != 0:
+                if count % args.steps == 0 and count != 0:
                     samples = torch.stack(samples).unsqueeze(0).to(device)
                     scores = model(samples, torch.zeros(samples.shape[0], samples.shape[1], 1))
 
@@ -104,7 +104,7 @@ def main(args):
 
             if samples != []:
                 appo = len(samples)
-                for i in range(appo, args.enc_steps):
+                for i in range(appo, args.steps):
                     samples.append(torch.zeros_like(features_extracted[0]))
                 samples = torch.stack(samples).unsqueeze(0).to(device)
                 scores = model(samples, torch.zeros(samples.shape[0], samples.shape[1], 1))
