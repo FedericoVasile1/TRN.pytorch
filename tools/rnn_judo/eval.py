@@ -17,22 +17,15 @@ import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
 sys.path.append(os.getcwd())
-import _init_paths
-import utils as utl
-from configs.judo import parse_trn_args as parse_args
+from lib import utils as utl
+from configs.judo import parse_model_args as parse_args
 from lib.utils.visualize import plot_bar, plot_to_image, add_pr_curve_tensorboard, get_segments, show_video_predictions
-from models import build_model
+from lib.models import build_model
 
 def to_device(x, device):
     return x.unsqueeze(0).to(device)
 
 def main(args):
-    if not args.model_input.endswith('chunk' + str(args.chunk_size)):
-        raise Exception('Wrong pair of argumets. --camera_feature and --chunk_size indicate a different chunk size')
-    if args.model_input not in ('i3d_224x224_chunk9', 'i3d_224x224_chunk6', 'resnet2+1d_224x224_chunk6', 'i3d_224x224_chunk12'):
-        raise Exception('Wrong --camera_feature option. Supported '
-                        'values: {i3d_224x224_chunk6|i3d_224x224_chunk9|resnet2+1d_224x224_chunk6|i3d_224x224_chunk12}')
-
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -61,22 +54,40 @@ def main(args):
 
     softmax = nn.Softmax(dim=1).to(device)
 
+    if args.eval_on_untrimmed:
+        args.test_session_set = args.test_session_set['UNTRIMMED']
+    else:
+        if args.use_untrimmed == args.use_trimmed == True:
+            args.test_session_set['TRIMMED'].extend(args.test_session_set['UNTRIMMED'])
+            args.test_session_set = args.test_session_set['TRIMMED']
+        elif args.use_trimmed:
+            args.test_session_set = args.test_session_set['TRIMMED']
+        elif args.use_untrimmed:
+            args.test_session_set = args.test_session_set['UNTRIMMED']
+
     utl.set_seed(int(args.seed))
     random.shuffle(args.test_session_set)
 
     if args.video_name != '':
         args.test_session_set = [args.video_name]
     if args.save_video:
-        # when this option is activated, we only evaluate and save one video, without showing it.
+        # when this option is activated, we evaluate and save ONLY ONE video, without showing it.
         args.test_session_set = args.test_session_set[:1]
         args.show_predictions = False
     if args.show_predictions:
         count_frames = 0
 
     for session_idx, session in enumerate(args.test_session_set, start=1):
+        if 'Grand Prix' in session:
+            dataset_type = 'UNTRIMMED'
+        elif 'GoPro' in session:
+            dataset_type = 'TRIMMED'
+        else:
+            raise Exception('Unknown video name: ' + session)
+
         start = time.time()
         with torch.set_grad_enabled(False):
-            target = np.load(osp.join(args.data_root, 'target_frames_25fps', session + '.npy'))
+            target = np.load(osp.join(args.data_root, dataset_type, 'target_frames_25fps', session + '.npy'))
             # round to multiple of CHUNK_SIZE
             num_frames = target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
@@ -84,7 +95,8 @@ def main(args):
             # For each chunk, take only the central frame
             target = target[args.chunk_size // 2::args.chunk_size]
 
-            features_extracted = np.load(osp.join(args.data_root, args.model_input, session + '.npy'), mmap_mode='r')
+            features_extracted = np.load(osp.join(args.data_root, dataset_type, args.model_input, session + '.npy'),
+                                         mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
 
             for count in range(target.shape[0]):
@@ -93,7 +105,7 @@ def main(args):
                     c_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
 
                 sample = to_device(features_extracted[count], device)
-                score, h_n, c_n = model.step(sample, torch.zeros(1), h_n, c_n)
+                score, h_n, c_n = model.step(sample, h_n, c_n)
 
                 score = softmax(score).cpu().detach().numpy()[0]
                 score_metrics.append(score)                             # score.shape == (num_classes,)
@@ -106,22 +118,28 @@ def main(args):
                                                                                  len(args.test_session_set),
                                                                                  end - start))
         if args.show_predictions:
+            appo = args.data_root
+            args.data_root = args.data_root + '/' + dataset_type
             show_video_predictions(args,
                                    session,
                                    target_metrics[count_frames:count_frames + target.shape[0]],
                                    score_metrics[count_frames:count_frames + target.shape[0]],
                                    frames_dir='video_frames_25fps',
                                    fps=25)
+            args.data_root = appo
             count_frames += target.shape[0]
 
     if args.save_video:
         # here the video will be saved
+        appo = args.data_root
+        args.data_root = appo
         show_video_predictions(args,
                                session,
                                target_metrics,
                                score_metrics,
                                frames_dir='video_frames_25fps',
                                fps=25)
+        args.data_root = appo
         # print some stats about the video labels and predictions, then kill the program
         print('\n=== LABEL SEGMENTS ===')
         segments_list = get_segments(target_metrics, args.class_index, 25, args.chunk_size)

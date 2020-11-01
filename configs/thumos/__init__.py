@@ -1,1 +1,1 @@
-from .trn_thumos import *
+from .arguments_thumos import *

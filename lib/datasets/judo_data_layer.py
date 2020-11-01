@@ -41,7 +41,6 @@ class _PerType_JUDODataLayer(data.Dataset):
         self.model_input = args.model_input
         self.steps = args.steps
         self.training = phase=='train'
-        self.chunk_size = args.chunk_size
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
 
         self.inputs = []
@@ -49,10 +48,10 @@ class _PerType_JUDODataLayer(data.Dataset):
             target = np.load(osp.join(self.data_root, dataset_type, 'target_frames_25fps', session+'.npy'))
             # round to multiple of chunk_size
             num_frames = target.shape[0]
-            num_frames = num_frames - (num_frames % self.chunk_size)
+            num_frames = num_frames - (num_frames % args.chunk_size)
             target = target[:num_frames]
-            # For each chunk, take only the central frame
-            target = target[self.chunk_size // 2::self.chunk_size]
+            # For each chunk, the central frame label is the label of the entire chunk
+            target = target[args.chunk_size // 2::args.chunk_size]
 
             seed = np.random.randint(self.steps) if self.training else 0
             for start, end in zip(range(seed, target.shape[0], self.steps),

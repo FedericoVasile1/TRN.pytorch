@@ -1,1 +1,1 @@
-from .trn_judo import *
+from .arguments_judo import *

@@ -1,8 +1,10 @@
+import os
+
 import torch
 import torch.nn as nn
 from torchvision import models
 
-from lib.models.i3d import InceptionI3d
+from lib.models.i3d.i3d import InceptionI3d
 
 class FeatureExtractor(nn.Module):
     def __init__(self, args):
@@ -42,7 +44,7 @@ class FeatureExtractor(nn.Module):
 
             elif args.feature_extractor == 'I3D':
                 self.feature_extractor = InceptionI3d()
-                self.feature_extractor.load_state_dict(torch.load('rgb_imagenet.pt'))
+                self.feature_extractor.load_state_dict(torch.load(os.path.join('lib', 'models', 'i3d', 'rgb_imagenet.pt')))
                 self.feat_vect_dim = 1024
                 self.feature_extractor.dropout = nn.Identity()
                 self.feature_extractor.logits = nn.Identity()

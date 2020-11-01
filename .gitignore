@@ -1,39 +1,17 @@
-*/*.pth
-*/**/*.pth
-*/**/**/*.pth
-*/**/**/**/*.pth
-*/*.pyc
-*/**/*.pyc
-*/**/**/*.pyc
-*/**/**/**/*.pyc
-*/*.swp
-*/**/*.swp
-*/**/**/*.swp
-*/**/**/**/*.swp
-*/*.txt
-*/**/*.txt
-*/**/**/*.txt
-*/**/**/**/*.txt
+**/*.pth
+**/*.pt
+**/*.pyc
+**/*.swp
+**/*.txt
+**/.DS_Store
 
-data
+data/THUMOS
+data/JUDO
 
-Grand*
-
-model_zoo/*
-
-rgb_imagenet.pt
-
-tools/*.json
 tools/**/*.json
-tools/**/**/*.json
-tools/**/**/**/*.json
 
 .idea
-data/small_data_info.json
 venv
 
-runs
-final_runs*
-.DS_Store
-*/*/.DS_Store
-*.jpg
+*runs*
+**/*.jpg

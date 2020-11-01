@@ -9,10 +9,9 @@ from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 
 sys.path.append(os.getcwd())
-import _init_paths
-import utils as utl
-from configs.judo import parse_trn_args as parse_args
-from models import build_model
+from lib import utils as utl
+from configs.judo import parse_model_args as parse_args
+from lib.models import build_model
 
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -52,8 +51,8 @@ def main(args):
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
-        camera_inputs, motion_inputs, _, _ = dataiter.next()
-        writer.add_graph(model, [camera_inputs.to(device), motion_inputs.to(device)])
+        inputs, motion_inputs, _, _ = dataiter.next()
+        writer.add_graph(model, [inputs.to(device), motion_inputs.to(device)])
         writer.close()
 
     batch_idx_train = 1
@@ -84,25 +83,24 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (camera_inputs, motion_inputs, targets, _) in enumerate(data_loaders[phase], start=1):
-                    # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim [if starting from features])
-                    # targets.shape == (batch_size, enc_steps, num_classes)
-                    batch_size = camera_inputs.shape[0]
-                    camera_inputs = camera_inputs.to(device)
-                    motion_inputs = motion_inputs.to(device)
+                for batch_idx, (inputs, targets) in enumerate(data_loaders[phase], start=1):
+                    # inputs.shape == (batch_size, steps, feat_vect_dim [if starting from features])
+                    # targets.shape == (batch_size, steps, num_classes)
+                    batch_size = inputs.shape[0]
+                    inputs = inputs.to(device)
 
                     if training:
                         optimizer.zero_grad()
 
-                    scores = model(camera_inputs, motion_inputs)            # scores.shape == (batch_size, enc_steps, num_classes)
+                    scores = model(inputs)            # scores.shape == (batch_size, steps, num_classes)
 
                     scores = scores.to(device)
                     targets = targets.to(device)
                     # sum losses along all timesteps
                     loss = criterion(scores[:, 0], targets[:, 0].max(axis=1)[1])
-                    for step in range(1, camera_inputs.shape[1]):
+                    for step in range(1, inputs.shape[1]):
                         loss += criterion(scores[:, step], targets[:, step].max(axis=1)[1])
-                    loss /= camera_inputs.shape[1]      # scale by enc_steps
+                    loss /= inputs.shape[1]      # scale by steps
 
                     losses[phase] += loss.item() * batch_size
 
@@ -119,10 +117,10 @@ def main(args):
                     target_metrics[phase].extend(targets)
 
                     if training:
-                        writer.add_scalar('Loss_iter/train_enc', loss.item(), batch_idx_train)
+                        writer.add_scalar('Loss_iter/train', loss.item(), batch_idx_train)
                         batch_idx_train += 1
                     else:
-                        writer.add_scalar('Loss_iter/val_enc', loss.item(), batch_idx_val)
+                        writer.add_scalar('Loss_iter/val', loss.item(), batch_idx_val)
                         batch_idx_val += 1
 
                     if args.verbose:
@@ -134,7 +132,7 @@ def main(args):
 
         lr_sched.step(losses['val'] / len(data_loaders['val'].dataset))
 
-        writer.add_scalars('Loss_epoch/train_val_enc',
+        writer.add_scalars('Loss_epoch/train_val',
                            {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
                            epoch)
 
@@ -166,7 +164,7 @@ def main(args):
         logger_APs._write(str(log))
 
         mAP = {phase: result[phase]['mAP_valid_cls'] for phase in args.phases}
-        writer.add_scalars('mAP_epoch/train_val_enc', {phase: mAP[phase] for phase in args.phases}, epoch)
+        writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
 
         log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f} |'
         log += ' [val] loss: {:.5f}  mAP: {:.4f}  |\n'

@@ -1,8 +1,10 @@
+import os
+
 import torch
 import torch.nn as nn
 from torchvision import models
 
-from lib.models.i3d import InceptionI3d
+from lib.models.i3d.i3d import InceptionI3d
 
 class CNN3D(nn.Module):
     def __init__(self, args):
@@ -19,7 +21,7 @@ class CNN3D(nn.Module):
             elif args.feature_extractor == 'I3D':
                 self.feature_extractor = InceptionI3d()
                 # load i3d weights from imagenet + kinetics training
-                self.feature_extractor.load_state_dict(torch.load('rgb_imagenet.pt'))
+                self.feature_extractor.load_state_dict(torch.load(os.path.join('lib', 'models', 'i3d', 'rgb_imagenet.pt')))
                 self.feature_extractor.replace_logits(args.num_classes)
 
                 # TODO choose which part of the network to train, now it's all trainable

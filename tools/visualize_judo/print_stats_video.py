@@ -5,7 +5,6 @@ import argparse
 import numpy as np
 
 sys.path.append(os.getcwd())
-import _init_paths
 from configs.build import build_data_info
 from lib.utils.visualize import print_stats_video
 
@@ -18,6 +17,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_root', default='data/JUDO', type=str)
+    parser.add_argument('--use_trimmed', action='store_true')
+    parser.add_argument('--use_untrimmed', action='store_true')
     parser.add_argument('--data_info', default='data/data_info.json', type=str)
     parser.add_argument('--chunk_size', default=6, type=int)
     parser.add_argument('--target_labels_dir', default='target_frames_25fps', type=str)
@@ -41,11 +42,26 @@ if __name__ == '__main__':
                         'the same)'.format(args.target_labels_dir))
     if args.video_name != '' and (args.all_videos or args.seed != -1):
         raise Exception('When specifying a --video_name you do not have to specify --all_videos or --seed options')
+    if args.use_trimmed == args.use_untrimmed == True:
+        raise Exception('Wrong --use_trimmed and --use_untrimmed option. Here they can not be True together.')
 
     if args.seed != -1:
         np.random.seed(args.seed)
 
+    args.eval_on_untrimmed = False      # do not modify. will not be used, it is only to not generate errors
     args = build_data_info(args, basic_build=True)
+    if args.use_trimmed:
+        args.data_root = args.data_root + '/' + 'TRIMMED'
+        args.train_session_set = args.train_session_set['TRIMMED']
+        args.val_session_set = args.val_session_set['TRIMMED']
+        args.test_session_set = args.test_session_set['TRIMMED']
+    elif args.use_untrimmed:
+        args.data_root = args.data_root + '/' + 'UNTRIMMED'
+        args.train_session_set = args.train_session_set['UNTRIMMED']
+        args.val_session_set = args.val_session_set['UNTRIMMED']
+        args.test_session_set = args.test_session_set['UNTRIMMED']
+    else:
+        raise Exception('No dataset type specified.')
 
     videos_name = os.listdir(os.path.join(args.data_root, args.target_labels_dir))
     if args.all_videos:

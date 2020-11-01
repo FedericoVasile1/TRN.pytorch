@@ -9,10 +9,9 @@ from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 
 sys.path.append(os.getcwd())
-import _init_paths
-import utils as utl
+from lib import utils as utl
 from configs.judo import parse_model_args as parse_args
-from models import build_model
+from lib.models import build_model
 
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -93,7 +92,7 @@ def main(args):
                     if training:
                         optimizer.zero_grad()
 
-                    scores = model(inputs)            # scores.shape == (batch_size, enc_steps, num_classes)
+                    scores = model(inputs)            # scores.shape == (batch_size, steps, num_classes)
 
                     scores = scores.to(device)
                     targets = targets.to(device)
@@ -101,7 +100,7 @@ def main(args):
                     loss = criterion(scores[:, 0], targets[:, 0].max(axis=1)[1])
                     for step in range(1, inputs.shape[1]):
                         loss += criterion(scores[:, step], targets[:, step].max(axis=1)[1])
-                    loss /= inputs.shape[1]      # scale by enc_steps
+                    loss /= inputs.shape[1]      # scale by steps
 
                     losses[phase] += loss.item() * batch_size
 
@@ -165,7 +164,7 @@ def main(args):
         logger_APs._write(str(log))
 
         mAP = {phase: result[phase]['mAP_valid_cls'] for phase in args.phases}
-        writer.add_scalars('mAP_epoch/train_val_enc', {phase: mAP[phase] for phase in args.phases}, epoch)
+        writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
 
         log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f} |'
         log += ' [val] loss: {:.5f}  mAP: {:.4f}  |\n'
@@ -197,4 +196,10 @@ def main(args):
     logger._write(log)
 
 if __name__ == '__main__':
+    base_dir = os.getcwd()
+    base_dir = base_dir.split('/')[-1]
+    CORRECT_LAUNCH_DIR = 'TRN.pytorch'
+    if base_dir != CORRECT_LAUNCH_DIR:
+        raise Exception('Wrong base dir, this file must be run from ' + CORRECT_LAUNCH_DIR + ' directory.')
+
     main(parse_args())

@@ -6,7 +6,7 @@ import torch.utils.data as data
 from torchvision import transforms
 from PIL import Image
 
-from lib.models.i3d import I3DNormalization
+from lib.models.i3d.i3d import I3DNormalization
 
 class JUDODataLayerE2E(data.Dataset):
     def __init__(self, args, phase='train'):
@@ -50,14 +50,15 @@ class _PerType_JUDODataLayerE2E(data.Dataset):
                     transforms.ToTensor(),
                     I3DNormalization(),
                 ])
-            else:
+            elif args.feature_extractor == 'RESNET2+1D':
                 self.transform = transforms.Compose([
                     transforms.Resize((224, 320)),
                     transforms.CenterCrop(224),
                     transforms.ToTensor(),
                     transforms.Normalize([0.43216, 0.394666, 0.37645], [0.22803, 0.22145, 0.216989])
                 ])
-
+            else:
+                raise Exception('Wrong --feature_extractor option. ' + args.feature_extractor + ' unknown')
             self.is_3D = True
         else:
             self.transform = transforms.Compose([
@@ -66,7 +67,6 @@ class _PerType_JUDODataLayerE2E(data.Dataset):
                 transforms.ToTensor(),
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ])
-
             self.is_3D = False
 
         self.inputs = []
@@ -76,7 +76,7 @@ class _PerType_JUDODataLayerE2E(data.Dataset):
             num_frames = target.shape[0]
             num_frames = num_frames - (num_frames  % self.chunk_size)
             target = target[:num_frames]
-            # For each chunk, take only the central frame
+            # For each chunk, the central frame label is the label of the entire chunk
             target = target[self.chunk_size//2::self.chunk_size]
 
             seed = np.random.randint(self.steps) if self.training else 0
@@ -108,7 +108,7 @@ class _PerType_JUDODataLayerE2E(data.Dataset):
             frame = self.transform(frame).to(dtype=torch.float32)
             if raw_frames is None:
                 raw_frames = torch.zeros((end - start, frame.shape[0], frame.shape[1], frame.shape[2]),
-                                            dtype=torch.float32)
+                                         dtype=torch.float32)
             raw_frames[count - start] = frame
 
         step_target = torch.as_tensor(step_target.astype(np.float32))
@@ -134,7 +134,7 @@ class _PerType_JUDODataLayerE2E(data.Dataset):
                 frame = self.transform(frame).to(dtype=torch.float32)
                 if raw_frames is None:
                     raw_frames = torch.zeros((end - start, self.chunk_size, frame.shape[0], frame.shape[1], frame.shape[2]),
-                                                dtype=torch.float32)
+                                             dtype=torch.float32)
                 raw_frames[count - start, idx_frame - start_f] = frame
 
         # switch channel with chunk_size (3d models want input in this way)
