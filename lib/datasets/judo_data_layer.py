@@ -12,7 +12,9 @@ class JUDODataLayer(data.Dataset):
                 self.appo1 = _PerType_JUDODataLayer(args, 'TRIMMED', 'train')
                 self.appo2 = _PerType_JUDODataLayer(args, 'TRIMMED', 'val')
                 self.appo3 = _PerType_JUDODataLayer(args, 'TRIMMED', 'test')
-                self.datalayer.inputs.extend(self.appo1.inputs).extend(self.appo2.inputs).extend(self.appo3.inputs)
+                self.datalayer.inputs.extend(self.appo1.inputs)
+                self.datalayer.inputs.extend(self.appo2.inputs)
+                self.datalayer.inputs.extend(self.appo3.inputs)
                 del self.appo1
                 del self.appo2
                 del self.appo3
@@ -45,6 +47,11 @@ class _PerType_JUDODataLayer(data.Dataset):
 
         self.inputs = []
         for session in self.sessions:
+            if not osp.isfile(osp.join(self.data_root, dataset_type, 'target_frames_25fps', session + '.npy')):
+                # skip videos in which the pose model does not detect any fall(i.e. fall==-1  in fall_detections.csv).
+                # TODO: fix these videos later on, in order to incluso also them
+                continue
+
             target = np.load(osp.join(self.data_root, dataset_type, 'target_frames_25fps', session+'.npy'))
             # round to multiple of chunk_size
             num_frames = target.shape[0]

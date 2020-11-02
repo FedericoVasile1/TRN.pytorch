@@ -20,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_trimmed', action='store_true')
     parser.add_argument('--use_untrimmed', action='store_true')
     parser.add_argument('--data_info', default='data/data_info.json', type=str)
-    parser.add_argument('--chunk_size', default=6, type=int)
+    parser.add_argument('--chunk_size', default=9, type=int)
     parser.add_argument('--target_labels_dir', default='target_frames_25fps', type=str)
     parser.add_argument('--all_videos', action='store_true')
     parser.add_argument('--seed', default=-1, type=int) # in case of single video
@@ -34,8 +34,6 @@ if __name__ == '__main__':
         raise Exception('{} not found'.format(os.path.join(args.data_root)))
     if not os.path.isfile(os.path.join(args.data_info)):
         raise Exception('{} not found'.format(os.path.join(args.data_info)))
-    if not os.path.isdir(os.path.join(args.data_root, args.target_labels_dir)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root, args.target_labels_dir)))
     if str(args.fps) not in args.target_labels_dir:
         raise Exception('The folder {} should contain the number of fps in its name, or the number '
                         'indicated in its name does not correspond with --fps argument(i.e. they must be '
@@ -63,6 +61,9 @@ if __name__ == '__main__':
     else:
         raise Exception('No dataset type specified.')
 
+    if not os.path.isdir(os.path.join(args.data_root, args.target_labels_dir)):
+        raise Exception('{} not found'.format(os.path.join(args.data_root, args.target_labels_dir)))
+
     videos_name = os.listdir(os.path.join(args.data_root, args.target_labels_dir))
     if args.all_videos:
         class_to_segmentdurations_all = {}
@@ -78,18 +79,23 @@ if __name__ == '__main__':
                 class_to_segmentdurations_all[name_class].append(duration)
             video_duration_all.append(video_duration)
 
+        mean_class_to_segmentdurations_all = {}
         for name_class, list_durations in class_to_segmentdurations_all.items():
             if len(list_durations) > 0:
-                class_to_segmentdurations_all[name_class] = str(round(sum(list_durations) / len(list_durations), 1)) + ' s'
+                mean_class_to_segmentdurations_all[name_class] = str(round(sum(list_durations) / len(list_durations), 1)) + ' s'
+                class_to_segmentdurations_all[name_class] = str(sum(list_durations)) + ' s'
             else:
+                mean_class_to_segmentdurations_all[name_class] = str(0) + ' s'
                 class_to_segmentdurations_all[name_class] = str(0) + ' s'
 
-        video_duration_all = sum(video_duration_all) / len(video_duration_all)
-        video_duration_all = round(video_duration_all, 1)
+        mean_video_duration_all = sum(video_duration_all) / len(video_duration_all)
+        mean_video_duration_all = round(video_duration_all, 1)
 
         print('=== ALL VIDEOS ===')
-        print('MEAN VIDEO DURATION: ', video_duration_all, ' s')
-        print('MEAN DURATION PER CLASS: ', class_to_segmentdurations_all)
+        print('TOTAL VIDEOS DURATION: ', sum(video_duration_all), ' s')
+        print('TOTAL PER-CLASS DURATION: ', class_to_segmentdurations_all)
+        print('MEAN VIDEO DURATION: ', mean_video_duration_all, ' s')
+        print('MEAN PER-CLASS DURATION: ', mean_class_to_segmentdurations_all)
 
     else:
         if args.video_name == '':

@@ -11,7 +11,7 @@ from torchvision import transforms
 import cv2
 from PIL import Image
 
-from datasets import build_dataset
+from lib.datasets.datasets import build_dataset
 
 __all__ = [
     'set_seed',

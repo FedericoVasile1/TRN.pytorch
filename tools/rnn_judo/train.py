@@ -51,8 +51,8 @@ def main(args):
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
-        inputs, motion_inputs, _, _ = dataiter.next()
-        writer.add_graph(model, [inputs.to(device), motion_inputs.to(device)])
+        inputs, _ = dataiter.next()
+        writer.add_graph(model, inputs.to(device))
         writer.close()
 
     batch_idx_train = 1

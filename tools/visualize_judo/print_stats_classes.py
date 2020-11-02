@@ -22,7 +22,7 @@ if __name__ == '__main__':
     parser.add_argument('--target_labels_dir', default='target_frames_25fps', type=str)
     parser.add_argument('--phase', default='', type=str)
     parser.add_argument('--downsample_backgr', action='store_true')
-    parser.add_argument('--enc_steps', default=16, type=int)        # needed only when --downsample_backgr == True
+    parser.add_argument('--steps', default=16, type=int)        # needed only when --downsample_backgr == True
     parser.add_argument('--show_bar', action='store_true')
     parser.add_argument('--save_bar', action='store_true')
     args = parser.parse_args()
@@ -31,8 +31,6 @@ if __name__ == '__main__':
         raise Exception('{} not found'.format(os.path.join(args.data_root)))
     if not os.path.isfile(os.path.join(args.data_info)):
         raise Exception('{} not found'.format(os.path.join(args.data_info)))
-    if not os.path.isdir(os.path.join(args.data_root, args.target_labels_dir)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root, args.target_labels_dir)))
     if args.phase not in ('train', 'val', 'test', ''):
         raise Exception('Wrong --phase argument. Expected one of: train|val|test')
     if args.use_trimmed == args.use_untrimmed == True:
@@ -53,4 +51,7 @@ if __name__ == '__main__':
     else:
         raise Exception('No dataset type specified.')
 
-    print_stats_classes()
+    if not os.path.isdir(os.path.join(args.data_root, args.target_labels_dir)):
+        raise Exception('{} not found'.format(os.path.join(args.data_root, args.target_labels_dir)))
+
+    print_stats_classes(args)
