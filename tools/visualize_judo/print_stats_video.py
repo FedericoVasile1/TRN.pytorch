@@ -89,7 +89,7 @@ if __name__ == '__main__':
                 class_to_segmentdurations_all[name_class] = str(0) + ' s'
 
         mean_video_duration_all = sum(video_duration_all) / len(video_duration_all)
-        mean_video_duration_all = round(video_duration_all, 1)
+        mean_video_duration_all = round(mean_video_duration_all, 1)
 
         print('=== ALL VIDEOS ===')
         print('TOTAL VIDEOS DURATION: ', sum(video_duration_all), ' s')

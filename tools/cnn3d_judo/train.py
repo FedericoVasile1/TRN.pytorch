@@ -2,7 +2,6 @@ import os.path as osp
 import os
 import sys
 import time
-import numpy as np
 
 import torch
 import torch.nn as nn
@@ -10,10 +9,9 @@ from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 
 sys.path.append(os.getcwd())
-import _init_paths
-import utils as utl
-from configs.judo import parse_trn_args as parse_args
-from models import build_model
+from lib import utils as utl
+from configs.judo import parse_model_args as parse_args
+from lib.models import build_model
 
 def main(args):
     # fix between batch_size and enc_steps, due to the way the dataset class works(i.e. this model do not
@@ -62,13 +60,13 @@ def main(args):
     with torch.set_grad_enabled(False):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
-        camera_inputs, _, _, _ = dataiter.next()
-        camera_inputs = camera_inputs.view(-1,
-                                           camera_inputs.shape[2],
-                                           camera_inputs.shape[3],
-                                           camera_inputs.shape[4],
-                                           camera_inputs.shape[5])
-        writer.add_graph(model, camera_inputs.to(device))
+        inputs, _ = dataiter.next()
+        inputs = inputs.view(-1,
+                             inputs.shape[2],
+                             inputs.shape[3],
+                             inputs.shape[4],
+                             inputs.shape[5])
+        writer.add_graph(model, inputs.to(device))
         writer.close()
 
     batch_idx_train = 1
@@ -99,24 +97,24 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (camera_inputs, _, targets, _) in enumerate(data_loaders[phase], start=1):
-                    # camera.inputs.shape == (batch_size, enc_steps, C, chunk_size, H, W)
-                    # targets.shape == (batch_size, enc_steps, num_classes)
-                    # fuse batch_size and enc_steps
-                    camera_inputs = camera_inputs.view(-1,
-                                                       camera_inputs.shape[2],
-                                                       camera_inputs.shape[3],
-                                                       camera_inputs.shape[4],
-                                                       camera_inputs.shape[5])
+                for batch_idx, (inputs, targets) in enumerate(data_loaders[phase], start=1):
+                    # inputs.shape == (batch_size, steps, C, chunk_size, H, W)
+                    # targets.shape == (batch_size, steps, num_classes)
+                    # fuse batch_size and steps
+                    inputs = inputs.view(-1,
+                                         inputs.shape[2],
+                                         inputs.shape[3],
+                                         inputs.shape[4],
+                                         inputs.shape[5])
                     targets = targets.view(-1, targets.shape[2])
 
-                    batch_size = camera_inputs.shape[0]
-                    camera_inputs = camera_inputs.to(device)
+                    batch_size = inputs.shape[0]
+                    inputs = inputs.to(device)
 
                     if training:
                         optimizer.zero_grad()
 
-                    scores = model(camera_inputs)       # scores.shape == (batch_size, num_classes)
+                    scores = model(inputs)       # scores.shape == (batch_size, num_classes)
 
                     scores = scores.to(device)
                     targets = targets.to(device)

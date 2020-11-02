@@ -25,7 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('--targets_dir', default='target_frames_25fps', type=str)
     # the fps at which videos frames are previously extracted
     parser.add_argument('--fps', default=25, type=int)
-    parser.add_argument('--chunk_size', default=6, type=int)
+    parser.add_argument('--chunk_size', default=9, type=int)
     parser.add_argument('--phase', default='train', type=str)
     parser.add_argument('--video_name', default='', type=str)
     parser.add_argument('--save_video', action='store_true')

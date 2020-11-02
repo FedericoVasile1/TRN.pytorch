@@ -25,6 +25,7 @@ class CNN3D(nn.Module):
                 self.feature_extractor.replace_logits(args.num_classes)
 
                 # TODO choose which part of the network to train, now it's all trainable
+                self.feature_extractor.freeze_partial_layers()
             else:
                 raise Exception('Wrong --feature_extractor option, ' + args.feature_extractor + ' is not supported')
         else:

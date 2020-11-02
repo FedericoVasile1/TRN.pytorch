@@ -10,8 +10,8 @@ import io
 
 def show_video_predictions(args,
                            video_name,
-                           enc_target_metrics,
-                           enc_score_metrics=None,
+                           target_metrics,
+                           score_metrics=None,
                            attn_weights=None,
                            frames_dir='video_frames_24fps',
                            fps=24,
@@ -21,9 +21,9 @@ def show_video_predictions(args,
      weights(if provided)
     :param args: ParserArgument object containing main arguments
     :param video_name: string containing the name of the video
-    :param enc_target_metrics: numpy array of shape(num_frames, num_classes) containing the ground truth of the video.
+    :param target_metrics: numpy array of shape(num_frames, num_classes) containing the ground truth of the video.
                                 Notice that the that array that comes here is **already chunked**
-    :param enc_score_metrics: numpy array of shape(num_frames, num_classes) containing the output scores of the model
+    :param score_metrics: numpy array of shape(num_frames, num_classes) containing the output scores of the model
     :param attn_weights:
     :param frames_dir: string containing the base folder name, i.e. under the base folder there will be
                         one folder(i.e. video_name) for each video, this will contains the frames of that video
@@ -31,16 +31,16 @@ def show_video_predictions(args,
                     to correctly make the conversion from index of frame to its time in seconds)
     :return:
     '''
-    if enc_score_metrics is not None:
-        enc_pred_metrics = torch.argmax(torch.tensor(enc_score_metrics), dim=1)
-    enc_target_metrics = torch.argmax(torch.tensor(enc_target_metrics), dim=1)
+    if score_metrics is not None:
+        pred_metrics = torch.argmax(torch.tensor(score_metrics), dim=1)
+    target_metrics = torch.argmax(torch.tensor(target_metrics), dim=1)
 
     speed = 1.0
 
     if args.save_video:
         print('Loading and saving video: ' + video_name + ' . . . .\n.\n.')
         frames = []
-    num_frames = enc_target_metrics.shape[0]
+    num_frames = target_metrics.shape[0]
     idx = 0
     while idx < num_frames:
         idx_frame = idx * args.chunk_size + args.chunk_size // 2
@@ -82,32 +82,32 @@ def show_video_predictions(args,
             open_cv_frame = cv2.resize(open_cv_frame, (original_W, original_H), interpolation=cv2.INTER_AREA)
 
         open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 60, 0, 30, 30, borderType=cv2.BORDER_CONSTANT, value=0)
-        pred_label = args.class_index[enc_pred_metrics[idx]] if enc_score_metrics is not None else 'junk'
-        target_label = args.class_index[enc_target_metrics[idx]]
+        pred_label = args.class_index[pred_metrics[idx]] if score_metrics is not None else 'junk'
+        target_label = args.class_index[target_metrics[idx]]
 
         cv2.putText(open_cv_frame,
                     pred_label,
                     (0, 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.8,
-                    (0, 0, 0) if enc_score_metrics is None else (0, 255, 0) if pred_label == target_label else (0, 0, 255),
+                    (0, 0, 0) if score_metrics is None else (0, 255, 0) if pred_label == target_label else (0, 0, 255),
                     1)
         cv2.putText(open_cv_frame,
                     target_label,
                     (0, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.8,
-                    (255, 255, 255) if enc_score_metrics is not None else
+                    (255, 255, 255) if score_metrics is not None else
                     (255, 255, 255) if target_label == 'Background' else (0, 0, 255),
                     1)
         cv2.putText(open_cv_frame,
                     'prob:{:.2f}'.format(
-                        torch.tensor(enc_score_metrics)[idx, enc_pred_metrics[idx]].item()
-                    ) if enc_score_metrics is not None else 'junk',
+                        torch.tensor(score_metrics)[idx, pred_metrics[idx]].item()
+                    ) if score_metrics is not None else 'junk',
                     (210, 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5,
-                    (0, 0, 0) if enc_score_metrics is None else (0, 255, 0) if pred_label == target_label else (0, 0, 255),
+                    (0, 0, 0) if score_metrics is None else (0, 255, 0) if pred_label == target_label else (0, 0, 255),
                     1)
 
         # [ (idx_frame + 1) / 24 ]    => 24 because frames has been extracted at 24 fps

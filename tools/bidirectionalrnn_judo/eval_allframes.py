@@ -84,6 +84,10 @@ def main(args):
             dataset_type = 'TRIMMED'
         else:
             raise Exception('Unknown video name: ' + session)
+        if not osp.isfile(osp.join(args.data_root, dataset_type, 'target_frames_25fps', session + '.npy')):
+            # skip videos in which the pose model does not detect any fall(i.e. fall==-1  in fall_detections.csv).
+            # TODO: fix these videos later on, in order to incluso also them
+            continue
 
         start = time.time()
         with torch.set_grad_enabled(False):
