@@ -64,6 +64,12 @@ class _PerType_JUDODataLayer(data.Dataset):
             for start, end in zip(range(seed, target.shape[0], self.steps),
                                   range(seed + self.steps, target.shape[0], self.steps)):
 
+                if args.downsample_backgr and self.training:
+                    background_vect = np.zeros_like(target[start:end])
+                    background_vect[:, 0] = 1
+                    if (target[start:end] == background_vect).all():
+                        continue
+
                 step_target = target[start:end]
                 self.inputs.append([
                     dataset_type, session, start, end, step_target,

@@ -16,7 +16,9 @@ class JUDODataLayerE2E(data.Dataset):
                 self.appo1 = _PerType_JUDODataLayerE2E(args, 'TRIMMED', 'train')
                 self.appo2 = _PerType_JUDODataLayerE2E(args, 'TRIMMED', 'val')
                 self.appo3 = _PerType_JUDODataLayerE2E(args, 'TRIMMED', 'test')
-                self.datalayer.inputs.extend(self.appo1.inputs).extend(self.appo2.inputs).extend(self.appo3.inputs)
+                self.datalayer.inputs.extend(self.appo1.inputs)
+                self.datalayer.inputs.extend(self.appo2.inputs)
+                self.datalayer.inputs.extend(self.appo3.inputs)
                 del self.appo1
                 del self.appo2
                 del self.appo3
@@ -33,6 +35,12 @@ class JUDODataLayerE2E(data.Dataset):
             elif args.use_untrimmed:
                 self.datalayer = _PerType_JUDODataLayerE2E(args, 'UNTRIMMED', phase)
 
+    def __getitem__(self, index):
+        return self.datalayer.__getitem__(index)
+
+    def __len__(self):
+        return self.datalayer.__len__()
+
 class _PerType_JUDODataLayerE2E(data.Dataset):
     def __init__(self, args, dataset_type, phase='train'):
         self.data_root = args.data_root
@@ -40,7 +48,7 @@ class _PerType_JUDODataLayerE2E(data.Dataset):
         self.steps = args.steps
         self.training = phase=='train'
         self.chunk_size = args.chunk_size
-        self.sessions = getattr(args, phase+'_session_set')
+        self.sessions = getattr(args, phase+'_session_set')[dataset_type]
 
         if args.is_3D:
             if args.feature_extractor == 'I3D':

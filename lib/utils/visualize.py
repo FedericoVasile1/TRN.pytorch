@@ -173,11 +173,11 @@ def show_video_predictions(args,
 
     if args.save_video:
         H, W, _ = open_cv_frame.shape
-        out = cv2.VideoWriter(video_name+'.avi', cv2.VideoWriter_fourcc(*'DIVX'), fps / args.chunk_size, (W, H))
+        out = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc(*'mp4v'), fps / args.chunk_size, (W, H))
         for frame in frames:
             out.write(frame)
         out.release()
-        print('. . . video saved at ' + os.path.join(os.getcwd(), video_name+'.avi'))
+        print('. . . video saved at ' + os.path.join(os.getcwd(), video_name))
 
 def show_random_videos(args,
                        samples_list,

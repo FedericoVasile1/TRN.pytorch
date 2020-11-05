@@ -140,9 +140,8 @@ def main(args):
 
     if args.save_video:
         # here the video will be saved
-        appo = args.chunk_size
         args.chunk_size = 1
-        appo2 = args.data_root
+        appo = args.data_root
         args.data_root = args.data_root + '/' + dataset_type
         show_video_predictions(args,
                                session,
@@ -150,8 +149,7 @@ def main(args):
                                score_metrics,
                                frames_dir='video_frames_25fps',
                                fps=25)
-        args.chunk_size = appo
-        args.data_root = appo2
+        args.data_root = appo
         # print some stats about the video labels and predictions, then kill the program
         print('\n=== LABEL SEGMENTS ===')
         segments_list = get_segments(target_metrics, args.class_index, 25, args.chunk_size)

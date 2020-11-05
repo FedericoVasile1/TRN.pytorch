@@ -37,10 +37,6 @@ if __name__ == '__main__':
         raise Exception('{} not found'.format(os.path.join(args.data_root)))
     if not os.path.isfile(os.path.join(args.data_info)):
         raise Exception('{} not found'.format(os.path.join(args.data_info)))
-    if not os.path.isdir(os.path.join(args.data_root, args.frames_dir)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root, args.frames_dir)))
-    if not os.path.isdir(os.path.join(args.data_root, args.targets_dir)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root, args.targets_dir)))
     if args.phase not in ('train', 'val', 'test'):
         raise Exception('Wrong --phase argument. Expected one of: train|val|test')
     if str(args.fps) not in args.frames_dir:
@@ -69,6 +65,11 @@ if __name__ == '__main__':
         args.test_session_set = args.test_session_set['UNTRIMMED']
     else:
         raise Exception('No dataset type specified.')
+
+    if not os.path.isdir(os.path.join(args.data_root, args.frames_dir)):
+        raise Exception('{} not found'.format(os.path.join(args.data_root, args.frames_dir)))
+    if not os.path.isdir(os.path.join(args.data_root, args.targets_dir)):
+        raise Exception('{} not found'.format(os.path.join(args.data_root, args.targets_dir)))
 
     if args.video_name == '':
         videos_list = getattr(args, args.phase+'_session_set')
