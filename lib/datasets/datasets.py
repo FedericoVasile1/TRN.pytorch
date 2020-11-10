@@ -19,6 +19,7 @@ _DATA_LAYERS = {
     'CNNJUDOE2E': JUDODataLayerE2E,
     'BIDIRECTIONALLSTMJUDO': JUDODataLayer,
     'BIDIRECTIONALGRUJUDO': JUDODataLayer,
+    'FCJUDO': JUDODataLayer,
 }
 
 def build_dataset(args, phase):
