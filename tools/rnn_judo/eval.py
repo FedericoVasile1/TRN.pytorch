@@ -51,6 +51,7 @@ def main(args):
         logger = utl.setup_logger(osp.join(writer.log_dir, 'log.txt'))
         command = 'python ' + ' '.join(sys.argv)
         logger._write(command)
+        # in case of trimmed dataset, since each video contain one label, we are also
 
     softmax = nn.Softmax(dim=1).to(device)
 
@@ -137,7 +138,7 @@ def main(args):
     if args.save_video:
         # here the video will be saved
         appo = args.data_root
-        args.data_root = appo
+        args.data_root = args.data_root + '/' + dataset_type
         show_video_predictions(args,
                                session,
                                target_metrics,

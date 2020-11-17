@@ -41,4 +41,6 @@ def parse_model_args():
 
     parser.add_argument('--downsample_backgr', action='store_true')
 
+    parser.add_argument('--use_goodpoint', default=False, action='store_true')
+
     return build_data_info(parser.parse_args())

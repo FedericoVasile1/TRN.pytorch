@@ -70,4 +70,18 @@ def build_data_info(args, basic_build=False):
         # no end to end learning because we are starting from features pre-extracted
         args.E2E = ''
 
+    if args.goodpoints:
+        if 'goodpoints' not in args.model_input:
+            raise Exception()
+        if not args.use_untrimmed:
+            raise Exception()
+        if args.use_trimmed:
+            raise Exception()
+        if args.E2E == 'E2E':
+            raise Exception()
+
+        args.goodpoints = 'GOODPOINTS'
+    else:
+        args.goodpoints = ''
+
     return args

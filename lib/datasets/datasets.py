@@ -2,6 +2,7 @@ from .thumos_data_layer import THUMOSDataLayer
 from .thumos_data_layer_e2e import THUMOSDataLayerE2E
 from .judo_data_layer import JUDODataLayer
 from .judo_data_layer_e2e import JUDODataLayerE2E
+from .goodpoints_judo_data_layer import Goodpoints_JUDODataLayer
 
 _DATA_LAYERS = {
     'LSTMTHUMOS': THUMOSDataLayer,
@@ -19,9 +20,9 @@ _DATA_LAYERS = {
     'CNNJUDOE2E': JUDODataLayerE2E,
     'BIDIRECTIONALLSTMJUDO': JUDODataLayer,
     'BIDIRECTIONALGRUJUDO': JUDODataLayer,
-    'FCJUDO': JUDODataLayer,
+    'GRUJUDOGOODPOINTS': Goodpoints_JUDODataLayer,
 }
 
 def build_dataset(args, phase):
-    data_layer = _DATA_LAYERS[args.model + args.dataset + args.E2E]
+    data_layer = _DATA_LAYERS[args.model + args.dataset + args.E2E + args.goodpoints]
     return data_layer(args, phase)
