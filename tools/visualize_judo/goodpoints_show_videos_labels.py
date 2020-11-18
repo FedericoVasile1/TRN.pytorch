@@ -24,35 +24,34 @@ def goodpoints_show_video_predictions(args,
                                       complete_video_name,
                                       target_metrics,
                                       frames_dir='video_frames_25fps',
-                                      fps=25,
+                                      fps=25.0,
                                       transform=None):
     target_metrics = torch.argmax(torch.tensor(target_metrics), dim=1)
     speed = 1.0
     if args.save_video:
-        print('Loading and saving video: ' + complete_video_name + ' . . . .\n.\n.')
+        print('Loading and saving video: ' + complete_video_name[:-4] + ' . . . .\n.\n.')
         frames = []
 
     num_frames = target_metrics.shape[0]
-    start_millisecond = int(complete_video_name.split(':')[0]) + 4000
+    start_millisecond = int(complete_video_name.split('___')[0]) + 4000
     start_frame = milliseconds_to_numframe(start_millisecond)
     idx = start_frame
     while idx < num_frames + start_frame:
-        #idx_frame = idx * args.chunk_size + args.chunk_size // 2
-        idx_frame = idx
         pil_frame = Image.open(osp.join(args.data_root,
                                         frames_dir,
                                         base_video_name,
-                                        str(idx_frame) + '.jpg')).convert('RGB')
+                                        str(idx) + '.jpg')).convert('RGB')
         if transform is not None:
             pil_frame = transform(pil_frame)
 
         open_cv_frame = np.array(pil_frame)
-
         # Convert RGB to BGR
         open_cv_frame = open_cv_frame[:, :, ::-1].copy()
+        H, W, _ = open_cv_frame.shape
+        open_cv_frame = cv2.resize(open_cv_frame, (W // 2, H // 2), interpolation=cv2.INTER_AREA)
 
         open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 60, 0, 30, 30, borderType=cv2.BORDER_CONSTANT, value=0)
-        target_label = args.class_index[target_metrics[idx]]
+        target_label = args.class_index[target_metrics[idx-start_frame]]
 
         cv2.putText(open_cv_frame,
                     target_label,
@@ -63,7 +62,7 @@ def goodpoints_show_video_predictions(args,
                     1)
 
         cv2.putText(open_cv_frame,
-                    '{:.2f}s'.format(idx_frame / fps),
+                    '{:.2f}s'.format(idx / fps),
                     (295, 40),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.3,
@@ -77,7 +76,7 @@ def goodpoints_show_video_predictions(args,
                     (255, 255, 255),
                     1)
         cv2.putText(open_cv_frame,
-                    str(idx_frame),
+                    str(idx),
                     (295, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.3,
@@ -91,11 +90,11 @@ def goodpoints_show_video_predictions(args,
 
     if args.save_video:
         H, W, _ = open_cv_frame.shape
-        out = cv2.VideoWriter(complete_video_name, cv2.VideoWriter_fourcc(*'mp4v'), fps / args.chunk_size, (W, H))
+        out = cv2.VideoWriter(complete_video_name[:-4], cv2.VideoWriter_fourcc(*'mp4v'), fps, (W, H))
         for frame in frames:
             out.write(frame)
         out.release()
-        print('. . . video saved at ' + os.path.join(os.getcwd(), complete_video_name))
+        print('. . . video saved at ' + os.path.join(os.getcwd(), complete_video_name[:-4]))
 
 if __name__ == '__main__':
     base_dir = os.getcwd()
@@ -111,10 +110,9 @@ if __name__ == '__main__':
     parser.add_argument('--targets_dir', default='goodpoints_target_frames_25fps', type=str)
     # the fps at which videos frames are previously extracted
     parser.add_argument('--fps', default=25, type=int)
-    parser.add_argument('--chunk_size', default=9, type=int)
     parser.add_argument('--phase', default='train', type=str)
     parser.add_argument('--video_name', default='', type=str)
-    parser.add_argument('--seed', default=-1, type=int)
+    parser.add_argument('--seed', default=25, type=int)
     args = parser.parse_args()
 
     if not os.path.isdir(os.path.join(args.data_root)):
@@ -128,8 +126,7 @@ if __name__ == '__main__':
                         'indicated in its name does not correspond with --fps argument(i.e. they must be '
                         'the same)'.format(args.frames_dir))
 
-    if args.seed != -1:
-        np.random.seed(args.seed)
+    np.random.seed(args.seed)
 
     # do not modify
     args.eval_on_untrimmed = False

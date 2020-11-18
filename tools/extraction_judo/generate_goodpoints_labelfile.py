@@ -71,9 +71,9 @@ def main(args):
             targets[start_action_idx:end_action_idx, CLASS_INDEX[label]] = 1
             targets[end_action_idx:, 0] = 1
 
-            np.save(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR, str(starttime)+':'+video_name+'.npy'),
+            np.save(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR, str(starttime)+'___'+video_name+'.npy'),
                     features)
-            np.save(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR, str(starttime) + ':' + video_name + '.npy'),
+            np.save(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR, str(starttime) + '___' + video_name + '.npy'),
                     targets)
 
 if __name__ == '__main__':

@@ -48,7 +48,7 @@ class Goodpoints_PerType_JUDODataLayer(data.Dataset):
 
         self.inputs = []
         for filename in os.listdir(osp.join(args.data_root, dataset_type, 'goodpoints_target_frames_25fps')):
-            if filename.split(':')[1][:-4] not in self.sessions:
+            if filename.split('___')[1][:-4] not in self.sessions:
                 continue
 
             target = np.load(osp.join(self.data_root, dataset_type, 'goodpoints_target_frames_25fps', filename))
