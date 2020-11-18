@@ -20,7 +20,8 @@ def milliseconds_to_numframe(time_milliseconds, fps=25):
     return int(num_frame)
 
 def goodpoints_show_video_predictions(args,
-                                      video_name,
+                                      base_video_name,
+                                      complete_video_name,
                                       target_metrics,
                                       frames_dir='video_frames_25fps',
                                       fps=25,
@@ -28,19 +29,19 @@ def goodpoints_show_video_predictions(args,
     target_metrics = torch.argmax(torch.tensor(target_metrics), dim=1)
     speed = 1.0
     if args.save_video:
-        print('Loading and saving video: ' + video_name + ' . . . .\n.\n.')
+        print('Loading and saving video: ' + complete_video_name + ' . . . .\n.\n.')
         frames = []
 
     num_frames = target_metrics.shape[0]
-    start_millisecond = int(video_name.split(':')[0]) + 4000
+    start_millisecond = int(complete_video_name.split(':')[0]) + 4000
     start_frame = milliseconds_to_numframe(start_millisecond)
     idx = start_frame
-    while idx < num_frames:
+    while idx < num_frames + start_frame:
         #idx_frame = idx * args.chunk_size + args.chunk_size // 2
         idx_frame = idx
         pil_frame = Image.open(osp.join(args.data_root,
                                         frames_dir,
-                                        video_name,
+                                        base_video_name,
                                         str(idx_frame) + '.jpg')).convert('RGB')
         if transform is not None:
             pil_frame = transform(pil_frame)
@@ -90,11 +91,11 @@ def goodpoints_show_video_predictions(args,
 
     if args.save_video:
         H, W, _ = open_cv_frame.shape
-        out = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc(*'mp4v'), fps / args.chunk_size, (W, H))
+        out = cv2.VideoWriter(complete_video_name, cv2.VideoWriter_fourcc(*'mp4v'), fps / args.chunk_size, (W, H))
         for frame in frames:
             out.write(frame)
         out.release()
-        print('. . . video saved at ' + os.path.join(os.getcwd(), video_name))
+        print('. . . video saved at ' + os.path.join(os.getcwd(), complete_video_name))
 
 if __name__ == '__main__':
     base_dir = os.getcwd()
@@ -151,9 +152,9 @@ if __name__ == '__main__':
         videos_list = getattr(args, args.phase+'_session_set')
         utl.set_seed(int(args.seed))
         random.shuffle(videos_list)
-        video_name = videos_list[0]
+        base_video_name = videos_list[0]
     else:
-        video_name = [args.video_name]
+        base_video_name = [args.video_name]
 
     '''
     transform = transforms.Compose([
@@ -163,12 +164,12 @@ if __name__ == '__main__':
     '''
     transform = None
 
-    for file in os.listdir(osp.join(args.data_root, args.targets_dir)):
-        if video_name in file:
-            video_name = file
-            target_metrics = np.load(args.data_root, args.targets_dir, video_name)
+    for filename in os.listdir(osp.join(args.data_root, args.targets_dir)):
+        if base_video_name in filename:
+            target_metrics = np.load(osp.join(args.data_root, args.targets_dir, filename))
             goodpoints_show_video_predictions(args,
-                                              video_name,
+                                              base_video_name,
+                                              filename,
                                               target_metrics,
                                               )
             break
