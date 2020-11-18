@@ -36,6 +36,8 @@ def main(args):
         for i, class_name in enumerate(args.class_index):
             CLASS_INDEX[class_name] = i
 
+        CHUNK_SIZE = 9
+
         csv_reader = csv.reader(labels_file, delimiter=',')
         line_count = 0
         for row in csv_reader:
@@ -57,19 +59,22 @@ def main(args):
 
             starttime_action = starttime + 4000
             endtime_action = starttime + 6000
-            startframe_action = milliseconds_to_numframe(starttime_action)
-            endframe_action = milliseconds_to_numframe(endtime_action)
+            startframe_action = milliseconds_to_numframe(starttime_action) - 1
+            endframe_action = milliseconds_to_numframe(endtime_action) - 1
 
-            features = np.load(os.path.join(args.data_root, args.model_features, video_name+'.npy'))[startframe_action:endframe_action]
-            targets = np.zeros((features.shape, args.num_classes))
-            start_action_idx = int(features.shape / 3)
+            features = np.load(os.path.join(args.data_root, args.model_features, video_name+'.npy'))
+            features = features[startframe_action//CHUNK_SIZE: endframe_action//CHUNK_SIZE]
+            targets = np.zeros((len(features) * CHUNK_SIZE * 3, args.num_classes))
+            start_action_idx = len(features) * CHUNK_SIZE
             end_action_idx = start_action_idx * 2
             targets[:start_action_idx, 0] = 1
             targets[start_action_idx:end_action_idx, CLASS_INDEX[label]] = 1
             targets[end_action_idx:, 0] = 1
 
-            np.save(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR, str(starttime)+'_'+video_name+'.npy'), features)
-            np.save(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR, str(starttime) + '_' + video_name + '.npy'), targets)
+            np.save(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR, str(starttime)+':'+video_name+'.npy'),
+                    features)
+            np.save(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR, str(starttime) + ':' + video_name + '.npy'),
+                    targets)
 
 if __name__ == '__main__':
     base_dir = os.getcwd()
@@ -79,22 +84,25 @@ if __name__ == '__main__':
         raise Exception('Wrong base dir, this file must be run from ' + CORRECT_LAUNCH_DIR + ' directory.')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_root', default='data/JUDO/UNTRIMMED', type=str)
+    parser.add_argument('--data_root', default='data/JUDO', type=str)
+    parser.add_argument('--data_info', default='data/data_info.json', type=str) # useless, needed only to do not generate errors
     parser.add_argument('--labels_file', default='metadati.csv')
     parser.add_argument('--model_features', default='i3d_224x224_chunk9')
     args = parser.parse_args()
 
-    if not os.path.isdir(os.path.join(args.data_root)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root)))
-    if not os.path.isfile(os.path.join(args.data_root, args.labels_file)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root, args.labels_file )))
-    if not os.path.isfile(os.path.join(args.data_root, args.model_features)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root, args.model_features)))
+    if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED')):
+        raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED')))
+    if not os.path.isfile(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.labels_file)):
+        raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.labels_file )))
+    if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.model_features)):
+        raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.model_features)))
 
     # do note modify these two lines
     args.use_trimmed = False
     args.use_untrimmed = True
+    args.eval_on_untrimmed = False
     args = build_data_info(args, basic_build=True)
+    args.data_root = args.data_root + '/' + 'UNTRIMMED'
     args.train_session_set = args.train_session_set['UNTRIMMED']
     args.val_session_set = args.val_session_set['UNTRIMMED']
     args.test_session_set = args.test_session_set['UNTRIMMED']
