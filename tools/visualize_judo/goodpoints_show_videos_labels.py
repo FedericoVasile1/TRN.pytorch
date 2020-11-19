@@ -58,7 +58,7 @@ def goodpoints_show_video_predictions(args,
                     (0, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.8,
-                    (255, 255, 255),
+                    (255, 255, 255) if target_label=='Background' else (0, 0, 255),
                     1)
 
         cv2.putText(open_cv_frame,
