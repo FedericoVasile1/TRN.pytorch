@@ -33,7 +33,7 @@ def goodpoints_show_video_predictions(args,
         frames = []
 
     num_frames = target_metrics.shape[0]
-    start_millisecond = int(complete_video_name.split('___')[0]) + 4000
+    start_millisecond = int(complete_video_name.split('___')[0])
     start_frame = milliseconds_to_numframe(start_millisecond)
     idx = start_frame
     while idx < num_frames + start_frame:

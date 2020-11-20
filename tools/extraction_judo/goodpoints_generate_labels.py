@@ -57,6 +57,22 @@ def main(args):
             video_name = row[COLUMN_FILENAME]
             starttime = int(row[COLUMN_STARTTIME])
 
+            starttime_clip = starttime
+            startframe_clip = milliseconds_to_numframe(starttime_clip) - 1
+            endtime_clip = starttime + 10000
+            endframe_clip = milliseconds_to_numframe(endtime_clip) - 1
+
+            features = np.load(os.path.join(args.data_root, args.model_features, video_name + '.npy'))
+            features = features[startframe_clip // CHUNK_SIZE: endframe_clip // CHUNK_SIZE]
+
+            targets = np.zeros((len(features) * CHUNK_SIZE, args.num_classes))
+            # len(targets) should be about 25*10
+            j = len(targets) // 10
+            targets[:j*3, 0] = 1
+            targets[j*3:j*5, CLASS_INDEX[label]] = 1
+            targets[j*5:, 0] = 1
+
+            '''
             starttime_action = starttime + 4000
             endtime_action = starttime + 6000
             startframe_action = milliseconds_to_numframe(starttime_action) - 1
@@ -64,12 +80,13 @@ def main(args):
 
             features = np.load(os.path.join(args.data_root, args.model_features, video_name+'.npy'))
             features = features[startframe_action//CHUNK_SIZE: endframe_action//CHUNK_SIZE]
-            targets = np.zeros((len(features) * CHUNK_SIZE * 3, args.num_classes))
+            targets = np.zeros((len(features) * CHUNK_SIZE * 5, args.num_classes))
             start_action_idx = len(features) * CHUNK_SIZE
             end_action_idx = start_action_idx * 2
             targets[:start_action_idx, 0] = 1
             targets[start_action_idx:end_action_idx, CLASS_INDEX[label]] = 1
             targets[end_action_idx:, 0] = 1
+            '''
 
             np.save(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR, str(starttime)+'___'+video_name+'.npy'),
                     features)

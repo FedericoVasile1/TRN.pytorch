@@ -83,17 +83,17 @@ if __name__ == '__main__':
     parser.add_argument('--target_labels_dir', default='target_frames_25fps', type=str)
     args = parser.parse_args()
 
-    if not os.path.isdir(os.path.join(args.data_root)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root)))
+    if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED')):
+        raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED')))
     if not os.path.isfile(os.path.join(args.data_info)):
         raise Exception('{} not found'.format(os.path.join(args.data_info)))
-    if not os.path.isfile(os.path.join(args.data_root, args.labels_file)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root, args.labels_file)))
-    if not os.path.isdir(os.path.join(args.data_root, args.extracted_frames_dir)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root, args.extracted_frames_dir)))
-    if not os.path.isdir(os.path.join(args.data_root, args.target_labels_dir)):
-        os.makedir(os.path.join(args.data_root, args.target_labels_dir))
-        print('{} folder created'.format(os.path.join(args.data_root, args.target_labels_dir)))
+    if not os.path.isfile(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.labels_file)):
+        raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.labels_file)))
+    if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.extracted_frames_dir)):
+        raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.extracted_frames_dir)))
+    if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.target_labels_dir)):
+        os.mkdir(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.target_labels_dir))
+        print('{} folder created'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.target_labels_dir)))
     if str(args.fps) not in args.extracted_frames_dir:
         raise Exception('The folder {} should contain the number of fps in its name, or the number '
                         'indicated in its name does not correspond with --fps argument(i.e. they must be '
