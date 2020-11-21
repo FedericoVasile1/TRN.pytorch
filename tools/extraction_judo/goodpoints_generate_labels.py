@@ -68,9 +68,9 @@ def main(args):
             targets = np.zeros((len(features) * CHUNK_SIZE, args.num_classes))
             # len(targets) should be about 25*10
             j = len(targets) // 10
-            targets[:j*3, 0] = 1
-            targets[j*3:j*5, CLASS_INDEX[label]] = 1
-            targets[j*5:, 0] = 1
+            targets[:j*4, 0] = 1
+            targets[j*4:j*6, CLASS_INDEX[label]] = 1
+            targets[j*6:, 0] = 1
 
             '''
             starttime_action = starttime + 4000

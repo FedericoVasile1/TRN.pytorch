@@ -4,6 +4,7 @@ from .cnn import CNN
 from .rnn_attention import RNNAttention
 from .bidirectionalrnn import BIDIRECTIONALRNN
 from .rnnback import RNNBackmodel
+from .autoencoder.video_CAE import  VideoAutoencoderLSTM
 
 _META_ARCHITECTURES = {
     'LSTM': RNNmodel,
@@ -14,7 +15,10 @@ _META_ARCHITECTURES = {
     'GRUATTENTION': RNNAttention,
     'BIDIRECTIONALLSTM': BIDIRECTIONALRNN,
     'BIDIRECTIONALGRU': BIDIRECTIONALRNN,
+
     'GRUBACK': RNNBackmodel,
+
+    'CAE': VideoAutoencoderLSTM,
 }
 
 def build_model(args):

@@ -38,7 +38,7 @@ def build_data_loader(args, phase='train'):
         batch_size=args.batch_size,
         shuffle=phase=='train',
         num_workers=args.num_workers,
-        drop_last=True,
+        drop_last=False,
     )
     return data_loaders
 
