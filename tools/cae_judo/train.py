@@ -124,7 +124,7 @@ def main(args):
         print(log)
         logger._write(log)
 
-        if best_val_loss > losses['val'] or best_val_loss is None:
+        if best_val_loss is None or best_val_loss > losses['val']:
             best_val_loss = losses['val']
             epoch_best_val_loss = epoch
 
@@ -137,7 +137,7 @@ def main(args):
                 'optimizer_state_dict': optimizer.state_dict(),
             }, osp.join(writer.log_dir, checkpoint_file))
 
-    log = '--- Best validation loss is {:.1f} % obtained at epoch {} ---'.format(best_val_loss * 100, epoch_best_val_loss)
+    log = '--- Best validation loss is {} obtained at epoch {} ---'.format(best_val_loss, epoch_best_val_loss)
     print(log)
     logger._write(log)
 

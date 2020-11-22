@@ -6,7 +6,7 @@ from collections import OrderedDict
 class VideoAutoencoderLSTM(nn.Module):
     def __init__(self, args):
         super(VideoAutoencoderLSTM, self).__init__()
-        in_channels=1
+        in_channels=3
         self.in_channels = in_channels
         self.conv_encoder = nn.Sequential(OrderedDict([
             ('conv1', nn.Conv2d(in_channels=self.in_channels, out_channels=128, kernel_size=11, stride=4, padding=0)),
