@@ -83,27 +83,48 @@ def main(args):
 
         start = time.time()
         with torch.set_grad_enabled(False):
-            target = np.load(osp.join(args.data_root, dataset_type, 'target_frames_25fps', session + '.npy'))
+            target = np.load(osp.join(args.data_root, dataset_type, '10s_target_frames_25fps', session + '.npy'))
             frames = []
-            for idx in range(len(target)):
-                if target[idx, 0] != 0:
-                    frames = []
-                    continue
+            for idx in range(len(target), start=1):
+                if target[idx, 0] == 1:
+                    if target[idx-1, 0] == 0:
+                        print(len(frames))      # 10 s, i.e. about 250 frames
 
-                frame = Image.open(osp.join(args.data_root,
-                                            dataset_type,
-                                            args.model_input,
-                                            session,
-                                            str(idx+1)+'.jpg')).convert('RGB')
-                frame = transform(frame)
-                frames.append(frame)
+                        errors = []
+                        frames = torch.stack(frames)
+                        for i in range(len(frames) - args.steps):
+                            clip = []
+                            for j in range(args.steps):
+                                clip.append(frames[i+j])
+                            clip = torch.stack(clip)
 
-                if len(frames) == args.steps:
-                    frames = torch.stack(frames)
-                    outputs = model(frames)
-                    loss = criterion(frames, outputs)
-                    print(session, loss)
-                    frames = []
+                            clip = to_device(clip, device)
+                            outputs = model(clip)
+
+                            clip = clip.flatten(start_dim=1)
+                            outputs = outputs.flatten(start_dim=1).to(device)
+                            s = torch.norm(clip - outputs, dim=1)       # scalar
+                            errors.append(s)
+
+                        errors = torch.cat(errors).view(-1, len(frames)-args.steps+1).numpy()
+                        appo = 1 - (errors[0,:] - np.min(errors[0,:]))/(np.max(errors[0,:]) - np.min(errors[0,:]))
+                        plt.plot(appo)
+                        plt.show
+
+                        frames = []
+                        break
+                    else:
+                        frames = []
+                        continue
+                else:
+                        frame = Image.open(osp.join(args.data_root,
+                                                    dataset_type,
+                                                    args.model_input,
+                                                    session,
+                                                    str(idx+1)+'.jpg')).convert('RGB')
+                        frame = transform(frame)
+                        frames.append(frame)
+            break
         end = time.time()
 
         print('Processed session {}, {:2} of {}, running time {:.2f} sec'.format(session,
