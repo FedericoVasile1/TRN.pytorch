@@ -71,7 +71,7 @@ def build_data_info(args, basic_build=False):
         args.E2E = ''
 
     if args.use_goodpoints:
-        if 'goodpoints' not in args.model_input:
+        if 'goodpoints' not in args.model_input or 'goodpoints' not in args.model_target:
             raise Exception()
         if not args.use_untrimmed:
             raise Exception()

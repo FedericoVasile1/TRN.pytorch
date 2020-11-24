@@ -3,7 +3,6 @@ from .cnn3d import CNN3D
 from .cnn import CNN
 from .rnn_attention import RNNAttention
 from .bidirectionalrnn import BIDIRECTIONALRNN
-from .rnnback import RNNBackmodel
 from .encdec import EncDec
 
 _META_ARCHITECTURES = {

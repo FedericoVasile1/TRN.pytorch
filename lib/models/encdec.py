@@ -44,8 +44,8 @@ class EncDec(nn.Module):
 
         proj_h_ts = self.lin_proj(h_ts)     # proj_h_ts.shape == (batch_size, steps, dec_hidden_size)
 
-        dec_h_n = torch.zeros(proj_h_ts.shape[0], proj_h_ts.shape[2]).to(proj_h_ts.dtype, proj_h_ts.device)
-        dec_c_n = torch.zeros(proj_h_ts.shape[0], proj_h_ts.shape[2]).to(proj_h_ts.dtype, proj_h_ts.device)
+        dec_h_n = torch.zeros(proj_h_ts.shape[0], proj_h_ts.shape[2]).to(dtype=proj_h_ts.dtype, device=proj_h_ts.device)
+        dec_c_n = torch.zeros(proj_h_ts.shape[0], proj_h_ts.shape[2]).to(dtype=proj_h_ts.dtype, device=proj_h_ts.device)
         for step in range(self.steps):
             x_t = x[:, step]
 
@@ -57,7 +57,7 @@ class EncDec(nn.Module):
             attn = attn_weights.bmm(proj_h_ts)      # attn.shape == (batch_size, 1, dec_hidden_size)
             attn = attn.squeeze(1)
 
-            x_t = torch.cat(x_t, attn, dim=1)       # x_t.shape == (batch_size, input_size + dec_hidden_size)
+            x_t = torch.cat((x_t, attn), dim=1)       # x_t.shape == (batch_size, input_size + dec_hidden_size)
 
             dec_h_n, dec_c_n = self.dec(x_t, (dec_h_n, dec_c_n))
 

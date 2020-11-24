@@ -47,11 +47,11 @@ class Goodpoints_PerType_JUDODataLayer(data.Dataset):
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
 
         self.inputs = []
-        for filename in os.listdir(osp.join(args.data_root, dataset_type, 'goodpoints_target_frames_25fps')):
+        for filename in os.listdir(osp.join(args.data_root, dataset_type, args.model_target)):
             if filename.split('___')[1][:-4] not in self.sessions:
                 continue
 
-            target = np.load(osp.join(self.data_root, dataset_type, 'goodpoints_target_frames_25fps', filename))
+            target = np.load(osp.join(self.data_root, dataset_type, args.model_target, filename))
             # round to multiple of chunk_size
             num_frames = target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)

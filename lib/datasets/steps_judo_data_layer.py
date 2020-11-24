@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.utils.data as data
 
-class JUDODataLayer(data.Dataset):
+class StepsJUDODataLayer(data.Dataset):
     def __init__(self, args, phase='train'):
         if args.eval_on_untrimmed:
             if phase == 'train':
@@ -60,20 +60,36 @@ class _PerType_JUDODataLayer(data.Dataset):
             # For each chunk, the central frame label is the label of the entire chunk
             target = target[args.chunk_size // 2::args.chunk_size]
 
-            seed = np.random.randint(self.steps) if self.training else 0
-            for start, end in zip(range(seed, target.shape[0], self.steps),
-                                  range(seed + self.steps, target.shape[0], self.steps)):
+            if self.training:
+                seed = np.random.randint(self.steps) if self.training else 0
+                for start, end in zip(range(seed, target.shape[0], self.steps),
+                                      range(seed + self.steps, target.shape[0], self.steps)):
 
-                if args.downsample_backgr and self.training:
-                    background_vect = np.zeros_like(target[start:end])
-                    background_vect[:, 0] = 1
-                    if (target[start:end] == background_vect).all():
+                    if args.downsample_backgr and self.training:
+                        background_vect = np.zeros_like(target[start:end])
+                        background_vect[:, 0] = 1
+                        if (target[start:end] == background_vect).all():
+                            continue
+
+                    step_target = target[start:end]
+                    self.inputs.append([
+                        dataset_type, session, start, end, step_target,
+                    ])
+            else:
+                count = 1
+                for t in range(len(target)):
+                    if t == 0:
                         continue
 
-                step_target = target[start:end]
-                self.inputs.append([
-                    dataset_type, session, start, end, step_target,
-                ])
+                    if np.argmax(target[t - 1]) != np.argmax(target[t]):
+                        count = 1
+                    else:
+                        count += 1
+                        if count == self.steps:
+                            self.inputs.append(
+                                [dataset_type, session, t + 1 - self.steps, t + 1, target[t + 1 - self.steps:t + 1]])
+
+                        count = 0
 
     def __getitem__(self, index):
         dataset_type, session, start, end, step_target = self.inputs[index]

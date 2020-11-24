@@ -3,6 +3,7 @@ from .thumos_data_layer_e2e import THUMOSDataLayerE2E
 from .judo_data_layer import JUDODataLayer
 from .judo_data_layer_e2e import JUDODataLayerE2E
 from .goodpoints_judo_data_layer import Goodpoints_JUDODataLayer
+from .steps_judo_data_layer import StepsJUDODataLayer
 
 _DATA_LAYERS = {
     'LSTMTHUMOS': THUMOSDataLayer,
@@ -20,9 +21,11 @@ _DATA_LAYERS = {
     'CNNJUDOE2E': JUDODataLayerE2E,
     'BIDIRECTIONALLSTMJUDO': JUDODataLayer,
     'BIDIRECTIONALGRUJUDO': JUDODataLayer,
-    'GRUBACKJUDO': JUDODataLayer,
 
     'GRUJUDOGOODPOINTS': Goodpoints_JUDODataLayer,
+
+    #'ENCDECLSTM': JUDODataLayer,
+    'ENCDECLSTM': StepsJUDODataLayer,
 }
 
 def build_dataset(args, phase):

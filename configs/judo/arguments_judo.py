@@ -24,6 +24,7 @@ def parse_model_args():
 
     # folder where the pre-extracted features or raw frames are
     parser.add_argument('--model_input', default='i3d_224x224_chunk9', type=str)
+    parser.add_argument('--model_target', default='target_frames_25fps', type=str)
     # in case of starting from pre-extracted features, must specify the dimension of the feature vector
     parser.add_argument('--feat_vect_dim', default=-1, type=int)
     # in case of starting from raw frames, must specify the feature extractor to use

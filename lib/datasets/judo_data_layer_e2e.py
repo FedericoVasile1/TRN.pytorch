@@ -79,12 +79,12 @@ class _PerType_JUDODataLayerE2E(data.Dataset):
 
         self.inputs = []
         for session in self.sessions:
-            if not osp.isfile(osp.join(self.data_root, dataset_type, 'target_frames_25fps', session + '.npy')):
+            if not osp.isfile(osp.join(self.data_root, dataset_type, args.model_target, session + '.npy')):
                 # skip videos in which the pose model does not detect any fall(i.e. fall==-1  in fall_detections.csv).
                 # TODO: fix these videos later on, in order to incluso also them
                 continue
 
-            target = np.load(osp.join(self.data_root, dataset_type, 'target_frames_25fps', session+'.npy'))
+            target = np.load(osp.join(self.data_root, dataset_type, args.model_target, session+'.npy'))
             # round to multiple of CHUNK_SIZE
             num_frames = target.shape[0]
             num_frames = num_frames - (num_frames  % self.chunk_size)
