@@ -59,7 +59,9 @@ def main(args):
         start = time.time()
         with torch.set_grad_enabled(False):
             target = np.load(osp.join(args.data_root, dataset_type, '10s_target_frames_25fps', session + '.npy'))
-            os.mkdir(os.getcwd(), session[:-4])
+            if osp.isdir(session[:-4]):
+                shutil.rmtree(session[:-4])
+            os.mkdir(session[:-4])
 
             frames = []
             for idx in range(len(target)):
@@ -84,7 +86,7 @@ def main(args):
                             s = torch.norm(clip - outputs, dim=1)       # scalar
                             errors.append(s)
 
-                        errors = torch.cat(errors).view(-1, len(tensor_frames)-args.steps+1).numpy()
+                        errors = torch.cat(errors).view(-1, len(tensor_frames)-args.steps+1).cpu().numpy()
                         appo = 1 - (errors[0,:] - np.min(errors[0,:]))/(np.max(errors[0,:]) - np.min(errors[0,:]))
 
                         min_pos = np.argmin(errors[0])
@@ -92,7 +94,7 @@ def main(args):
                         start_millisecond = (idx-len(frames)) / 25 * 1000
 
                         plt.plot(appo)
-                        plt.savefig(osp.join(os.getcwd(), session[:-4]), str(start_millisecond)+'.jpg')
+                        plt.savefig(osp.join(os.getcwd(), session[:-4], str(start_millisecond)+'.jpg'))
 
                         H, W, _ = frames[0].shape
                         out = cv2.VideoWriter(osp.join(os.getcwd(), session[:-4], str(start_millisecond)+'.mp4'),
