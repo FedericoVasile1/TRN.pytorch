@@ -63,4 +63,4 @@ class EncDec(nn.Module):
 
             scores[:, step, :] = self.classifier(dec_h_n)
 
-        return scores
+        return scores, attn_weights.squeeze(1)

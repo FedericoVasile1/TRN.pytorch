@@ -23,7 +23,7 @@ _DATA_LAYERS = {
 
     'GRUJUDOGOODPOINTS': Goodpoints_JUDODataLayer,
 
-    'ENCDECLSTM': JUDODataLayer,
+    'ENCDECLSTMJUDO': JUDODataLayer,
 }
 
 def build_dataset(args, phase):
