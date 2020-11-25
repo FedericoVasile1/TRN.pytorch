@@ -86,14 +86,14 @@ def main(args):
         else:
             raise Exception('Unknown video name: ' + session)
 
-        if not osp.isfile(osp.join(args.data_root, dataset_type, 'target_frames_25fps', session + '.npy')):
+        if not osp.isfile(osp.join(args.data_root, dataset_type, args.model_target, session + '.npy')):
             # skip videos in which the pose model does not detect any fall(i.e. fall==-1  in fall_detections.csv).
             # TODO: fix these videos later on, in order to incluso also them
             continue
 
         start = time.time()
         with torch.set_grad_enabled(False):
-            target = np.load(osp.join(args.data_root, dataset_type, 'target_frames_25fps', session + '.npy'))
+            target = np.load(osp.join(args.data_root, dataset_type, args.model_target, session + '.npy'))
             # round to multiple of CHUNK_SIZE
             num_frames = target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
