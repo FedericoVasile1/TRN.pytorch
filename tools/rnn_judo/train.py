@@ -92,7 +92,7 @@ def main(args):
                     if training:
                         optimizer.zero_grad()
 
-                    scores = model(inputs)            # scores.shape == (batch_size, steps, num_classes)
+                    scores, new_feats_all = model(inputs)            # scores.shape == (batch_size, steps, num_classes)
 
                     scores = scores.to(device)
                     targets = targets.to(device)
@@ -101,6 +101,17 @@ def main(args):
                     for step in range(1, inputs.shape[1]):
                         loss += criterion(scores[:, step], targets[:, step].max(axis=1)[1])
                     loss /= inputs.shape[1]      # scale by steps
+
+                    flag = True
+                    preds = targets.max(axis=2)[1]
+                    for j in range(len(preds)):
+                        if torch.unique(preds[j]) == torch.tensor([0]):
+                            if flag:
+                                loss2 = torch.var(new_feats_all[j, :].sum(dim=1))
+                                flag = False
+                            else:
+                                loss2 += torch.var(new_feats_all[j, :].sum(dim=1))
+                    loss += loss2
 
                     losses[phase] += loss.item() * batch_size
 

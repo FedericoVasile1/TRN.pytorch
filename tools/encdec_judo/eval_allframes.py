@@ -86,17 +86,17 @@ def save_video_predictions(args,
 
         cv2.putText(open_cv_frame,
                     'weight:{:.2f}'.format(attn_weights[count_chunk].item()),
-                    (open_cv_frame.shape[1]-30, 20),
+                    (open_cv_frame.shape[1]-300, 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (255, 0, 0),
+                    0.8,
+                    (0, 0, 255),
                     1)
         cv2.putText(open_cv_frame,
-                    str(count_chunk%args.steps)+'/'+str(args.steps),
-                    (open_cv_frame.shape[1]-30, 50),
+                    str(count_chunk%args.steps)+'/'+str(args.steps-1),
+                    (open_cv_frame.shape[1]-300, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (255, 0, 0),
+                    0.8,
+                    (0, 0, 255),
                     1)
 
         # [ (idx_frame + 1) / 25 ]    => 25 because frames has been extracted at 25 fps

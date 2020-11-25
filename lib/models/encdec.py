@@ -30,7 +30,8 @@ class EncDec(nn.Module):
         else:
             raise Exception('Model ' + args.model + ' here is not supported')
 
-        self.lin_proj = nn.Linear(self.enc_hidden_size, self.dec_hidden_size)
+        self.lin_proj_e2d = nn.Linear(self.enc_hidden_size, self.dec_hidden_size)
+        self.lin_proj_d2e = nn.Linear(self.dec_hidden_size, self.enc_hidden_size)
 
         self.classifier = nn.Linear(self.dec_hidden_size, self.num_classes)
 
@@ -42,7 +43,7 @@ class EncDec(nn.Module):
 
         h_ts, _ = self.enc(x)        # h_ts.shape == (batch_size, steps, enc_hidden_size)
 
-        proj_h_ts = self.lin_proj(h_ts)     # proj_h_ts.shape == (batch_size, steps, dec_hidden_size)
+        proj_h_ts = self.lin_proj_e2d(h_ts)     # proj_h_ts.shape == (batch_size, steps, dec_hidden_size)
 
         dec_h_n = torch.zeros(proj_h_ts.shape[0], proj_h_ts.shape[2]).to(dtype=proj_h_ts.dtype, device=proj_h_ts.device)
         dec_c_n = torch.zeros(proj_h_ts.shape[0], proj_h_ts.shape[2]).to(dtype=proj_h_ts.dtype, device=proj_h_ts.device)
@@ -57,7 +58,9 @@ class EncDec(nn.Module):
             attn = attn_weights.bmm(proj_h_ts)      # attn.shape == (batch_size, 1, dec_hidden_size)
             attn = attn.squeeze(1)
 
-            x_t = torch.cat((x_t, attn), dim=1)       # x_t.shape == (batch_size, input_size + dec_hidden_size)
+            attn = self.lin_proj_d2e(attn)
+
+            x_t = torch.cat((x_t, attn), dim=1)       # x_t.shape == (batch_size, input_size + enc_hidden_size)
 
             dec_h_n, dec_c_n = self.dec(x_t, (dec_h_n, dec_c_n))
 
