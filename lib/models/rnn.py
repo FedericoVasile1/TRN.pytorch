@@ -21,12 +21,6 @@ class RNNmodel(nn.Module):
 
         self.feature_extractor = build_feature_extractor(args)
 
-        self.discr = nn.Sequential(
-            nn.Linear(self.feature_extractor.fusion_size, self.feature_extractor.fusion_size),
-            nn.ReLU(),
-            nn.Linear(self.feature_extractor.fusion_size, self.feature_extractor.fusion_size),
-        )
-
         if args.model == 'LSTM':
             self.rnn = nn.LSTMCell(self.feature_extractor.fusion_size, self.hidden_size)
             self.model = 'LSTM'
@@ -50,21 +44,17 @@ class RNNmodel(nn.Module):
                           device=x.device,
                           dtype=x.dtype) if self.model == 'LSTM' else torch.zeros(1)
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
-        new_feats_all = torch.zeros(x.shape[0], x.shape[1], self.feature_extractor.fusion_size, dtype=x.dtype)
         for step in range(self.steps):
             x_t = x[:, step]
             out = self.feature_extractor(x_t)
             if step == 0:
                 out = self.drop_before(out)
 
-            new_feats = self.discr(out)
-            new_feats_all[:, step] = new_feats
-
-            h_n, c_n = self.rnn(new_feats, (h_n, c_n))
+            h_n, c_n = self.rnn(out, (h_n, c_n))
             out = self.classifier(self.drop_after(h_n))  # out.shape == (batch_size, num_classes)
 
             scores[:, step, :] = out
-        return scores, new_feats_all
+        return scores
 
     def step(self, x_t, h_n, c_n):
         out = self.feature_extractor(x_t)
