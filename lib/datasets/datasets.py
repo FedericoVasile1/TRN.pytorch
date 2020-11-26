@@ -21,9 +21,12 @@ _DATA_LAYERS = {
     'BIDIRECTIONALLSTMJUDO': JUDODataLayer,
     'BIDIRECTIONALGRUJUDO': JUDODataLayer,
 
-    'GRUJUDOGOODPOINTS': Goodpoints_JUDODataLayer,
-
     'ENCDECLSTMJUDO': JUDODataLayer,
+    'ENCDECBIDIRECTIONALLSTMJUDO': JUDODataLayer,
+    'ENCDECGRUJUDO': JUDODataLayer,
+    'ENCDECBIDIRECTIONALGRUJUDO': JUDODataLayer,
+
+    'GRUJUDOGOODPOINTS': Goodpoints_JUDODataLayer,
 }
 
 def build_dataset(args, phase):

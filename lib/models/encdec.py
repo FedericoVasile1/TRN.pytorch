@@ -6,6 +6,15 @@ import torch.nn.functional as F
 
 from .feature_extractor import build_feature_extractor
 
+class _MyGRUCell(nn.GRUCell):
+    """
+    This model has been created for the only purpose of having a forward signature equal to the one
+    of the LSTMCell model, by doing this we only need a single code pipeline for both lstm and gru models.
+    """
+    def forward(self, x, states):
+        h_n, _ = states
+        return super(_MyGRUCell, self).forward(x, h_n), torch.zeros(1)
+
 class EncDec(nn.Module):
     def __init__(self, args):
         super(EncDec, self).__init__()
@@ -16,22 +25,31 @@ class EncDec(nn.Module):
 
         self.feature_extractor = build_feature_extractor(args)
 
-        if args.model == 'ENCDECLSTM':
+        # ONLY THE ENCODER is bidirectional
+        self.is_bidirectional = 'BIDIRECTIONAL' in args.model
+        if args.model == 'ENCDECLSTM' or args.model == 'ENCDECBIDIRECTIONALLSTM':
             self.enc = nn.LSTM(input_size=self.feature_extractor.fusion_size,
                                hidden_size=self.enc_hidden_size,
                                num_layers=1,
                                batch_first=True,
                                dropout=args.dropout,
-                               bidirectional=False)
-            self.dec = nn.LSTMCell(input_size=self.enc_hidden_size+self.feature_extractor.fusion_size,
+                               bidirectional=self.is_bidirectional)
+            self.dec = nn.LSTMCell(input_size=self.enc_hidden_size*(2 if self.is_bidirectional else 1)+self.feature_extractor.fusion_size,
                                    hidden_size=self.dec_hidden_size)
-        elif args.model == 'ENCDECGRU':
-            raise NotImplementedError()
+        elif args.model == 'ENCDECGRU' or args.model == 'ENCDECBIDIRECTIONALGRU':
+            self.enc = nn.GRU(input_size=self.feature_extractor.fusion_size,
+                              hidden_size=self.enc_hidden_size,
+                              num_layers=1,
+                              batch_first=True,
+                              dropout=args.dropout,
+                              bidirectional=self.is_bidirectional)
+            self.dec = _MyGRUCell(input_size=self.enc_hidden_size*(2 if self.is_bidirectional else 1)+self.feature_extractor.fusion_size,
+                                  hidden_size=self.dec_hidden_size)
         else:
             raise Exception('Model ' + args.model + ' here is not supported')
 
-        self.lin_proj_e2d = nn.Linear(self.enc_hidden_size, self.dec_hidden_size)
-        self.lin_proj_d2e = nn.Linear(self.dec_hidden_size, self.enc_hidden_size)
+        self.lin_proj_e2d = nn.Linear(self.enc_hidden_size*(2 if self.is_bidirectional else 1), self.dec_hidden_size)
+        self.lin_proj_d2e = nn.Linear(self.dec_hidden_size, self.enc_hidden_size*(2 if self.is_bidirectional else 1))
 
         self.classifier = nn.Linear(self.dec_hidden_size, self.num_classes)
 
@@ -40,13 +58,13 @@ class EncDec(nn.Module):
 
         for step in range(self.steps):
             x[:, step, :] = self.feature_extractor(x[:, step])
-
         h_ts, _ = self.enc(x)        # h_ts.shape == (batch_size, steps, enc_hidden_size)
-
         proj_h_ts = self.lin_proj_e2d(h_ts)     # proj_h_ts.shape == (batch_size, steps, dec_hidden_size)
 
-        dec_h_n = torch.zeros(proj_h_ts.shape[0], proj_h_ts.shape[2]).to(dtype=proj_h_ts.dtype, device=proj_h_ts.device)
-        dec_c_n = torch.zeros(proj_h_ts.shape[0], proj_h_ts.shape[2]).to(dtype=proj_h_ts.dtype, device=proj_h_ts.device)
+        dec_h_n = torch.zeros(proj_h_ts.shape[0],proj_h_ts.shape[2]).to(dtype=proj_h_ts.dtype,
+                                                                        device=proj_h_ts.device)
+        dec_c_n = torch.zeros(proj_h_ts.shape[0], proj_h_ts.shape[2]).to(dtype=proj_h_ts.dtype,
+                                                                         device=proj_h_ts.device) if 'LSTM' in self.model else torch.zeros(1)
         for step in range(self.steps):
             x_t = x[:, step]
 
