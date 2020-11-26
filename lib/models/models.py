@@ -4,6 +4,7 @@ from .cnn import CNN
 from .rnn_attention import RNNAttention
 from .bidirectionalrnn import BIDIRECTIONALRNN
 from .encdec import EncDec
+from .convlstm import ConvLSTM
 
 _META_ARCHITECTURES = {
     'LSTM': RNNmodel,
@@ -19,6 +20,8 @@ _META_ARCHITECTURES = {
     'ENCDECBIDIRECTIONALLSTM': EncDec,
     'ENCDECGRU': EncDec,
     'ENCDECBIDIRECTIONALGRU': EncDec,
+
+    'CONVLSTM': ConvLSTM,
 }
 
 def build_model(args):

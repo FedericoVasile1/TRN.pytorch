@@ -349,7 +349,8 @@ class InceptionI3d(nn.Module):
         for end_point in self.VALID_ENDPOINTS:
             if end_point in self.end_points:
                 x = self._modules[end_point](x)
-        return self.avg_pool(x)
+        #return self.avg_pool(x)
+        return x
 
     def freeze_partial_layers(self):
         LAYERS_TO_FREEZE = (

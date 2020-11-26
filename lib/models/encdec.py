@@ -22,6 +22,7 @@ class EncDec(nn.Module):
         self.dec_hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.steps = args.steps
+        self.model = args.model
 
         self.feature_extractor = build_feature_extractor(args)
 
