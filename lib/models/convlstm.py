@@ -287,7 +287,7 @@ class ConvLSTM(nn.Module):
             feat_x = self.conv3d_bottleneck(appo)     # feat_x.shape == (batch_size, CC, HH, WW)
             features_x.append(feat_x)
         features_x = torch.stack(features_x, dim=1)
-        features_x = self.conv_lstm(features_x)
+        features_x, _ = self.conv_lstm(features_x)
         for step in range(self.steps):
             x_t = features_x[:, step]
             out = self.classifier(x_t)
