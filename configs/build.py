@@ -70,17 +70,31 @@ def build_data_info(args, basic_build=False):
         # no end to end learning because we are starting from features pre-extracted
         args.E2E = ''
 
+    if args.use_goodpoints and args.use_candidates:
+        raise Exception('--use_goodpoints and --use_candidates can not be true together')
     if args.use_goodpoints:
         if 'goodpoints' not in args.model_input or 'goodpoints' not in args.model_target:
             raise Exception('With --use_goodpoints option you must provide input goodpoints features'
                             '(via --model_input option)  and target goodpoint(via --model_target option)')
         if not args.use_untrimmed or args.use_trimmed:
-            raise Exception('We actually have features and target only for untrimmed dataset')
+            raise Exception('We actually have goodpoints features and targets only for untrimmed dataset')
         if args.E2E == 'E2E':
             raise Exception('We actually do not support goodpoints starting from raw frames')
 
         args.goodpoints = 'GOODPOINTS'
     else:
         args.goodpoints = ''
+    if args.use_candidates:
+        if 'candidates' not in args.model_input or 'candidates' not in args.model_target:
+            raise Exception('With --use_candidates option you must provide input candidates features'
+                            '(via --model_input option)  and target candidates(via --model_target option)')
+        if not args.use_untrimmed or args.use_trimmed:
+            raise Exception('We actually have candidates features and targets only for untrimmed dataset')
+        if args.E2E == 'E2E':
+            raise Exception('We actually do not support candidates starting from raw frames')
+
+        args.candidates = 'CANDIDATES'
+    else:
+        args.candidates = ''
 
     return args
