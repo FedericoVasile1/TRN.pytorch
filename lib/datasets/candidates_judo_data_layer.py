@@ -53,25 +53,49 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
             if dataset_type == 'UNTRIMMED':
                 if filename.split('___')[1][:-4] not in self.sessions:
                     continue
+                target = np.load(osp.join(self.data_root, dataset_type, args.model_target, filename))
+                # TODO: to decide whether or not to add data augmentation along the temporal dimension
+                self.inputs.append([
+                    dataset_type, filename, target, 0, 0
+                ])
+            elif dataset_type == 'TRIMMED':
+                target = np.load(osp.join(self.data_root, dataset_type, args.model_target, filename))
+                # round to multiple of chunk_size
+                num_frames = target.shape[0]
+                num_frames = num_frames - (num_frames % args.chunk_size)
+                target = target[:num_frames]
+                # For each chunk, the central frame label is the label of the entire chunk
+                target = target[args.chunk_size // 2::args.chunk_size]
 
-            target = np.load(osp.join(self.data_root, dataset_type, args.model_target, filename))
+                for start, end in zip(range(0, target.shape[0], 10),
+                                      range(0 + 10, target.shape[0], 10)):
 
-            # TODO: to decide whether or not to add data augmentation along the temporal dimension
-
-            self.inputs.append([
-                dataset_type, filename, target
-            ])
+                    step_target = target[start:end]
+                    self.inputs.append([
+                        dataset_type, filename, step_target, start, end
+                    ])
+                else:
+                    raise Exception('Unknow dataset')
 
     def __getitem__(self, index):
-        dataset_type, filename, target = self.inputs[index]
+        dataset_type, filename, target, start, end = self.inputs[index]
 
         feature_vectors = np.load(osp.join(self.data_root, dataset_type, self.model_input, filename),
                                   mmap_mode='r')
+        if dataset_type == 'TRIMMED':
+            feature_vectors = feature_vectors[start:end]
+
         feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
 
         target = torch.as_tensor(target.astype(np.float32))
 
-        return feature_vectors, target
+        if dataset_type == 'UNTRIMMED':
+            return feature_vectors[-10:], target[-10:]
+        elif dataset_type == 'TRIMMED':
+            return feature_vectors, target
+        else:
+            raise Exception('Unknow dataset')
+
 
     def __len__(self):
         return len(self.inputs)
