@@ -45,9 +45,6 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
 
-        if dataset_type == 'TRIMMED':
-            args.model_target = 'target_frames_25fps'
-
         self.inputs = []
         for filename in os.listdir(osp.join(args.data_root, dataset_type, args.model_target)):
             if dataset_type == 'UNTRIMMED':
@@ -74,8 +71,8 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
                     self.inputs.append([
                         dataset_type, filename, step_target, start, end
                     ])
-                else:
-                    raise Exception('Unknow dataset')
+            else:
+                raise Exception('Unknow dataset')
 
     def __getitem__(self, index):
         dataset_type, filename, target, start, end = self.inputs[index]

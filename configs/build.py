@@ -76,8 +76,8 @@ def build_data_info(args, basic_build=False):
         if 'goodpoints' not in args.model_input or 'goodpoints' not in args.model_target:
             raise Exception('With --use_goodpoints option you must provide input goodpoints features'
                             '(via --model_input option)  and target goodpoint(via --model_target option)')
-        #if not args.use_untrimmed or args.use_trimmed:
-        #    raise Exception('We actually have goodpoints features and targets only for untrimmed dataset')
+        if not args.use_untrimmed:
+            raise Exception('With --use_goodpoints, also --use_untrimmed must be used')
         if args.E2E == 'E2E':
             raise Exception('We actually do not support goodpoints starting from raw frames')
 
@@ -88,8 +88,8 @@ def build_data_info(args, basic_build=False):
         if 'candidates' not in args.model_input or 'candidates' not in args.model_target:
             raise Exception('With --use_candidates option you must provide input candidates features'
                             '(via --model_input option)  and target candidates(via --model_target option)')
-        if not args.use_untrimmed or args.use_trimmed:
-            raise Exception('We actually have candidates features and targets only for untrimmed dataset')
+        if not args.use_untrimmed:
+            raise Exception('With --use_candidates, also --use_untrimmed must be used')
         if args.E2E == 'E2E':
             raise Exception('We actually do not support candidates starting from raw frames')
 
