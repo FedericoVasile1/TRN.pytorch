@@ -52,7 +52,7 @@ def build_data_info(args, basic_build=False):
     #       where videoN.npy.shape == (num_frames_in_video/chunk_size, feature_vector_dim)
     BASE_FOLDER_FEAT_EXTR = '_chunk'+str(args.chunk_size)
 
-    if args.model_input.startswith(BASE_FOLDER_RAW_FRAMES):
+    if args.model_input.startswith(BASE_FOLDER_RAW_FRAMES) or args.model_input.startswith('candidates_'+BASE_FOLDER_RAW_FRAMES):
         if args.chunk_size == -1:
             raise Exception('Wrong --chunk_size option. Specify the number of consecutive frames that the feature '
                             'extractor will take as input at a time(e.g. --chunk_size 16)')

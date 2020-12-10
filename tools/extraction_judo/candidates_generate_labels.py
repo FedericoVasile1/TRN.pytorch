@@ -4,6 +4,8 @@ import csv
 import sys
 import argparse
 
+import cv2
+
 sys.path.append(os.getcwd())
 from configs.build import build_data_info
 
@@ -26,22 +28,30 @@ def main(args):
                 continue
 
             filename = row[column_filename]
+
             idxstartframe = int(row[column_idxstartframe])
             idxendframe = int(row[column_idxendframe])
-            idxfallframe = int(row[column_idxfallframe])
+            #idxfallframe = int(row[column_idxfallframe])
+
+            for idx_frame in range(idxstartframe, idxendframe):
+                img = cv2.imread(os.path.join(args.data_root, args.extracted_frames_dir, filename, str(idx_frame)+'.jpg'))
+                if idx_frame == idxstartframe:
+                    os.mkdir(os.path.join(args.data_root, args.new_frames_dir, str(idxstartframe)+'___'+filename))
+                cv2.imwrite(os.path.join(args.data_root, args.new_frames_dir, str(idxstartframe)+'___'+filename, str(idx_frame)+'.jpg'), img)
+
+            # minus 1 since there is a displacement of 1 between the index of the raw frame and
+            # the arrays features and labels
+            idxstartframe -= 1
+            idxendframe -= 1
 
             features = np.load(os.path.join(args.data_root, args.extracted_features_dir, filename+'.npy'))
             features = features[idxstartframe//args.chunk_size:idxendframe//args.chunk_size]
-            np.save(os.path.join(args.data_root, args.new_features_dir, str(idxfallframe)+'___'+filename+'.npy'),
+            np.save(os.path.join(args.data_root, args.new_features_dir, str(idxstartframe+1)+'___'+filename+'.npy'),
                     features)
 
             labels = np.load(os.path.join(args.data_root, args.target_labels_dir, filename+'.npy'))
-            num_frames = labels.shape[0]
-            num_frames = num_frames - (num_frames % args.chunk_size)
-            labels = labels[:num_frames]
-            labels = labels[args.chunk_size // 2::args.chunk_size]
-            labels = labels[idxstartframe//args.chunk_size:idxendframe//args.chunk_size]
-            np.save(os.path.join(args.data_root, args.new_labels_dir, str(idxfallframe)+'___'+filename+'.npy'),
+            labels = labels[idxstartframe:idxendframe]
+            np.save(os.path.join(args.data_root, args.new_labels_dir, str(idxstartframe+1)+'___'+filename+'.npy'),
                     labels)
 
 if __name__ == '__main__':
@@ -88,8 +98,10 @@ if __name__ == '__main__':
     args.val_session_set = args.val_session_set['UNTRIMMED']
     args.test_session_set = args.test_session_set['UNTRIMMED']
 
-    args.new_features_dir = 'candidate_'+args.extracted_features_dir
-    args.new_labels_dir = 'candidate_'+args.target_labels_dir
+    args.new_frames_dir = 'candidates_'+args.extracted_frames_dir
+    args.new_features_dir = 'candidates_'+args.extracted_features_dir
+    args.new_labels_dir = 'candidates_'+args.target_labels_dir
+    os.mkdir(os.path.join(args.data_root, args.new_frames_dir))
     os.mkdir(os.path.join(args.data_root, args.new_features_dir))
     os.mkdir(os.path.join(args.data_root, args.new_labels_dir))
 

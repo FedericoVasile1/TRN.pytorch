@@ -45,13 +45,22 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
 
+        self.steps = args.steps
+        if self.steps != 10:
+            raise Exception('Actually only supports steps==10. Review source code if you want to modify this.')
+
         self.inputs = []
         for filename in os.listdir(osp.join(args.data_root, dataset_type, args.model_target)):
             if dataset_type == 'UNTRIMMED':
                 if filename.split('___')[1][:-4] not in self.sessions:
                     continue
                 target = np.load(osp.join(self.data_root, dataset_type, args.model_target, filename))
+                num_frames = target.shape[0]
+                num_frames = num_frames - (num_frames % args.chunk_size)
+                target = target[:num_frames]
+                target = target[args.chunk_size // 2::args.chunk_size]
                 # TODO: to decide whether or not to add data augmentation along the temporal dimension
+
                 self.inputs.append([
                     dataset_type, filename, target, 0, 0
                 ])
@@ -64,8 +73,8 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
                 # For each chunk, the central frame label is the label of the entire chunk
                 target = target[args.chunk_size // 2::args.chunk_size]
 
-                for start, end in zip(range(0, target.shape[0], 10),
-                                      range(0 + 10, target.shape[0], 10)):
+                for start, end in zip(range(0, target.shape[0], self.steps),
+                                      range(0 + self.steps, target.shape[0], self.steps)):
 
                     step_target = target[start:end]
                     self.inputs.append([
@@ -87,7 +96,7 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
         target = torch.as_tensor(target.astype(np.float32))
 
         if dataset_type == 'UNTRIMMED':
-            return feature_vectors[-10:], target[-10:]
+            return feature_vectors[-self.steps:], target[-self.steps:]
         elif dataset_type == 'TRIMMED':
             return feature_vectors, target
         else:

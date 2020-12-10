@@ -14,15 +14,6 @@ from configs.judo import parse_model_args as parse_args
 from lib.models import build_model
 
 def main(args):
-    # fix between batch_size and enc_steps, due to the way the dataset class works(i.e. this model do not
-    # have a recurrent part, so we do not have the concept of 'enc_steps', so we arrange it manually here
-    # only to make the dataset class working properly)
-    # e.g. args.batch_size == 64
-    args.steps = args.batch_size // 2    # 32
-    args.batch_size = 2                     # 2
-    # now, since after we will fuse batch_size and enc_steps(i.e. batch_size * enc_steps) we will
-    # get back to the original batch_size, i.e. 32 * 2 = 64
-
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     utl.set_seed(int(args.seed))
@@ -61,11 +52,6 @@ def main(args):
         temp = utl.build_data_loader(args, 'train')
         dataiter = iter(temp)
         inputs, _ = dataiter.next()
-        inputs = inputs.view(-1,
-                             inputs.shape[2],
-                             inputs.shape[3],
-                             inputs.shape[4],
-                             inputs.shape[5])
         writer.add_graph(model, inputs.to(device))
         writer.close()
 
@@ -98,16 +84,8 @@ def main(args):
 
             with torch.set_grad_enabled(training):
                 for batch_idx, (inputs, targets) in enumerate(data_loaders[phase], start=1):
-                    # inputs.shape == (batch_size, steps, C, chunk_size, H, W)
-                    # targets.shape == (batch_size, steps, num_classes)
-                    # fuse batch_size and steps
-                    inputs = inputs.view(-1,
-                                         inputs.shape[2],
-                                         inputs.shape[3],
-                                         inputs.shape[4],
-                                         inputs.shape[5])
-                    targets = targets.view(-1, targets.shape[2])
-
+                    # inputs.shape == (batch_size, C, chunk_size, H, W)
+                    # targets.shape == (batch_size, num_classes)
                     batch_size = inputs.shape[0]
                     inputs = inputs.to(device)
 

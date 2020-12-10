@@ -4,6 +4,7 @@ from .judo_data_layer import JUDODataLayer
 from .judo_data_layer_e2e import JUDODataLayerE2E
 from .goodpoints_judo_data_layer import Goodpoints_JUDODataLayer
 from .candidates_judo_data_layer import Candidates_JUDODataLayer
+from .candidates_judo_data_layer_e2e import Candidates_JUDODataLayerE2E
 
 _DATA_LAYERS = {
     'LSTMTHUMOS': THUMOSDataLayer,
@@ -30,6 +31,7 @@ _DATA_LAYERS = {
     'GRUJUDOGOODPOINTS': Goodpoints_JUDODataLayer,
 
     'BIDIRECTIONALGRUJUDOCANDIDATES': Candidates_JUDODataLayer,
+    'CNN3DJUDOE2ECANDIDATES': Candidates_JUDODataLayerE2E,
 
     'CONVLSTMJUDOE2E': JUDODataLayerE2E,
 }
