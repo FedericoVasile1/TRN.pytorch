@@ -47,7 +47,7 @@ class _PerType_JUDODataLayer(data.Dataset):
 
         self.inputs = []
         for session in self.sessions:
-            if not osp.isfile(osp.join(self.data_root, dataset_type, args.model_target, session + '.npy')):
+            if not osp.isfile(osp.join(self.data_root, dataset_type, args.model_target, session+'.npy')):
                 # skip videos in which the pose model does not detect any fall(i.e. fall==-1  in fall_detections.csv).
                 # TODO: fix these videos later on, in order to include also them
                 continue

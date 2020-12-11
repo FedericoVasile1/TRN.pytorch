@@ -52,7 +52,9 @@ def build_data_info(args, basic_build=False):
     #       where videoN.npy.shape == (num_frames_in_video/chunk_size, feature_vector_dim)
     BASE_FOLDER_FEAT_EXTR = '_chunk'+str(args.chunk_size)
 
-    if args.model_input.startswith(BASE_FOLDER_RAW_FRAMES) or args.model_input.startswith('candidates_'+BASE_FOLDER_RAW_FRAMES):
+    if args.model_input.startswith(BASE_FOLDER_RAW_FRAMES) or\
+       args.model_input.startswith('candidates_'+BASE_FOLDER_RAW_FRAMES) or\
+       args.model_input.startswith('goodpoints_'+BASE_FOLDER_RAW_FRAMES):
         if args.chunk_size == -1:
             raise Exception('Wrong --chunk_size option. Specify the number of consecutive frames that the feature '
                             'extractor will take as input at a time(e.g. --chunk_size 16)')
@@ -75,7 +77,7 @@ def build_data_info(args, basic_build=False):
     if args.use_goodpoints:
         if 'goodpoints' not in args.model_input or 'goodpoints' not in args.model_target:
             raise Exception('With --use_goodpoints option you must provide input goodpoints features'
-                            '(via --model_input option)  and target goodpoint(via --model_target option)')
+                            '(via --model_input option)  and goodpoints targets(via --model_target option)')
         if not args.use_untrimmed:
             raise Exception('With --use_goodpoints, also --use_untrimmed must be used')
         if args.E2E == 'E2E':
@@ -90,8 +92,8 @@ def build_data_info(args, basic_build=False):
                             '(via --model_input option)  and target candidates(via --model_target option)')
         if not args.use_untrimmed:
             raise Exception('With --use_candidates, also --use_untrimmed must be used')
-        if args.E2E == 'E2E':
-            raise Exception('We actually do not support candidates starting from raw frames')
+        #if args.E2E == 'E2E':
+        #    raise Exception('We actually do not support candidates starting from raw frames')
 
         args.candidates = 'CANDIDATES'
     else:

@@ -50,22 +50,27 @@ class Candidates_PerType_JUDODataLayerE2E(data.Dataset):
         for filename in os.listdir(osp.join(args.data_root, dataset_type, args.model_target)):
             if filename.split('___')[1][:-4] not in self.sessions:
                 continue
+
             target = np.load(osp.join(self.data_root, dataset_type, args.model_target, filename))
+            # temporal data augmentation
+            shift = np.random.randint(self.chunk_size) if self.training else 0
+            target = target[shift:]
+            # round to multiple of chunk_size
             num_frames = target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
             target = target[:num_frames]
+            # For each chunk, the central frame label is the label of the entire chunk
             target = target[args.chunk_size // 2::args.chunk_size]
-            # TODO: to decide whether or not to add data augmentation along the temporal dimension
 
             for idx_chunk in range(target.shape[0]):
                 self.inputs.append([
-                    dataset_type, filename, target[idx_chunk], idx_chunk
+                    dataset_type, filename, target[idx_chunk], idx_chunk, shift
                 ])
 
     def __getitem__(self, index):
-        dataset_type, filename, target, idx_chunk = self.inputs[index]
+        dataset_type, filename, target, idx_chunk, shift = self.inputs[index]
 
-        start_idx = int(filename.split('___'[0]))
+        start_idx = int(filename.split('___'[0])) + shift
         start_idx = start_idx + idx_chunk * self.chunk_size
         raw_frames = []
         for i in range(self.chunk_size):
@@ -75,11 +80,11 @@ class Candidates_PerType_JUDODataLayerE2E(data.Dataset):
                                         self.model_input,
                                         filename[:-4],
                                         str(idx_cur_frame)+'.jpg')).convert('RGB')
-            frame = self.transform(frame)
+            frame = self.transform(frame).to(dtype=torch.float32)
             raw_frames.append(frame)
 
         raw_frames = torch.stack(raw_frames)
-        raw_frames = raw_frames.permute(1, 0, 2, 3).to(dtype=torch.float32)     # channel before
+        raw_frames = raw_frames.permute(1, 0, 2, 3)    # channel before
 
         target = torch.as_tensor(target.astype(np.float32))
 

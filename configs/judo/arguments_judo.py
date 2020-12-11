@@ -5,11 +5,11 @@ __all__ = ['parse_model_args']
 def parse_model_args():
     parser = parse_base_args()
     parser.add_argument('--data_root', default='data/JUDO', type=str)
-    parser.add_argument('--use_trimmed', action='store_true')
-    parser.add_argument('--use_untrimmed', action='store_true')
+    parser.add_argument('--use_trimmed', default=False, action='store_true')
+    parser.add_argument('--use_untrimmed', default=False, action='store_true')
     # if True, trimmed dataset will be all used for training(together with untrimmed training set), while
     #  validation and test will be done on val/test untrimmed sets
-    parser.add_argument('--eval_on_untrimmed', action='store_true')
+    parser.add_argument('--eval_on_untrimmed', default=False, action='store_true')
     parser.add_argument('--phases', default=['train', 'val'], type=list)
 
     parser.add_argument('--model', default='GRU', type=str)

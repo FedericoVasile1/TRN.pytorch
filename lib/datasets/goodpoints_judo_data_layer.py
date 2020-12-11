@@ -46,36 +46,62 @@ class Goodpoints_PerType_JUDODataLayer(data.Dataset):
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
 
-        if dataset_type == 'TRIMMED':
-            args.model_target = 'target_frames_25fps'
 
         self.inputs = []
-        for filename in os.listdir(osp.join(args.data_root, dataset_type, args.model_target)):
-            if dataset_type == 'UNTRIMMED':
+        if dataset_type == 'UNTRIMMED':
+            for filename in os.listdir(osp.join(args.data_root, dataset_type, args.model_target)):
                 if filename.split('___')[1][:-4] not in self.sessions:
                     continue
 
-            target = np.load(osp.join(self.data_root, dataset_type, args.model_target, filename))
-            # round to multiple of chunk_size
-            num_frames = target.shape[0]
-            num_frames = num_frames - (num_frames % args.chunk_size)
-            target = target[:num_frames]
-            # For each chunk, the central frame label is the label of the entire chunk
-            target = target[args.chunk_size // 2::args.chunk_size]
+                target = np.load(osp.join(self.data_root, dataset_type, args.model_target, filename))
+                # round to multiple of chunk_size
+                num_frames = target.shape[0]
+                num_frames = num_frames - (num_frames % args.chunk_size)
+                target = target[:num_frames]
+                # For each chunk, the central frame label is the label of the entire chunk
+                target = target[args.chunk_size // 2::args.chunk_size]
 
-            seed = np.random.randint(self.steps) if self.training else 0
-            for start, end in zip(range(seed, target.shape[0], self.steps),
-                                  range(seed + self.steps, target.shape[0], self.steps)):
+                seed = np.random.randint(self.steps) if self.training else 0
+                for start, end in zip(range(seed, target.shape[0], self.steps),
+                                      range(seed + self.steps, target.shape[0], self.steps)):
 
-                step_target = target[start:end]
-                self.inputs.append([
-                    dataset_type, filename, start, end, step_target,
-                ])
+                    step_target = target[start:end]
+                    self.inputs.append([
+                        dataset_type, filename, start, end, step_target,
+                    ])
+        elif dataset_type == 'TRIMMED':
+            for filename in self.sessions:
+                if not osp.isfile(osp.join(self.data_root, dataset_type, '2s_target_frames_25fps', filename+'.npy')):
+                    # skip videos in which the pose model does not detect any fall(i.e. fall==-1  in fall_detections.csv).
+                    # TODO: fix these videos later on, in order to include also them
+                    continue
+
+                target = np.load(osp.join(self.data_root, dataset_type, '2s_target_frames_25fps', filename+'.npy'))
+                # round to multiple of chunk_size
+                num_frames = target.shape[0]
+                num_frames = num_frames - (num_frames % args.chunk_size)
+                target = target[:num_frames]
+                # For each chunk, the central frame label is the label of the entire chunk
+                target = target[args.chunk_size // 2::args.chunk_size]
+
+                seed = np.random.randint(self.steps) if self.training else 0
+                for start, end in zip(range(seed, target.shape[0], self.steps),
+                                      range(seed + self.steps, target.shape[0], self.steps)):
+
+                    step_target = target[start:end]
+                    self.inputs.append([
+                        dataset_type, filename+'.npy', step_target, start, end
+                    ])
+        else:
+            raise Exception('Unknown dataset')
 
     def __getitem__(self, index):
         dataset_type, filename, start, end, step_target = self.inputs[index]
 
-        feature_vectors = np.load(osp.join(self.data_root, dataset_type, self.model_input, filename),
+        feature_vectors = np.load(osp.join(self.data_root,
+                                           dataset_type,
+                                           self.model_input if dataset_type=='UNTRIMMED' else self.model_input[3:],
+                                           filename),
                                   mmap_mode='r')
         feature_vectors = feature_vectors[start:end]
         feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))

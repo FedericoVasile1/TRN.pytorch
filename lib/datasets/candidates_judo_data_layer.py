@@ -50,22 +50,30 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
             raise Exception('Actually only supports steps==10. Review source code if you want to modify this.')
 
         self.inputs = []
-        for filename in os.listdir(osp.join(args.data_root, dataset_type, args.model_target)):
-            if dataset_type == 'UNTRIMMED':
+        if dataset_type == 'UNTRIMMED':
+            for filename in os.listdir(osp.join(args.data_root, dataset_type, args.model_target)):
                 if filename.split('___')[1][:-4] not in self.sessions:
                     continue
+
                 target = np.load(osp.join(self.data_root, dataset_type, args.model_target, filename))
                 num_frames = target.shape[0]
                 num_frames = num_frames - (num_frames % args.chunk_size)
                 target = target[:num_frames]
                 target = target[args.chunk_size // 2::args.chunk_size]
+
                 # TODO: to decide whether or not to add data augmentation along the temporal dimension
 
                 self.inputs.append([
                     dataset_type, filename, target, 0, 0
                 ])
-            elif dataset_type == 'TRIMMED':
-                target = np.load(osp.join(self.data_root, dataset_type, args.model_target, filename))
+        elif dataset_type == 'TRIMMED':
+            for filename in self.sessions:
+                if not osp.isfile(osp.join(self.data_root, dataset_type, '2s_target_frames_25fps', filename+'.npy')):
+                    # skip videos in which the pose model does not detect any fall(i.e. fall==-1  in fall_detections.csv).
+                    # TODO: fix these videos later on, in order to include also them
+                    continue
+
+                target = np.load(osp.join(self.data_root, dataset_type, '2s_target_frames_25fps', filename+'.npy'))
                 # round to multiple of chunk_size
                 num_frames = target.shape[0]
                 num_frames = num_frames - (num_frames % args.chunk_size)
@@ -73,20 +81,24 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
                 # For each chunk, the central frame label is the label of the entire chunk
                 target = target[args.chunk_size // 2::args.chunk_size]
 
-                for start, end in zip(range(0, target.shape[0], self.steps),
-                                      range(0 + self.steps, target.shape[0], self.steps)):
+                seed = np.random.randint(self.steps) if self.training else 0
+                for start, end in zip(range(seed, target.shape[0], self.steps),
+                                      range(seed + self.steps, target.shape[0], self.steps)):
 
                     step_target = target[start:end]
                     self.inputs.append([
-                        dataset_type, filename, step_target, start, end
+                        dataset_type, filename+'.npy', step_target, start, end
                     ])
             else:
-                raise Exception('Unknow dataset')
+                raise Exception('Unknown dataset')
 
     def __getitem__(self, index):
         dataset_type, filename, target, start, end = self.inputs[index]
 
-        feature_vectors = np.load(osp.join(self.data_root, dataset_type, self.model_input, filename),
+        feature_vectors = np.load(osp.join(self.data_root,
+                                           dataset_type,
+                                           self.model_input if dataset_type=='UNTRIMMED' else 'i3d_224x224_chunk9',
+                                           filename),
                                   mmap_mode='r')
         if dataset_type == 'TRIMMED':
             feature_vectors = feature_vectors[start:end]
@@ -101,7 +113,6 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
             return feature_vectors, target
         else:
             raise Exception('Unknow dataset')
-
 
     def __len__(self):
         return len(self.inputs)
