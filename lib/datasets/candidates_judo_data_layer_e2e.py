@@ -70,7 +70,7 @@ class Candidates_PerType_JUDODataLayerE2E(data.Dataset):
     def __getitem__(self, index):
         dataset_type, filename, target, idx_chunk, shift = self.inputs[index]
 
-        start_idx = int(filename.split('___'[0])) + shift
+        start_idx = int(filename.split('___')[0]) + shift
         start_idx = start_idx + idx_chunk * self.chunk_size
         raw_frames = []
         for i in range(self.chunk_size):

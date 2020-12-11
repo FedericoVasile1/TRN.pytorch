@@ -26,6 +26,7 @@ def main():
     model.load_state_dict(torch.load('lib/models/i3d/rgb_imagenet.pt'))
     model.dropout = nn.Identity()
     model.logits = nn.Identity()
+    model.avg_pool = nn.AvgPool3d(kernel_size=[2, 4, 4], stride=(1, 1, 1))      # 4x4 instead of 7x7
 
     FEAT_VECT_DIM = 1024
 

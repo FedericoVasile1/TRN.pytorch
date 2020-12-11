@@ -124,10 +124,10 @@ def main(args):
                                                                                           loss.item()))
         end = time.time()
 
-        lr_sched.step(losses['val'] / (len(data_loaders['val'].dataset) * args.steps))
+        lr_sched.step(losses['val'] / len(data_loaders['val'].dataset))
 
         writer.add_scalars('Loss_epoch/train_val',
-                           {phase: losses[phase] / (len(data_loaders[phase].dataset) * args.steps)
+                           {phase: losses[phase] / len(data_loaders[phase].dataset)
                             for phase in args.phases},
                            epoch)
 
@@ -167,9 +167,9 @@ def main(args):
         log += ' [val] loss: {:.5f}  mAP: {:.4f}|\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
-                              losses['train'] / (len(data_loaders['train'].dataset) * args.steps),
+                              losses['train'] / len(data_loaders['train'].dataset),
                               mAP['train'],
-                              losses['val'] / (len(data_loaders['val'].dataset) * args.steps),
+                              losses['val'] / len(data_loaders['val'].dataset),
                               mAP['val'],
                               end - start)
         print(log)
