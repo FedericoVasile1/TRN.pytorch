@@ -58,31 +58,34 @@ def main(args):
             starttime = int(row[COLUMN_STARTTIME])
 
             starttime_clip = starttime
-            startframe_clip = milliseconds_to_numframe(starttime_clip) - 1
+            startframe_clip = milliseconds_to_numframe(starttime_clip)
             endtime_clip = starttime + 10000
-            endframe_clip = milliseconds_to_numframe(endtime_clip) - 1
+            endframe_clip = milliseconds_to_numframe(endtime_clip)
+
+            round_startframe_clip = startframe_clip + (CHUNK_SIZE - (startframe_clip % CHUNK_SIZE))
+            round_endframe_clip = endframe_clip - (endframe_clip % CHUNK_SIZE)
 
             features = np.load(os.path.join(args.data_root, args.model_features, video_name + '.npy'))
-            features = features[startframe_clip // CHUNK_SIZE: endframe_clip // CHUNK_SIZE]
+            features = features[round_startframe_clip // CHUNK_SIZE: round_endframe_clip // CHUNK_SIZE]
 
             targets = np.load(os.path.join(args.data_root, args.model_targets, video_name + '.npy'))
-            targets = targets[startframe_clip: endframe_clip]
+            targets = targets[round_startframe_clip: round_endframe_clip]
 
             # sanity-check
             num_frames = targets.shape[0]
             num_frames = num_frames - (num_frames % CHUNK_SIZE)
             chunk_targets = targets[:num_frames]
             chunk_targets = chunk_targets[CHUNK_SIZE // 2::CHUNK_SIZE]
-            assert chunk_targets.shape == features.shape, 'shape mismatch between targets and features: '+\
-                                                           chunk_targets.shape+'  '+features.shape
+            assert chunk_targets.shape[0] == features.shape[0], 'shape mismatch between targets and features: '+\
+                                                                 str(chunk_targets.shape[0])+'  '+str(features.shape[0])
             if FEATURES_SHAPE is None:
                 FEATURES_SHAPE = features.shape
             assert FEATURES_SHAPE == features.shape, 'shape mismatch between different features'+\
-                                                      FEATURES_SHAPE+'  '+features.shape
+                                                      str(FEATURES_SHAPE)+'  '+str(features.shape)
 
-            np.save(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR, str(starttime)+'___'+video_name+'.npy'),
+            np.save(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR, str(round_startframe_clip)+'___'+video_name+'.npy'),
                     features)
-            np.save(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR, str(starttime) + '___' + video_name + '.npy'),
+            np.save(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR, str(round_startframe_clip) + '___' + video_name + '.npy'),
                     targets)
 
             # TODO: SAVE ALSO FRAMES, I.E. goodpoints_video_frames_25fps
