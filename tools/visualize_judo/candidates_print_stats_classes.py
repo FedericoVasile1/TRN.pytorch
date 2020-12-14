@@ -49,6 +49,11 @@ def _candidates_print_stats_classes(args):
             continue
 
         target = np.load(os.path.join(TARGETS_BASE_DIR, video_name))
+        num_frames = target.shape[0]
+        num_frames = num_frames - (num_frames % args.chunk_size)
+        target = target[:num_frames]
+        # For each chunk, take only the central frame
+        target = target[args.chunk_size // 2::args.chunk_size]
 
         target = target.argmax(axis=1)
         unique, counts = np.unique(target, return_counts=True)
@@ -59,7 +64,7 @@ def _candidates_print_stats_classes(args):
     if valid_samples is not None:
         print('=== PHASE: {} ==='.format(args.phase))
     else:
-        print('=== ALL DATASET ===')
+        print('=== ALL CANDIDATES ===')
     for idx_class, count in class_to_count.items():
         class_name = args.class_index[idx_class]
         print('{:15s}=>  samples: {:8} ({:.1f} %)'.format(class_name, count, count / tot_samples * 100))
@@ -82,6 +87,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_root', default='data/JUDO', type=str)
     parser.add_argument('--data_info', default='data/data_info.json', type=str)
+    parser.add_argument('--chunk_size', default=9, type=int)
     parser.add_argument('--target_labels_dir', default='candidates_4s_target_frames_25fps', type=str)
     parser.add_argument('--phase', default='', type=str)
     parser.add_argument('--show_bar', default=False, action='store_true')

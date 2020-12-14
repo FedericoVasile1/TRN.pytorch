@@ -14,14 +14,13 @@ def milliseconds_to_numframe(time_milliseconds, fps=25):
     return int(num_frame)
 
 def main(args):
-    # for each good point action, we take also the two preceding and two following seconds and label
-    #  them as backgorund
+    # for each goodpoint action, we take a clip 10 seconds long
 
     NEW_MODEL_FEATURES_DIR = 'goodpoints_'+args.model_features
     if os.path.isdir(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR)):
         shutil.rmtree(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR))
     os.mkdir(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR))
-    NEW_MODEL_TARGETS_DIR = 'goodpoints_target_frames_25fps'
+    NEW_MODEL_TARGETS_DIR = 'goodpoints_'+args.model_targets
     if os.path.isdir(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR)):
         shutil.rmtree(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR))
     os.mkdir(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR))
@@ -36,13 +35,14 @@ def main(args):
         for i, class_name in enumerate(args.class_index):
             CLASS_INDEX[class_name] = i
 
-        CHUNK_SIZE = 9
+        CHUNK_SIZE = args.chunk_size
+        FEATURES_SHAPE = None
 
         csv_reader = csv.reader(labels_file, delimiter=',')
-        line_count = 0
+        is_first_row = True
         for row in csv_reader:
-            if line_count == 0:
-                line_count += 1
+            if is_first_row:
+                is_first_row = False
                 continue
             if row[COLUMN_LABEL] == '':
                 continue
@@ -65,17 +65,27 @@ def main(args):
             features = np.load(os.path.join(args.data_root, args.model_features, video_name + '.npy'))
             features = features[startframe_clip // CHUNK_SIZE: endframe_clip // CHUNK_SIZE]
 
-            targets = np.zeros((len(features) * CHUNK_SIZE, args.num_classes))
-            # len(targets) should be about 25*10
-            j = len(targets) // 10
-            targets[:j*2, 0] = 1
-            targets[j*2:j*8, CLASS_INDEX[label]] = 1
-            targets[j*8:, 0] = 1
+            targets = np.load(os.path.join(args.data_root, args.model_targets, video_name + '.npy'))
+            targets = targets[startframe_clip: endframe_clip]
+
+            # sanity-check
+            num_frames = targets.shape[0]
+            num_frames = num_frames - (num_frames % CHUNK_SIZE)
+            chunk_targets = targets[:num_frames]
+            chunk_targets = chunk_targets[CHUNK_SIZE // 2::CHUNK_SIZE]
+            assert chunk_targets.shape == features.shape, 'shape mismatch between targets and features: '+\
+                                                           chunk_targets.shape+'  '+features.shape
+            if FEATURES_SHAPE is None:
+                FEATURES_SHAPE = features.shape
+            assert FEATURES_SHAPE == features.shape, 'shape mismatch between different features'+\
+                                                      FEATURES_SHAPE+'  '+features.shape
 
             np.save(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR, str(starttime)+'___'+video_name+'.npy'),
                     features)
             np.save(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR, str(starttime) + '___' + video_name + '.npy'),
                     targets)
+
+            # TODO: SAVE ALSO FRAMES, I.E. goodpoints_video_frames_25fps
 
 if __name__ == '__main__':
     base_dir = os.getcwd()
@@ -88,7 +98,9 @@ if __name__ == '__main__':
     parser.add_argument('--data_root', default='data/JUDO', type=str)
     parser.add_argument('--data_info', default='data/data_info.json', type=str) # useless, needed only to do not generate errors
     parser.add_argument('--labels_file', default='metadati.csv')
+    parser.add_argument('--chunk_size', default=9, type=int)
     parser.add_argument('--model_features', default='i3d_224x224_chunk9')
+    parser.add_argument('--model_targets', default='4s_target_frames_25fps')
     args = parser.parse_args()
 
     if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED')):
@@ -97,6 +109,10 @@ if __name__ == '__main__':
         raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.labels_file )))
     if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.model_features)):
         raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.model_features)))
+    if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.model_targets)):
+        raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.model_targets)))
+    if not args.model_features.endswith('_chunk'+str(args.chunk_size)):
+        raise Exception('Wrong --model_features or --chunk_size option. They must indicate the same chunk size')
 
     # do note modify these two lines
     args.use_trimmed = False
