@@ -1,100 +1,13 @@
 import os
-import os.path as osp
 import sys
 import argparse
 import numpy as np
-import cv2
-import random
 
-import torch
-from PIL import Image
 from torchvision import transforms
 
 sys.path.append(os.getcwd())
+from lib.utils.visualize import show_random_videos
 from configs.build import build_data_info
-from lib import utils as utl
-
-def milliseconds_to_numframe(time_milliseconds, fps=25):
-    fpms = fps * 0.001
-    num_frame = (time_milliseconds * fpms)
-    return int(num_frame)
-
-def goodpoints_show_video_predictions(args,
-                                      base_video_name,
-                                      complete_video_name,
-                                      target_metrics,
-                                      frames_dir='video_frames_25fps',
-                                      fps=25.0,
-                                      transform=None):
-    target_metrics = torch.argmax(torch.tensor(target_metrics), dim=1)
-    speed = 1.0
-    if args.save_video:
-        print('Loading and saving video: ' + complete_video_name[:-4] + ' . . . .\n.\n.')
-        frames = []
-
-    num_frames = target_metrics.shape[0]
-    start_millisecond = int(complete_video_name.split('___')[0])
-    start_frame = milliseconds_to_numframe(start_millisecond)
-    idx = start_frame
-    while idx < num_frames + start_frame:
-        pil_frame = Image.open(osp.join(args.data_root,
-                                        frames_dir,
-                                        base_video_name,
-                                        str(idx) + '.jpg')).convert('RGB')
-        if transform is not None:
-            pil_frame = transform(pil_frame)
-
-        open_cv_frame = np.array(pil_frame)
-        # Convert RGB to BGR
-        open_cv_frame = open_cv_frame[:, :, ::-1].copy()
-        H, W, _ = open_cv_frame.shape
-        open_cv_frame = cv2.resize(open_cv_frame, (W // 2, H // 2), interpolation=cv2.INTER_AREA)
-
-        open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 60, 0, 30, 30, borderType=cv2.BORDER_CONSTANT, value=0)
-        target_label = args.class_index[target_metrics[idx-start_frame]]
-
-        cv2.putText(open_cv_frame,
-                    target_label,
-                    (0, 50),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
-                    (255, 255, 255) if target_label=='Background' else (0, 0, 255),
-                    1)
-
-        cv2.putText(open_cv_frame,
-                    '{:.2f}s'.format(idx / fps),
-                    (295, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.3,
-                    (255, 255, 255),
-                    1)
-        cv2.putText(open_cv_frame,
-                    'speed: {}x'.format(speed),
-                    (295, 20),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.3,
-                    (255, 255, 255),
-                    1)
-        cv2.putText(open_cv_frame,
-                    str(idx),
-                    (295, 50),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.3,
-                    (255, 255, 255),
-                    1)
-
-        if args.save_video:
-            frames.append(open_cv_frame)
-
-        idx += 1
-
-    if args.save_video:
-        H, W, _ = open_cv_frame.shape
-        out = cv2.VideoWriter(complete_video_name[:-4], cv2.VideoWriter_fourcc(*'mp4v'), fps, (W, H))
-        for frame in frames:
-            out.write(frame)
-        out.release()
-        print('. . . video saved at ' + os.path.join(os.getcwd(), complete_video_name[:-4]))
 
 if __name__ == '__main__':
     base_dir = os.getcwd()
@@ -105,14 +18,16 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_root', default='data/JUDO', type=str)
-    parser.add_argument('--data_info', default='data/data_info.json', type=str) # useless, it is here only to do not generate errors
-    parser.add_argument('--frames_dir', default='video_frames_25fps', type=str)
-    parser.add_argument('--targets_dir', default='goodpoints_target_frames_25fps', type=str)
+    parser.add_argument('--data_info', default='data/data_info.json', type=str)
+    parser.add_argument('--frames_dir', default='goodpoints_video_frames_25fps', type=str)
+    parser.add_argument('--targets_dir', default='goodpoints_4s_target_frames_25fps', type=str)
     # the fps at which videos frames are previously extracted
     parser.add_argument('--fps', default=25, type=int)
+    parser.add_argument('--chunk_size', default=1, type=int)
     parser.add_argument('--phase', default='train', type=str)
     parser.add_argument('--video_name', default='', type=str)
-    parser.add_argument('--seed', default=25, type=int)
+    parser.add_argument('--save_video', default=True, action='store_false')
+    parser.add_argument('--seed', default=-1, type=int)
     args = parser.parse_args()
 
     if not os.path.isdir(os.path.join(args.data_root)):
@@ -126,15 +41,16 @@ if __name__ == '__main__':
                         'indicated in its name does not correspond with --fps argument(i.e. they must be '
                         'the same)'.format(args.frames_dir))
 
-    np.random.seed(args.seed)
+    if args.seed != -1:
+        np.random.seed(args.seed)
 
     # do not modify
-    args.eval_on_untrimmed = False
-    args.use_trimmed = False
     args.use_untrimmed = True
-    args.save_video = True
-
+    args.use_trimmed = False
+    args.eval_on_untrimmed = False
+    args.use_goodpoints = True
     args = build_data_info(args, basic_build=True)
+
     args.data_root = args.data_root + '/' + 'UNTRIMMED'
     args.train_session_set = args.train_session_set['UNTRIMMED']
     args.val_session_set = args.val_session_set['UNTRIMMED']
@@ -147,11 +63,8 @@ if __name__ == '__main__':
 
     if args.video_name == '':
         videos_list = getattr(args, args.phase+'_session_set')
-        utl.set_seed(int(args.seed))
-        random.shuffle(videos_list)
-        base_video_name = videos_list[0]
     else:
-        base_video_name = [args.video_name]
+        videos_list = [args.video_name]
 
     '''
     transform = transforms.Compose([
@@ -161,12 +74,10 @@ if __name__ == '__main__':
     '''
     transform = None
 
-    for filename in os.listdir(osp.join(args.data_root, args.targets_dir)):
-        if base_video_name in filename:
-            target_metrics = np.load(osp.join(args.data_root, args.targets_dir, filename))
-            goodpoints_show_video_predictions(args,
-                                              base_video_name,
-                                              filename,
-                                              target_metrics,
-                                              )
-            break
+    show_random_videos(args,
+                       videos_list,
+                       samples=1,
+                       frames_dir=args.frames_dir,
+                       targets_dir=args.targets_dir,
+                       fps=args.fps,
+                       transform=transform)

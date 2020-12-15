@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 sys.path.append(os.getcwd())
 from configs.build import build_data_info
 
-def _candidates_plot_bar(classes, values, xlabel=None, ylabel=None, figsize=(8, 5), color='b', title=None, show_bar=False, save_bar=False):
+def _goodpoints_plot_bar(classes, values, xlabel=None, ylabel=None, figsize=(8, 5), color='b', title=None, show_bar=False, save_bar=False):
     figure = plt.figure(figsize=figsize)
     rects = plt.bar(classes, values, color=color)
     plt.title(title, color='black')
@@ -69,7 +69,7 @@ def _goodpoints_print_stats_classes(args):
         class_name = args.class_index[idx_class]
         print('{:15s}=>  samples: {:8} ({:.1f} %)'.format(class_name, count, count / tot_samples * 100))
     if args.show_bar or args.save_bar:
-        _candidates_plot_bar(args.class_index,
+        _goodpoints_plot_bar(args.class_index,
                  [round(i / tot_samples, 3) for i in list(class_to_count.values())],
                  'Class',
                  'Percentage',
@@ -104,8 +104,8 @@ if __name__ == '__main__':
     # do not modify
     args.use_untrimmed = True
     args.use_trimmed = False
-    args.use_candidates = True
     args.eval_on_untrimmed = False
+    args.use_goodpoints = True
     args = build_data_info(args, basic_build=True)
 
     args.data_root = args.data_root + '/' + 'UNTRIMMED'
