@@ -52,13 +52,13 @@ def build_data_info(args, basic_build=False):
     #       where videoN.npy.shape == (num_frames_in_video/chunk_size, feature_vector_dim)
     BASE_FOLDER_FEAT_EXTR = '_chunk'+str(args.chunk_size)
 
-    if ('candidates_' in args.model_input or 'candidates_' in args.model_target) and not args.use_candidates:
+    if ('candidates' in args.model_input or 'candidates' in args.model_target) and not args.use_candidates:
         raise Exception('You are providing candidates input without using --use_candidates option')
     if ('goodpoints_' in args.model_input or 'goodpoints_' in args.model_target) and not args.use_goodpoints:
         raise Exception('You are providing goodpoints input without using --use_goodpoints option')
 
     if args.model_input.startswith(BASE_FOLDER_RAW_FRAMES) or\
-       args.model_input.startswith('candidates_'+BASE_FOLDER_RAW_FRAMES) or\
+       args.model_input.startswith('candidates'+BASE_FOLDER_RAW_FRAMES) or\
        args.model_input.startswith('goodpoints_'+BASE_FOLDER_RAW_FRAMES):
         if args.chunk_size == -1:
             raise Exception('Wrong --chunk_size option. Specify the number of consecutive frames that the feature '

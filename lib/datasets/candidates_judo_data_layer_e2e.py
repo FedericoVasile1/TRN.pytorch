@@ -29,6 +29,11 @@ class Candidates_JUDODataLayerE2E(data.Dataset):
 
 class Candidates_PerType_JUDODataLayerE2E(data.Dataset):
     def __init__(self, args, dataset_type, phase='train'):
+        if args.model != 'CNN3D':
+            raise Exception('This class is intended to be used only for CNN3D model since it does not take into '
+                            'account the --steps arguments, i.e. each chunk is treated independently so one chunk'
+                            'is returned instead a sequence of subsequent chunks "--steps" long.')
+
         self.data_root = args.data_root
         self.model_input = args.model_input
         self.training = phase=='train'
