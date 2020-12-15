@@ -24,7 +24,6 @@ def main():
 
     model = InceptionI3d()
     model.load_state_dict(torch.load('lib/models/i3d/rgb_imagenet.pt'))
-    model.replace_logits(5)     # == num_classes
     model.dropout = nn.Identity()
     model.logits = nn.Identity()
 
@@ -43,7 +42,7 @@ def main():
     SAMPLE_FRAMES = 9     # generate a feature vector every SAMPLE_FRAMES frames
     #SAMPLE_FRAMES = 6  # generate a feature vector every SAMPLE_FRAMES frames
 
-    DATA_ROOT = 'data/JUDO'
+    DATA_ROOT = 'data/JUDO/UNTRIMMED'
     VIDEO_FRAMES = 'heatmaps'   # base folder where the video folders (containing the frames) are
     VIDEO_FEATURES = 'heatmaps_i3d_224x224_chunk9'
 

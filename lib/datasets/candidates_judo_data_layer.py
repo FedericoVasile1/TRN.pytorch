@@ -46,8 +46,8 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
 
         self.steps = args.steps
-        if self.steps != 10:
-            raise Exception('Actually only supports steps==10. Review source code if you want to modify this.')
+        if self.steps != 11:
+            raise Exception('Actually we supports only steps==11 since these clips are 11 steps long.')
 
         self.inputs = []
         if dataset_type == 'UNTRIMMED':
@@ -104,15 +104,9 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
             feature_vectors = feature_vectors[start:end]
 
         feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
-
         target = torch.as_tensor(target.astype(np.float32))
 
-        if dataset_type == 'UNTRIMMED':
-            return feature_vectors[-self.steps:], target[-self.steps:]
-        elif dataset_type == 'TRIMMED':
-            return feature_vectors, target
-        else:
-            raise Exception('Unknow dataset')
+        return feature_vectors, target
 
     def __len__(self):
         return len(self.inputs)

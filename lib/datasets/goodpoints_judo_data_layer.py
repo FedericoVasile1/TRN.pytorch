@@ -42,10 +42,12 @@ class Goodpoints_PerType_JUDODataLayer(data.Dataset):
     def __init__(self, args, dataset_type, phase='train'):
         self.data_root = args.data_root
         self.model_input = args.model_input
-        self.steps = args.steps
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
 
+        self.steps = args.steps
+        if self.steps > 28:
+            raise Exception('The clips are 28 steps long, so --steps can not be greater than 28.')
 
         self.inputs = []
         if dataset_type == 'UNTRIMMED':
@@ -67,7 +69,7 @@ class Goodpoints_PerType_JUDODataLayer(data.Dataset):
 
                     step_target = target[start:end]
                     self.inputs.append([
-                        dataset_type, filename, start, end, step_target,
+                        dataset_type, filename, step_target, start, end
                     ])
         elif dataset_type == 'TRIMMED':
             for filename in self.sessions:
@@ -96,16 +98,16 @@ class Goodpoints_PerType_JUDODataLayer(data.Dataset):
             raise Exception('Unknown dataset')
 
     def __getitem__(self, index):
-        dataset_type, filename, start, end, step_target = self.inputs[index]
+        dataset_type, filename, step_target, start, end = self.inputs[index]
 
         feature_vectors = np.load(osp.join(self.data_root,
                                            dataset_type,
-                                           self.model_input if dataset_type=='UNTRIMMED' else self.model_input[3:],
+                                           self.model_input if dataset_type=='UNTRIMMED' else 'i3d_224x224_chunk9',
                                            filename),
                                   mmap_mode='r')
         feature_vectors = feature_vectors[start:end]
-        feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
 
+        feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
         step_target = torch.as_tensor(step_target.astype(np.float32))
 
         return feature_vectors, step_target

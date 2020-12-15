@@ -34,14 +34,12 @@ class BIDIRECTIONALRNN(nn.Module):
     def forward(self, x):
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
 
-        #for step in range(self.steps):
-        for step in range(x.shape[1]):
+        for step in range(self.steps):
             x[:, step, :] = self.feature_extractor(x[:, step])
 
         h_ts, _ = self.rnn(x)        # h_ts.shape == (batch_size, enc_steps, 2*hidden_size)
 
-        #for step in range(self.steps):
-        for step in range(x.shape[1]):
+        for step in range(self.steps):
             scores[:, step, :] = self.classifier(h_ts[:, step, :])
 
         return scores

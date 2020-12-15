@@ -48,6 +48,10 @@ def main(args):
             new_idxendframe = new_idxendframe + (args.chunk_size - (new_idxendframe % args.chunk_size))
             new_idxendframe += 1
 
+            if os.path.isdir(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe) + '___' + filename)):
+                print(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe) + '___' + filename) + '  SKIPPED: already exists')
+                continue
+
             for idx_frame in range(new_idxstartframe, new_idxendframe):
                 img = cv2.imread(os.path.join(args.data_root, args.extracted_frames_dir, filename, str(idx_frame)+'.jpg'))
                 if idx_frame == new_idxstartframe:
