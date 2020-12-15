@@ -15,6 +15,9 @@ def milliseconds_to_numframe(time_milliseconds, fps=25):
     return int(num_frame)
 
 def main(args):
+    FEATURES_SHAPE = None
+    LABELS_SHAPE = None
+
     column_filename = 0
     column_idxstartframe = 1
     column_idxendframe = 2
@@ -31,27 +34,53 @@ def main(args):
 
             idxstartframe = int(row[column_idxstartframe])
             idxendframe = int(row[column_idxendframe])
-            #idxfallframe = int(row[column_idxfallframe])
+            # need to adjust indices in order to be multiple of chunk_size
+            # adjust start
+            if idxstartframe % args.chunk_size == 0:
+                new_idxstartframe = idxstartframe - args.chunk_size
+                new_idxendframe = idxendframe - args.chunk_size
+            else:
+                new_idxstartframe = idxstartframe - (idxstartframe % args.chunk_size)
+                new_idxendframe = idxendframe - (idxstartframe % args.chunk_size)
+            new_idxstartframe += 1
+            new_idxendframe += 1
+            # adjust end
+            new_idxendframe = new_idxendframe + (args.chunk_size - (new_idxendframe % args.chunk_size))
+            new_idxendframe += 1
 
-            for idx_frame in range(idxstartframe, idxendframe):
+            for idx_frame in range(new_idxstartframe, new_idxendframe):
                 img = cv2.imread(os.path.join(args.data_root, args.extracted_frames_dir, filename, str(idx_frame)+'.jpg'))
-                if idx_frame == idxstartframe:
-                    os.mkdir(os.path.join(args.data_root, args.new_frames_dir, str(idxstartframe)+'___'+filename))
-                cv2.imwrite(os.path.join(args.data_root, args.new_frames_dir, str(idxstartframe)+'___'+filename, str(idx_frame)+'.jpg'), img)
+                if idx_frame == new_idxstartframe:
+                    os.mkdir(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe)+'___'+filename))
+                cv2.imwrite(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe)+'___'+filename, str(idx_frame)+'.jpg'), img)
 
             # minus 1 since there is a displacement of 1 between the index of the raw frame and
             # the arrays features and labels
-            idxstartframe -= 1
-            idxendframe -= 1
+            new_idxstartframe -= 1
+            new_idxendframe -= 1
 
             features = np.load(os.path.join(args.data_root, args.extracted_features_dir, filename+'.npy'))
-            features = features[idxstartframe//args.chunk_size:idxendframe//args.chunk_size]
-            np.save(os.path.join(args.data_root, args.new_features_dir, str(idxstartframe+1)+'___'+filename+'.npy'),
+            features = features[new_idxstartframe//args.chunk_size:new_idxendframe//args.chunk_size]
+            if FEATURES_SHAPE is None:
+                FEATURES_SHAPE = features.shape
+            assert FEATURES_SHAPE == features.shape, 'mismatch: '+str(FEATURES_SHAPE)+'  '+str(features.shape)
+
+            np.save(os.path.join(args.data_root, args.new_features_dir, str(new_idxstartframe+1)+'___'+filename+'.npy'),
                     features)
 
             labels = np.load(os.path.join(args.data_root, args.target_labels_dir, filename+'.npy'))
-            labels = labels[idxstartframe:idxendframe]
-            np.save(os.path.join(args.data_root, args.new_labels_dir, str(idxstartframe+1)+'___'+filename+'.npy'),
+            labels = labels[new_idxstartframe:new_idxendframe]
+
+            if LABELS_SHAPE is None:
+                LABELS_SHAPE = labels.shape
+            assert LABELS_SHAPE == labels.shape, 'mismatch: '+str(LABELS_SHAPE)+'  '+str(labels.shape)
+            num_frames = labels.shape[0]
+            num_frames = num_frames - (num_frames % args.chunk_size)
+            chunk_targets = labels[:num_frames]
+            chunk_targets = chunk_targets[args.chunk_size // 2::args.chunk_size]
+            assert chunk_targets.shape[0] == features.shape[0], 'mismatch: '+str(chunk_targets.shape[0])+'  '+str(features.shape[0])
+
+            np.save(os.path.join(args.data_root, args.new_labels_dir, str(new_idxstartframe+1)+'___'+filename+'.npy'),
                     labels)
 
 if __name__ == '__main__':
@@ -101,8 +130,8 @@ if __name__ == '__main__':
     args.new_frames_dir = 'candidates_'+args.extracted_frames_dir
     args.new_features_dir = 'candidates_'+args.extracted_features_dir
     args.new_labels_dir = 'candidates_'+args.target_labels_dir
-    os.mkdir(os.path.join(args.data_root, args.new_frames_dir))
-    os.mkdir(os.path.join(args.data_root, args.new_features_dir))
-    os.mkdir(os.path.join(args.data_root, args.new_labels_dir))
+    #os.mkdir(os.path.join(args.data_root, args.new_frames_dir))
+    #os.mkdir(os.path.join(args.data_root, args.new_features_dir))
+    #os.mkdir(os.path.join(args.data_root, args.new_labels_dir))
 
     main(args)

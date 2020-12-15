@@ -2,8 +2,9 @@ import os
 import sys
 import argparse
 import csv
-import shutil
 import numpy as np
+
+import cv2
 
 sys.path.append(os.getcwd())
 from configs.build import build_data_info
@@ -17,13 +18,8 @@ def main(args):
     # for each goodpoint action, we take a clip 10 seconds long
 
     NEW_MODEL_FEATURES_DIR = 'goodpoints_'+args.model_features
-    if os.path.isdir(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR)):
-        shutil.rmtree(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR))
-    os.mkdir(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR))
     NEW_MODEL_TARGETS_DIR = 'goodpoints_'+args.model_targets
-    if os.path.isdir(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR)):
-        shutil.rmtree(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR))
-    os.mkdir(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR))
+    NEW_MODEL_FRAMES_DIR = 'goodpoints_'+args.extracted_frames_dir
 
     with open(os.path.join(args.data_root, args.labels_file), encoding='utf-16') as labels_file:
         COLUMN_LABEL = 37
@@ -37,6 +33,7 @@ def main(args):
 
         CHUNK_SIZE = args.chunk_size
         FEATURES_SHAPE = None
+        TARGETS_SHAPE = None
 
         csv_reader = csv.reader(labels_file, delimiter=',')
         is_first_row = True
@@ -53,7 +50,6 @@ def main(args):
                row[COLUMN_FILENAME] not in args.test_session_set:
                 continue
 
-            label = row[COLUMN_LABEL]
             video_name = row[COLUMN_FILENAME]
             starttime = int(row[COLUMN_STARTTIME])
 
@@ -61,15 +57,45 @@ def main(args):
             startframe_clip = milliseconds_to_numframe(starttime_clip)
             endtime_clip = starttime + 10000
             endframe_clip = milliseconds_to_numframe(endtime_clip)
+            #adjust start
+            if startframe_clip % CHUNK_SIZE == 0:
+                round_startframe_clip = startframe_clip - CHUNK_SIZE
+                round_endframe_clip = endframe_clip - CHUNK_SIZE
+            else:
+                round_startframe_clip = startframe_clip - (startframe_clip % CHUNK_SIZE)
+                round_endframe_clip = endframe_clip - (startframe_clip % CHUNK_SIZE)
+            round_startframe_clip += 1
+            round_endframe_clip += 1
+            # adjust end
+            round_endframe_clip = round_endframe_clip + (CHUNK_SIZE - (round_endframe_clip % CHUNK_SIZE))
+            round_endframe_clip += 1
 
-            round_startframe_clip = startframe_clip + (CHUNK_SIZE - (startframe_clip % CHUNK_SIZE))
-            round_endframe_clip = endframe_clip - (endframe_clip % CHUNK_SIZE)
+            for idx_frame in range(round_startframe_clip, round_endframe_clip):
+                img = cv2.imread(os.path.join(args.data_root,
+                                              args.extracted_frames_dir,
+                                              video_name,
+                                              str(idx_frame) + '.jpg'))
+                if idx_frame == round_startframe_clip:
+                    os.mkdir(os.path.join(args.data_root,
+                                          NEW_MODEL_FRAMES_DIR,
+                                          str(round_startframe_clip) + '___' + video_name))
+                cv2.imwrite(os.path.join(args.data_root,
+                                         NEW_MODEL_FRAMES_DIR,
+                                         str(round_startframe_clip) + '___' + video_name,
+                                         str(idx_frame) + '.jpg'),
+                            img)
+
+            round_startframe_clip -= 1
+            round_endframe_clip -= 1
 
             features = np.load(os.path.join(args.data_root, args.model_features, video_name + '.npy'))
             features = features[round_startframe_clip // CHUNK_SIZE: round_endframe_clip // CHUNK_SIZE]
 
             targets = np.load(os.path.join(args.data_root, args.model_targets, video_name + '.npy'))
             targets = targets[round_startframe_clip: round_endframe_clip]
+            if TARGETS_SHAPE is None:
+                TARGETS_SHAPE = targets.shape
+            assert TARGETS_SHAPE == targets.shape, 'mismatch: '+str(TARGETS_SHAPE)+'  '+str(targets.shape)
 
             # sanity-check
             num_frames = targets.shape[0]
@@ -83,9 +109,9 @@ def main(args):
             assert FEATURES_SHAPE == features.shape, 'shape mismatch between different features'+\
                                                       str(FEATURES_SHAPE)+'  '+str(features.shape)
 
-            np.save(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR, str(round_startframe_clip)+'___'+video_name+'.npy'),
+            np.save(os.path.join(args.data_root, NEW_MODEL_FEATURES_DIR, str(round_startframe_clip+1)+'___'+video_name+'.npy'),
                     features)
-            np.save(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR, str(round_startframe_clip) + '___' + video_name + '.npy'),
+            np.save(os.path.join(args.data_root, NEW_MODEL_TARGETS_DIR, str(round_startframe_clip+1) + '___' + video_name + '.npy'),
                     targets)
 
             # TODO: SAVE ALSO FRAMES, I.E. goodpoints_video_frames_25fps
@@ -104,6 +130,7 @@ if __name__ == '__main__':
     parser.add_argument('--chunk_size', default=9, type=int)
     parser.add_argument('--model_features', default='i3d_224x224_chunk9')
     parser.add_argument('--model_targets', default='4s_target_frames_25fps')
+    parser.add_argument('--extracted_frames_dir', default='video_frames_25fps', type=str)
     args = parser.parse_args()
 
     if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED')):
