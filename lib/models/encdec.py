@@ -49,8 +49,10 @@ class EncDec(nn.Module):
         else:
             raise Exception('Model ' + args.model + ' here is not supported')
 
-        self.lin_proj_e2d = nn.Linear(self.enc_hidden_size*(2 if self.is_bidirectional else 1), self.dec_hidden_size)
-        self.lin_proj_d2e = nn.Linear(self.dec_hidden_size, self.enc_hidden_size*(2 if self.is_bidirectional else 1))
+        #self.lin_proj_e2d = nn.Linear(self.enc_hidden_size*(2 if self.is_bidirectional else 1), self.dec_hidden_size)
+        #self.lin_proj_d2e = nn.Linear(self.dec_hidden_size, self.enc_hidden_size*(2 if self.is_bidirectional else 1))
+        self.lin_proj_e2d = nn.Identity()
+        self.lin_proj_d2e = nn.Identity()
 
         self.classifier = nn.Linear(self.dec_hidden_size, self.num_classes)
 

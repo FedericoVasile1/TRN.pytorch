@@ -31,6 +31,7 @@ def main(args):
 
     score_metrics = []
     target_metrics = []
+    attn_weights_all = []
 
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint)
@@ -51,6 +52,7 @@ def main(args):
         logger = utl.setup_logger(osp.join(writer.log_dir, 'log.txt'))
         command = 'python ' + ' '.join(sys.argv)
         logger._write(command)
+        # in case of trimmed dataset, since each video contain one label, we are also
 
     softmax = nn.Softmax(dim=1).to(device)
 
@@ -84,11 +86,11 @@ def main(args):
             dataset_type = 'TRIMMED'
         else:
             raise Exception('Unknown video name: ' + session)
+
         if not osp.isfile(osp.join(args.data_root, dataset_type, args.model_target, session + '.npy')):
             # skip videos in which the pose model does not detect any fall(i.e. fall==-1  in fall_detections.csv).
             # TODO: fix these videos later on, in order to incluso also them
             continue
-
 
         start = time.time()
         with torch.set_grad_enabled(False):
@@ -104,31 +106,18 @@ def main(args):
                                          mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
 
-            samples = []
             for count in range(target.shape[0]):
-                samples.append(features_extracted[count])
+                if count % args.steps == 0:
+                    h_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
+                    c_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
 
-                if count % args.steps == 0 and count != 0:
-                    samples = torch.stack(samples).unsqueeze(0).to(device)
-                    scores = model(samples)     # scores.shape == (1, steps, num_classes)
+                sample = to_device(features_extracted[count], device)
+                score, h_n, c_n, attn_weights_t = model.step(sample, h_n, c_n)
 
-                    scores = scores.squeeze(0)
-                    scores = softmax(scores).cpu().detach().numpy()
-                    score_metrics.extend(scores)
-                    samples = []
-
+                score = softmax(score).cpu().detach().numpy()[0]
+                score_metrics.append(score)                             # score.shape == (num_classes,)
+                attn_weights_all.append(attn_weights_t.squeeze(0))
                 target_metrics.append(target[count])                    # target[count].shape == (num_classes,)
-
-            if samples != []:
-                appo = len(samples)
-                for i in range(appo, args.steps):
-                    samples.append(torch.zeros_like(features_extracted[0]))
-                samples = torch.stack(samples).unsqueeze(0).to(device)
-                scores = model(samples)
-                scores = scores[:, :appo]
-                scores = scores.squeeze(0)
-                scores = softmax(scores).cpu().detach().numpy()
-                score_metrics.extend(scores)
 
         end = time.time()
 
@@ -144,7 +133,8 @@ def main(args):
                                    target_metrics[count_frames:count_frames + target.shape[0]],
                                    score_metrics[count_frames:count_frames + target.shape[0]],
                                    frames_dir='video_frames_25fps',
-                                   fps=25)
+                                   fps=25,
+                                   attn_weights=attn_weights_all)
             args.data_root = appo
             count_frames += target.shape[0]
 
@@ -157,7 +147,8 @@ def main(args):
                                target_metrics,
                                score_metrics,
                                frames_dir='video_frames_25fps',
-                               fps=25)
+                               fps=25,
+                               attn_weights=attn_weights_all)
         args.data_root = appo
         # print some stats about the video labels and predictions, then kill the program
         print('\n=== LABEL SEGMENTS ===')
@@ -254,10 +245,4 @@ def main(args):
     writer.close()
 
 if __name__ == '__main__':
-    base_dir = os.getcwd()
-    base_dir = base_dir.split('/')[-1]
-    CORRECT_LAUNCH_DIR = 'TRN.pytorch'
-    if base_dir != CORRECT_LAUNCH_DIR:
-        raise Exception('Wrong base dir, this file must be run from ' + CORRECT_LAUNCH_DIR + ' directory.')
-
     main(parse_args())

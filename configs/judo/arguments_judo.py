@@ -45,4 +45,6 @@ def parse_model_args():
     parser.add_argument('--use_goodpoints', default=False, action='store_true')
     parser.add_argument('--use_candidates', default=False, action='store_true')
 
+    parser.add_argument('--use_heatmaps', default=False, action='store_true')
+
     return build_data_info(parser.parse_args())

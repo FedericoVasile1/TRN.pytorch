@@ -52,15 +52,19 @@ def main(args):
             new_idxendframe = new_idxendframe + (args.chunk_size - (new_idxendframe % args.chunk_size))
             new_idxendframe += 1
 
-            if os.path.isdir(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe) + '___' + filename)):
-                print(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe) + '___' + filename) + '  SKIPPED: already exists')
+            if os.path.isdir(os.path.join(args.data_root, args.new_labels_dir, str(new_idxstartframe) + '___' + filename+'.npy')):
+                print(os.path.join(args.data_root, args.new_labels_dir, str(new_idxstartframe) + '___' + filename+'.npy') + '  SKIPPED: already exists')
                 continue
 
-            for idx_frame in range(new_idxstartframe, new_idxendframe):
-                img = cv2.imread(os.path.join(args.data_root, args.extracted_frames_dir, filename, str(idx_frame)+'.jpg'))
-                if idx_frame == new_idxstartframe:
-                    os.mkdir(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe)+'___'+filename))
-                cv2.imwrite(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe)+'___'+filename, str(idx_frame)+'.jpg'), img)
+            #if os.path.isdir(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe) + '___' + filename)):
+            #    print(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe) + '___' + filename) + '  SKIPPED: already exists')
+            #    continue
+
+            #for idx_frame in range(new_idxstartframe, new_idxendframe):
+            #    img = cv2.imread(os.path.join(args.data_root, args.extracted_frames_dir, filename, str(idx_frame)+'.jpg'))
+            #    if idx_frame == new_idxstartframe:
+            #        os.mkdir(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe)+'___'+filename))
+            #    cv2.imwrite(os.path.join(args.data_root, args.new_frames_dir, str(new_idxstartframe)+'___'+filename, str(idx_frame)+'.jpg'), img)
 
             # minus 1 since there is a displacement of 1 between the index of the raw frame and
             # the arrays features and labels
@@ -71,7 +75,11 @@ def main(args):
             features = features[new_idxstartframe//args.chunk_size:new_idxendframe//args.chunk_size]
             if FEATURES_SHAPE is None:
                 FEATURES_SHAPE = features.shape
-            assert FEATURES_SHAPE == features.shape, 'mismatch: '+str(FEATURES_SHAPE)+'  '+str(features.shape)
+            if FEATURES_SHAPE != features.shape:
+                print('different shape: ' + str(FEATURES_SHAPE) + '  ' + str(features.shape))
+                print(os.path.join(args.data_root, args.new_features_dir, str(new_idxstartframe + 1) + '___' + filename) + '  SKIPPED: too close to end video')
+                continue
+            #assert FEATURES_SHAPE == features.shape, 'mismatch: '+str(FEATURES_SHAPE)+'  '+str(features.shape)
 
             np.save(os.path.join(args.data_root, args.new_features_dir, str(new_idxstartframe+1)+'___'+filename+'.npy'),
                     features)

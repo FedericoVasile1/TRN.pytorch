@@ -33,8 +33,8 @@ class RNNmodel(nn.Module):
         self.drop_after = nn.Dropout(args.dropout)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
-    def forward(self, x):
-        # camera_input.shape == (batch_size, enc_steps, feat_vect_dim)
+    def forward(self, x, heatmaps):
+        # x.shape == (batch_size, enc_steps, feat_vect_dim)
         h_n = torch.zeros(x.shape[0],
                           self.hidden_size,
                           device=x.device,
@@ -46,7 +46,7 @@ class RNNmodel(nn.Module):
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
         for step in range(self.steps):
             x_t = x[:, step]
-            out = self.feature_extractor(x_t)
+            out = self.feature_extractor(x_t, heatmaps[:, step] if heatmaps is not None else None)
             if step == 0:
                 out = self.drop_before(out)
 
@@ -56,8 +56,8 @@ class RNNmodel(nn.Module):
             scores[:, step, :] = out
         return scores
 
-    def step(self, x_t, h_n, c_n):
-        out = self.feature_extractor(x_t)
+    def step(self, x_t, heatmaps_t, h_n, c_n):
+        out = self.feature_extractor(x_t, heatmaps_t)
 
         # to check if we are at the first timestep of the sequence, we exploit the fact that at the first
         #  timestep the hidden state is all zeros.

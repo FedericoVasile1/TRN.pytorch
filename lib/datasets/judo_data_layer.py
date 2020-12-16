@@ -44,6 +44,7 @@ class _PerType_JUDODataLayer(data.Dataset):
         self.steps = args.steps
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
+        self.use_heatmaps = args.use_heatmaps
 
         self.inputs = []
         for session in self.sessions:
@@ -83,9 +84,17 @@ class _PerType_JUDODataLayer(data.Dataset):
         feature_vectors = feature_vectors[start:end]
         feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
 
+        if dataset_type == 'UNTRIMMED' and self.use_heatmaps:
+            heatmaps_feature_vectors = np.load(osp.join(self.data_root, dataset_type, 'heatmaps_i3d_224x224_chunk9', session + '.npy'),
+                                               mmap_mode='r')
+            heatmaps_feature_vectors = heatmaps_feature_vectors[start:end]
+            heatmaps_feature_vectors = torch.as_tensor(heatmaps_feature_vectors.astype(np.float32))
+        else:
+            heatmaps_feature_vectors = torch.zeros_like(feature_vectors)
+
         step_target = torch.as_tensor(step_target.astype(np.float32))
 
-        return feature_vectors, step_target
+        return feature_vectors, heatmaps_feature_vectors, step_target
 
     def __len__(self):
         return len(self.inputs)

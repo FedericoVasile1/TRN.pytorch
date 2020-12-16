@@ -7,6 +7,22 @@ import math
 from .feature_extractor import build_feature_extractor
 from .rnn import _MyGRUCell
 
+class Squeeze(nn.Module):
+    def __init__(self):
+        super(Squeeze, self).__init__()
+
+    def forward(self, x):
+        # x.shape == batch_size, numfeatmaps, 1, H, W
+        return x.squeeze(dim=2)
+
+class Reduction(nn.Module):
+    def __init__(self):
+        super(Reduction, self).__init__()
+
+    def forward(self, x):
+        # x.shape == batch_size, numfeatmaps, T, H, W
+        return x.mean(dim=1)
+
 class ScaledDotProductAttention(nn.Module):
     '''
     The scaled dot product attention conceptually takes as input at each timestep the feature maps and the
@@ -52,10 +68,8 @@ class RNNAttention(nn.Module):
     """
     def __init__(self, args):
         super(RNNAttention, self).__init__()
-        if args.model_input != 'resnet3d_featuremaps' and args.model_input != 'video_frames_24fps':
-            raise Exception('Wrong camera_feature option, this model supports only feature maps. '
-                            'Change this option to \'resnet3d_featuremaps\' or switch to end to end training with the '
-                            'following options: --camera_feature video_frames_24fps --feature_extractor RESNET2+1D')
+        if 'featuremaps' not in args.model_input:
+            raise Exception('Wrong --model_input option. It must be a folder containing featuremaps')
 
         self.dtype = torch.float32
 
@@ -65,7 +79,21 @@ class RNNAttention(nn.Module):
 
         # The feature_extractor outputs feature maps of shape (batch_size, 512, 7, 7)
         self.feature_extractor = build_feature_extractor(args)
-        self.numfeatmaps = self.feature_extractor.feat_vect_dim
+        self.numfeatmaps = self.feature_extractor.feat_vect_dim     # e.g. 512
+        if self.numfeatmaps not in (832, 1024):
+            raise Exception('i3d_mixed4f requires 832.\ni3d_mixed5c requires 1024')
+
+        # WARNING: we are assuming input is 3d, i.e. feature maps of shape (batch_size, CC, TT, HH, WW)
+        #  if input will be 2d (i.e. feature maps of shape (batch_size, CC, HH, WW) remove this attribute below)
+        # - Option 1: learnable downsampling
+        #self.lin_reduction = nn.Sequential(
+        #    nn.Conv3d(self.numfeatmaps,
+        #              self.numfeatmaps,
+        #              (3, 1, 1) if 'mixed4f' in args.model_input else (2, 1, 1)),
+        #    Squeeze(),
+        #)
+        # - Option 2: NOT learnable downsampling
+        self.lin_reduction = Reduction()
 
         self.numfeatmaps_to_hidden = nn.Linear(self.numfeatmaps, self.hidden_size)
         self.attention = ScaledDotProductAttention(self.hidden_size)
@@ -99,6 +127,7 @@ class RNNAttention(nn.Module):
         for step in range(self.enc_steps):
             x_t = x[:, step]
             feat_maps = self.feature_extractor(x_t, torch.zeros(1).cpu())  # second input is optical flow, in our case will not be used
+            feat_maps = self.lin_reduction(feat_maps)
 
             # feat_maps.shape == (batch_size, 512, 7, 7)
             feat_maps = feat_maps.flatten(start_dim=2)      # flatten feature maps to feature vectors
@@ -120,9 +149,9 @@ class RNNAttention(nn.Module):
             scores[:, step, :] = out
         return scores
 
-    def step(self, x, h_n, c_n):
-        # x.shape == (1, 3, 6, 112, 112) || (1, 3, 224, 224)
-        feat_maps = self.feature_extractor(x, torch.zeros(1))
+    def step(self, x_t, h_n, c_n):
+        feat_maps = self.feature_extractor(x_t)
+        feat_maps = self.lin_reduction(feat_maps)
         feat_maps = feat_maps.flatten(start_dim=2)
 
         feat_maps_projected = self.numfeatmaps_to_hidden(feat_maps.permute(0, 2, 1))

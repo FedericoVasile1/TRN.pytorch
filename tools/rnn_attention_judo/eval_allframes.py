@@ -31,6 +31,7 @@ def main(args):
 
     score_metrics = []
     target_metrics = []
+    attn_weights_all = []
 
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint)
@@ -43,7 +44,7 @@ def main(args):
     if not args.show_predictions and not args.save_video:
         # i.e. we want to do a full evaluation of the test set and then compute stuff like confusion matrix, etc..
         tensorboard_dir = args.checkpoint.split('/')[:-1]
-        eval_dir = osp.join(*tensorboard_dir, 'eval')
+        eval_dir = osp.join(*tensorboard_dir, 'eval_allframes')
         if osp.isdir(eval_dir):
             shutil.rmtree(eval_dir)
         os.mkdir(eval_dir)
@@ -71,7 +72,7 @@ def main(args):
     if args.video_name != '':
         args.test_session_set = [args.video_name]
     if args.save_video:
-        # when this option is activated, we evaluate and save ONLY ONE video, without showing it.
+        # when this option is activated, we only evaluate and save one video, without showing it.
         args.test_session_set = args.test_session_set[:1]
         args.show_predictions = False
     if args.show_predictions:
@@ -89,46 +90,37 @@ def main(args):
             # TODO: fix these videos later on, in order to incluso also them
             continue
 
-
         start = time.time()
         with torch.set_grad_enabled(False):
-            target = np.load(osp.join(args.data_root, dataset_type, args.model_target, session + '.npy'))
+            original_target = np.load(osp.join(args.data_root, dataset_type, args.model_target, session + '.npy'))
             # round to multiple of CHUNK_SIZE
-            num_frames = target.shape[0]
+            num_frames = original_target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
-            target = target[:num_frames]
+            original_target = original_target[:num_frames]
             # For each chunk, take only the central frame
-            target = target[args.chunk_size // 2::args.chunk_size]
+            target = original_target[args.chunk_size // 2::args.chunk_size]
 
             features_extracted = np.load(osp.join(args.data_root, dataset_type, args.model_input, session + '.npy'),
                                          mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
 
-            samples = []
             for count in range(target.shape[0]):
-                samples.append(features_extracted[count])
+                if count % args.steps == 0:
+                    h_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
+                    c_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
 
-                if count % args.steps == 0 and count != 0:
-                    samples = torch.stack(samples).unsqueeze(0).to(device)
-                    scores = model(samples)     # scores.shape == (1, steps, num_classes)
+                sample = to_device(features_extracted[count], device)
+                score, h_n, c_n, attn_weights_t = model.step(sample, h_n, c_n)    # attn_weights.shape==(batch_size, HH, WW)
 
-                    scores = scores.squeeze(0)
-                    scores = softmax(scores).cpu().detach().numpy()
-                    score_metrics.extend(scores)
-                    samples = []
+                score = softmax(score).cpu().detach().numpy()[0]
+                for c in range(args.chunk_size):
+                    # the score and attention weights of the single chunk
+                    #  are replicated along all the frames of the chunk
+                    score_metrics.append(score)
+                    attn_weights_all.append(attn_weights_t.squeeze(0))
+                    # for each frame of the chunk, get its real label
+                    target_metrics.append(original_target[count * args.chunk_size + c])
 
-                target_metrics.append(target[count])                    # target[count].shape == (num_classes,)
-
-            if samples != []:
-                appo = len(samples)
-                for i in range(appo, args.steps):
-                    samples.append(torch.zeros_like(features_extracted[0]))
-                samples = torch.stack(samples).unsqueeze(0).to(device)
-                scores = model(samples)
-                scores = scores[:, :appo]
-                scores = scores.squeeze(0)
-                scores = softmax(scores).cpu().detach().numpy()
-                score_metrics.extend(scores)
 
         end = time.time()
 
@@ -136,20 +128,26 @@ def main(args):
                                                                                  session_idx,
                                                                                  len(args.test_session_set),
                                                                                  end - start))
+
         if args.show_predictions:
-            appo = args.data_root
+            appo = args.chunk_size
+            args.chunk_size = 1
+            appo2 = args.data_root
             args.data_root = args.data_root + '/' + dataset_type
             show_video_predictions(args,
                                    session,
-                                   target_metrics[count_frames:count_frames + target.shape[0]],
-                                   score_metrics[count_frames:count_frames + target.shape[0]],
+                                   target_metrics[count_frames:count_frames + original_target.shape[0]],
+                                   score_metrics[count_frames:count_frames + original_target.shape[0]],
                                    frames_dir='video_frames_25fps',
-                                   fps=25)
-            args.data_root = appo
-            count_frames += target.shape[0]
+                                   fps=25,
+                                   attn_weights=attn_weights_all)
+            args.chunk_size = appo
+            args.data_root = appo2
+            count_frames += original_target.shape[0]
 
     if args.save_video:
         # here the video will be saved
+        args.chunk_size = 1
         appo = args.data_root
         args.data_root = args.data_root + '/' + dataset_type
         show_video_predictions(args,
@@ -157,7 +155,8 @@ def main(args):
                                target_metrics,
                                score_metrics,
                                frames_dir='video_frames_25fps',
-                               fps=25)
+                               fps=25,
+                               attn_weights=attn_weights_all)
         args.data_root = appo
         # print some stats about the video labels and predictions, then kill the program
         print('\n=== LABEL SEGMENTS ===')
@@ -190,7 +189,7 @@ def main(args):
                                            ignore_class=[0],
                                            return_APs=True,
                                            samples_all_valid=True,
-                                           verbose=True,)
+                                           verbose=True, )
     logger._write(json.dumps(result, indent=2))
 
     per_class_ap = {}
@@ -235,7 +234,7 @@ def main(args):
     plt.yticks(rotation=45)
     plt.xticks(rotation=45)
     plt.tight_layout()
-    writer.add_figure('eval_judo_conf-mat_unnorm.jpg', fig)
+    writer.add_figure('eval-allframes_judo_conf-mat_unnorm.jpg', fig)
 
     # Log normalized confusion matrix for encoder
     conf_mat_norm = conf_mat.astype('float') / conf_mat.sum(axis=1)[:, np.newaxis]
@@ -249,7 +248,7 @@ def main(args):
     plt.yticks(rotation=45)
     plt.xticks(rotation=45)
     plt.tight_layout()
-    writer.add_figure('eval_judo_conf-mat_norm.jpg', fig)
+    writer.add_figure('eval-allframes_judo_conf-mat_norm.jpg', fig)
 
     writer.close()
 

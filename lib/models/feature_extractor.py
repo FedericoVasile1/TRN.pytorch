@@ -11,7 +11,8 @@ class FeatureExtractor(nn.Module):
         super(FeatureExtractor, self).__init__()
         if args.E2E == '':
             # starting from features extracted
-            self.feat_vect_dim = args.feat_vect_dim
+            self.use_heatmaps = args.use_heatmaps
+            self.feat_vect_dim = (args.feat_vect_dim * 2) if args.use_heatmaps else args.feat_vect_dim
             self.feature_extractor = nn.Identity()   # no feature extractor needed
         else:
             # starting from frames, so choose a feature extractor
@@ -66,8 +67,11 @@ class FeatureExtractor(nn.Module):
             self.fusion_size = self.feat_vect_dim
             self.input_linear = nn.Identity()
 
-    def forward(self, x):
+    def forward(self, x, heatmaps):
+        # x.shape == heatmaps.shape == (batch_size, 1024)
         x = self.feature_extractor(x)
+        if self.use_heatmaps:
+            x = torch.cat((x, heatmaps), dim=1)
         x = self.input_linear(x)
         return x
 

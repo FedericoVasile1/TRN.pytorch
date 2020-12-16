@@ -24,7 +24,7 @@ def show_video_predictions(args,
     :param target_metrics: numpy array of shape(num_frames, num_classes) containing the ground truth of the video.
                                 Notice that the that array that comes here is **already chunked**
     :param score_metrics: numpy array of shape(num_frames, num_classes) containing the output scores of the model
-    :param attn_weights:
+    :param attn_weights: shape(num_frames, HH, WW)
     :param frames_dir: string containing the base folder name, i.e. under the base folder there will be
                         one folder(i.e. video_name) for each video, this will contains the frames of that video
     :param fps: int representing the fps at which the video is previously extracted(this number is needed in order
@@ -62,11 +62,9 @@ def show_video_predictions(args,
 
         if attn_weights is not None:
             original_H, original_W, _ = open_cv_frame.shape
-            if args.feature_extractor == 'VGG16':
-                open_cv_frame = cv2.resize(open_cv_frame, (224, 224), interpolation=cv2.INTER_AREA)
-            else:
-                # RESNET2+1D feature extraction
-                open_cv_frame = cv2.resize(open_cv_frame, (112, 112), interpolation=cv2.INTER_AREA)
+            # we need to temporally resize the frame to the size which was has been fed into the
+            #  network. i.e. 224x224 for i3d network
+            open_cv_frame = cv2.resize(open_cv_frame, (224, 224), interpolation=cv2.INTER_AREA)
 
             H, W, _ = open_cv_frame.shape
 
@@ -79,6 +77,7 @@ def show_video_predictions(args,
             # mask original image according to the attention weights
             open_cv_frame = cv2.addWeighted(attn_weights_t, 0.5, open_cv_frame, 0.5, 0)
 
+            # resize back to previous size
             open_cv_frame = cv2.resize(open_cv_frame, (original_W, original_H), interpolation=cv2.INTER_AREA)
 
         open_cv_frame = cv2.copyMakeBorder(open_cv_frame, 60, 0, 30, 30, borderType=cv2.BORDER_CONSTANT, value=0)
