@@ -17,9 +17,6 @@ def build_data_info(args, basic_build=False):
         if args.eval_on_untrimmed and (args.use_trimmed == False or args.use_untrimmed == False):
             raise Exception('Wrong --eval_on_untrimmed option. With --eval_on_untrimmed you'
                             'must have --use_trimmed and --use_untrimmed')
-        if args.use_heatmaps and not args.use_untrimmed:
-            raise Exception('We currently have only heatmaps for untrimmed dataset, so --use_heatmaps and '
-                            '--use_untrimmed must be True together.')
 
         args.train_session_set, args.val_session_set, args.test_session_set = ({}, {}, {})
         with open(args.data_info, 'r') as f:
@@ -59,6 +56,9 @@ def build_data_info(args, basic_build=False):
         raise Exception('You are providing candidates input without using --use_candidates option')
     if ('goodpoints_' in args.model_input or 'goodpoints_' in args.model_target) and not args.use_goodpoints:
         raise Exception('You are providing goodpoints input without using --use_goodpoints option')
+    if args.use_heatmaps and not args.use_untrimmed:
+        raise Exception('We currently have only heatmaps for untrimmed dataset, so --use_heatmaps and '
+                        '--use_untrimmed must be True together.')
 
     if args.model_input.startswith(BASE_FOLDER_RAW_FRAMES) or\
        args.model_input.startswith('candidates'+BASE_FOLDER_RAW_FRAMES) or\

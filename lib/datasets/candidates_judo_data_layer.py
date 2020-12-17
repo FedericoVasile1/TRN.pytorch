@@ -124,12 +124,6 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
         heatmaps_feature_vectors = torch.as_tensor(heatmaps_feature_vectors.astype(np.float32))
         step_target = torch.as_tensor(step_target.astype(np.float32))
 
-        # Another temporal data augmentation: we randomly reverse or not the sequence
-        if self.training and torch.randint(2, (1,)):
-            feature_vectors = torch.flip(feature_vectors, dims=(0,))
-            heatmaps_feature_vectors = torch.flip(heatmaps_feature_vectors, dims=(0,))
-            step_target = torch.flip(step_target, dims=(0,))
-
         return feature_vectors, heatmaps_feature_vectors, step_target
 
     def __len__(self):
