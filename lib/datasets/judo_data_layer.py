@@ -44,16 +44,20 @@ class _PerType_JUDODataLayer(data.Dataset):
         self.steps = args.steps
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
-        self.use_heatmaps = args.use_heatmaps
+        self.use_heatmaps = args.use_heatmaps and dataset_type=='UNTRIMMED'
 
         self.inputs = []
         for session in self.sessions:
             if not osp.isfile(osp.join(self.data_root, dataset_type, args.model_target, session+'.npy')):
-                # skip videos in which the pose model does not detect any fall(i.e. fall==-1  in fall_detections.csv).
+                # skip trimmed videos in which the pose model does
+                #  not detect any fall(i.e. fall==-1 in fall_detections.csv).
                 # TODO: fix these videos later on, in order to include also them
                 continue
 
-            target = np.load(osp.join(self.data_root, dataset_type, args.model_target, session+'.npy'))
+            target = np.load(osp.join(self.data_root,
+                                      dataset_type,
+                                      args.model_target if dataset_type=='UNTRIMMED' else '2s_target_frames_25fps',
+                                      session+'.npy'))
             # round to multiple of chunk_size
             num_frames = target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
@@ -61,10 +65,12 @@ class _PerType_JUDODataLayer(data.Dataset):
             # For each chunk, the central frame label is the label of the entire chunk
             target = target[args.chunk_size // 2::args.chunk_size]
 
-            seed = np.random.randint(self.steps) if self.training else 0
+            if dataset_type == 'UNTRIMMED':
+                seed = np.random.randint(self.steps) if self.training else 0
+            else:
+                seed = np.random.randint(28 - self.steps) if self.training else 0
             for start, end in zip(range(seed, target.shape[0], self.steps),
-                                  range(seed + self.steps, target.shape[0], self.steps)):
-
+                                  range(seed + self.steps, target.shape[0] + 1, self.steps)):
                 if args.downsample_backgr and self.training:
                     background_vect = np.zeros_like(target[start:end])
                     background_vect[:, 0] = 1
@@ -73,26 +79,35 @@ class _PerType_JUDODataLayer(data.Dataset):
 
                 step_target = target[start:end]
                 self.inputs.append([
-                    dataset_type, session, start, end, step_target,
+                    dataset_type, session, step_target, start, end
                 ])
 
     def __getitem__(self, index):
-        dataset_type, session, start, end, step_target = self.inputs[index]
+        dataset_type, session, step_target, start, end = self.inputs[index]
 
         feature_vectors = np.load(osp.join(self.data_root, dataset_type, self.model_input, session+'.npy'),
                                   mmap_mode='r')
         feature_vectors = feature_vectors[start:end]
-        feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
 
-        if dataset_type == 'UNTRIMMED' and self.use_heatmaps:
-            heatmaps_feature_vectors = np.load(osp.join(self.data_root, dataset_type, 'heatmaps_i3d_224x224_chunk9', session + '.npy'),
+        if self.use_heatmaps:
+            heatmaps_feature_vectors = np.load(osp.join(self.data_root,
+                                                        dataset_type,
+                                                        'heatmaps_'+self.model_input,
+                                                        session + '.npy'),
                                                mmap_mode='r')
             heatmaps_feature_vectors = heatmaps_feature_vectors[start:end]
-            heatmaps_feature_vectors = torch.as_tensor(heatmaps_feature_vectors.astype(np.float32))
         else:
-            heatmaps_feature_vectors = torch.zeros_like(feature_vectors)
+            heatmaps_feature_vectors = np.zeros_like(feature_vectors)
 
+        feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
+        heatmaps_feature_vectors = torch.as_tensor(heatmaps_feature_vectors.astype(np.float32))
         step_target = torch.as_tensor(step_target.astype(np.float32))
+
+        # Another temporal data augmentation: we randomly reverse or not the sequence
+        if self.training and torch.randint(2, (1,)):
+            feature_vectors = torch.flip(feature_vectors, dims=(0,))
+            heatmaps_feature_vectors = torch.flip(heatmaps_feature_vectors, dims=(0,))
+            step_target = torch.flip(step_target, dims=(0,))
 
         return feature_vectors, heatmaps_feature_vectors, step_target
 

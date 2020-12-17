@@ -48,12 +48,12 @@ def main(args):
 
     logger_APs = utl.setup_logger(osp.join(writer.log_dir, 'APs_per_epoch.txt'))
 
-    with torch.set_grad_enabled(False):
-        temp = utl.build_data_loader(args, 'train')
-        dataiter = iter(temp)
-        inputs, _ = dataiter.next()
-        writer.add_graph(model, inputs.to(device))
-        writer.close()
+    #with torch.set_grad_enabled(False):
+    #    temp = utl.build_data_loader(args, 'train')
+    #    dataiter = iter(temp)
+    #    inputs, _, _ = dataiter.next()
+    #    writer.add_graph(model, inputs.to(device))
+    #    writer.close()
 
     batch_idx_train = 1
     batch_idx_val = 1
@@ -83,7 +83,7 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (inputs, targets) in enumerate(data_loaders[phase], start=1):
+                for batch_idx, (inputs, _, targets) in enumerate(data_loaders[phase], start=1):
                     # inputs.shape == (batch_size, steps, feat_vect_dim [if starting from features])
                     # targets.shape == (batch_size, steps, num_classes)
                     batch_size = inputs.shape[0]

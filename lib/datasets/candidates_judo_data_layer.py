@@ -44,10 +44,13 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
         self.model_input = args.model_input
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
+        self.use_heatmaps = args.use_heatmaps and dataset_type=='UNTRIMMED'
 
         self.steps = args.steps
-        if self.steps != 11:
-            raise Exception('Actually we supports only steps==11 since these clips are 11 steps long.')
+        if args.model_input.split('_')[0] == 'candidatesV2' and args.steps > 22:
+            raise Exception('For '+args.model_input+' we supports only steps<=22 since these clips are 22 steps long.')
+        if args.model_input.split('_')[0] == 'candidates' and args.steps > 11:
+            raise Exception('For '+args.model_input+' we supports only steps==11 since these clips are 11 steps long.')
 
         self.inputs = []
         if dataset_type == 'UNTRIMMED':
@@ -61,11 +64,19 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
                 target = target[:num_frames]
                 target = target[args.chunk_size // 2::args.chunk_size]
 
-                # TODO: to decide whether or not to add data augmentation along the temporal dimension
+                if args.model_input.split('_')[0] == 'candidates':
+                    seed = np.random.randint(11 - self.steps) if self.training else 0
+                elif args.model_input.split('_')[0] == 'candidatesV2':
+                    seed = np.random.randint(22 - self.steps) if self.training else 0
+                else:
+                    raise Exception('Unknown --model_input')
+                for start, end in zip(range(seed, target.shape[0], self.steps),
+                                      range(seed + self.steps, target.shape[0] + 1, self.steps)):
+                    step_target = target[start:end]
+                    self.inputs.append([
+                        dataset_type, filename, step_target, start, end
+                    ])
 
-                self.inputs.append([
-                    dataset_type, filename, target, 0, 0
-                ])
         elif dataset_type == 'TRIMMED':
             for filename in self.sessions:
                 if not osp.isfile(osp.join(self.data_root, dataset_type, '2s_target_frames_25fps', filename+'.npy')):
@@ -81,32 +92,45 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
                 # For each chunk, the central frame label is the label of the entire chunk
                 target = target[args.chunk_size // 2::args.chunk_size]
 
-                seed = np.random.randint(self.steps) if self.training else 0
+                seed = np.random.randint(28 - self.steps) if self.training else 0
                 for start, end in zip(range(seed, target.shape[0], self.steps),
-                                      range(seed + self.steps, target.shape[0], self.steps)):
-
+                                      range(seed + self.steps, target.shape[0] + 1, self.steps)):
                     step_target = target[start:end]
                     self.inputs.append([
                         dataset_type, filename+'.npy', step_target, start, end
                     ])
+
             else:
                 raise Exception('Unknown dataset')
 
     def __getitem__(self, index):
-        dataset_type, filename, target, start, end = self.inputs[index]
+        dataset_type, filename, step_target, start, end = self.inputs[index]
 
-        feature_vectors = np.load(osp.join(self.data_root,
-                                           dataset_type,
-                                           self.model_input if dataset_type=='UNTRIMMED' else 'i3d_224x224_chunk9',
-                                           filename),
+        feature_vectors = np.load(osp.join(self.data_root, dataset_type, self.model_input, filename),
                                   mmap_mode='r')
-        if dataset_type == 'TRIMMED':
-            feature_vectors = feature_vectors[start:end]
+        feature_vectors = feature_vectors[start:end]
+
+        if self.use_heatmaps:
+            heatmaps_feature_vectors = np.load(osp.join(self.data_root,
+                                                        dataset_type,
+                                                        'heatmaps_'+self.model_input,
+                                                        filename),
+                                               mmap_mode='r')
+            heatmaps_feature_vectors = heatmaps_feature_vectors[start:end]
+        else:
+            heatmaps_feature_vectors = np.zeros_like(feature_vectors)
 
         feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
-        target = torch.as_tensor(target.astype(np.float32))
+        heatmaps_feature_vectors = torch.as_tensor(heatmaps_feature_vectors.astype(np.float32))
+        step_target = torch.as_tensor(step_target.astype(np.float32))
 
-        return feature_vectors, target
+        # Another temporal data augmentation: we randomly reverse or not the sequence
+        if self.training and torch.randint(2, (1,)):
+            feature_vectors = torch.flip(feature_vectors, dims=(0,))
+            heatmaps_feature_vectors = torch.flip(heatmaps_feature_vectors, dims=(0,))
+            step_target = torch.flip(step_target, dims=(0,))
+
+        return feature_vectors, heatmaps_feature_vectors, step_target
 
     def __len__(self):
         return len(self.inputs)

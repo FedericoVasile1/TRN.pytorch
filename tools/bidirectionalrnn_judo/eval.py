@@ -103,14 +103,26 @@ def main(args):
             features_extracted = np.load(osp.join(args.data_root, dataset_type, args.model_input, session + '.npy'),
                                          mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
+            if dataset_type == 'UNTRIMMED' and args.use_heatmaps:
+                heatmaps_features_extracted = np.load(osp.join(args.data_root,
+                                                               dataset_type,
+                                                               'heatmaps_'+args.model_input,
+                                                               session + '.npy'),
+                                             mmap_mode='r')
+                heatmaps_features_extracted = torch.as_tensor(heatmaps_features_extracted.astype(np.float32))
 
             samples = []
+            samples_heatmaps = []
             for count in range(target.shape[0]):
                 samples.append(features_extracted[count])
+                if dataset_type == 'UNTRIMMED' and args.use_heatmaps:
+                    samples_heatmaps.append(heatmaps_features_extracted[count])
 
                 if count % args.steps == 0 and count != 0:
                     samples = torch.stack(samples).unsqueeze(0).to(device)
-                    scores = model(samples)     # scores.shape == (1, steps, num_classes)
+                    if dataset_type == 'UNTRIMMED' and args.use_heatmaps:
+                        samples_heatmaps = torch.stack(samples_heatmaps).unsqueeze(0).to(device)
+                    scores = model(samples, samples_heatmaps)     # scores.shape == (1, steps, num_classes)
 
                     scores = scores.squeeze(0)
                     scores = softmax(scores).cpu().detach().numpy()

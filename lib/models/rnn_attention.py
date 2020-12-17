@@ -21,7 +21,7 @@ class Reduction(nn.Module):
 
     def forward(self, x):
         # x.shape == batch_size, numfeatmaps, T, H, W
-        return x.mean(dim=1)
+        return x.mean(dim=2)
 
 class ScaledDotProductAttention(nn.Module):
     '''
@@ -50,6 +50,9 @@ class ScaledDotProductAttention(nn.Module):
             We use the weights in evaluation mode; where we project back the (HH, WW) 'image' to its original
             size (H, W) in order to visualize how much each spatial part of the image contributes to the prediction
         """
+        #  WARNING: we are assuming feature maps of squared dimension, i.e. HH == WW
+        HH, WW = (int(math.sqrt(feat_maps_projected.shape[2])), int(math.sqrt(feat_maps_projected.shape[2])))
+
         attn_weights = prev_h.unsqueeze(1).bmm(feat_maps_projected)  # attn_weights.shape == (batch_size, 1, HH * WW)
         attn_weights = attn_weights.div(math.sqrt(self.rnn_hidden_size))
 
@@ -60,7 +63,7 @@ class ScaledDotProductAttention(nn.Module):
         attn = feat_maps_projected.bmm(attn_weights.permute(0, 2, 1))  # attn.shape == (batch_size, rnn_hidden_size, 1)
         attn = attn.squeeze(2)
 
-        return attn, attn_weights.squeeze(1).view(attn_weights.shape[0], 7, 7)
+        return attn, attn_weights.squeeze(1).view(attn_weights.shape[0], HH, WW)
 
 class RNNAttention(nn.Module):
     """

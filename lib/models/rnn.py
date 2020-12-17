@@ -46,7 +46,7 @@ class RNNmodel(nn.Module):
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
         for step in range(self.steps):
             x_t = x[:, step]
-            out = self.feature_extractor(x_t, heatmaps[:, step] if heatmaps is not None else None)
+            out = self.feature_extractor(x_t, heatmaps[:, step])
             if step == 0:
                 out = self.drop_before(out)
 

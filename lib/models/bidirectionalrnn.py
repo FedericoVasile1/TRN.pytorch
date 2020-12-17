@@ -10,6 +10,7 @@ class BIDIRECTIONALRNN(nn.Module):
         self.num_classes = args.num_classes
         self.steps = args.steps
         self.use_heatmaps = args.use_heatmaps
+        self.use_trimmed = args.use_trimmed
 
         self.feature_extractor = build_feature_extractor(args)
 
@@ -37,7 +38,8 @@ class BIDIRECTIONALRNN(nn.Module):
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
         transf_x = torch.zeros(x.shape[0],
                                x.shape[1],
-                               (x.shape[2]*2) if self.use_heatmaps else x.shape[2]).to(dtype=x.dtype, device=x.device)
+                               (x.shape[2]*2) if self.use_heatmaps and not self.use_trimmed else x.shape[2])
+        transf_x = transf_x.to(dtype=x.dtype, device=x.device)
 
         for step in range(self.steps):
             transf_x[:, step, :] = self.feature_extractor(x[:, step], heatmaps[:, step])
