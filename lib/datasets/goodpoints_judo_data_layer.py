@@ -64,7 +64,7 @@ class Goodpoints_PerType_JUDODataLayer(data.Dataset):
                 # For each chunk, the central frame label is the label of the entire chunk
                 target = target[args.chunk_size // 2::args.chunk_size]
 
-                seed = np.random.randint(28 - self.steps) if self.training else 0
+                seed = np.random.randint(28+1 - self.steps) if self.training else 0
                 for start, end in zip(range(seed, target.shape[0], self.steps),
                                       range(seed + self.steps, target.shape[0] + 1, self.steps)):
                     step_target = target[start:end]
@@ -87,7 +87,7 @@ class Goodpoints_PerType_JUDODataLayer(data.Dataset):
                 # For each chunk, the central frame label is the label of the entire chunk
                 target = target[args.chunk_size // 2::args.chunk_size]
 
-                seed = np.random.randint(28 - self.steps) if self.training else 0
+                seed = np.random.randint(28+1 - self.steps) if self.training else 0
                 for start, end in zip(range(seed, target.shape[0], self.steps),
                                       range(seed + self.steps, target.shape[0] + 1, self.steps)):
                     step_target = target[start:end]

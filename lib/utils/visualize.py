@@ -42,12 +42,17 @@ def show_video_predictions(args,
         frames = []
     num_frames = target_metrics.shape[0]
     idx = 0
+    if '___' in video_name:
+        start_frame = video_name.split('___')[0]
+        start_frame = int(start_frame) - 1
+    else:
+        start_frame = 0
     while idx < num_frames:
         idx_frame = idx * args.chunk_size + args.chunk_size // 2
         pil_frame = Image.open(osp.join(args.data_root,
                                         frames_dir,
                                         video_name,
-                                        str(idx_frame + 1) + '.jpg')).convert('RGB')
+                                        str(start_frame + idx_frame + 1) + '.jpg')).convert('RGB')
         if transform is not None:
             pil_frame = transform(pil_frame)
 

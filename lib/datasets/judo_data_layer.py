@@ -68,7 +68,7 @@ class _PerType_JUDODataLayer(data.Dataset):
             if dataset_type == 'UNTRIMMED':
                 seed = np.random.randint(self.steps) if self.training else 0
             else:
-                seed = np.random.randint(28 - self.steps) if self.training else 0
+                seed = np.random.randint(28+1 - self.steps) if self.training else 0
             for start, end in zip(range(seed, target.shape[0], self.steps),
                                   range(seed + self.steps, target.shape[0] + 1, self.steps)):
                 if args.downsample_backgr and self.training:

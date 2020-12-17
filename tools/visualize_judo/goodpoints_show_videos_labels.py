@@ -63,6 +63,12 @@ if __name__ == '__main__':
 
     if args.video_name == '':
         videos_list = getattr(args, args.phase+'_session_set')
+        idx = np.random.choice(len(videos_list), size=1, replace=False)[0]
+        sample = videos_list[idx]
+        valid_videos = os.listdir(os.path.join(args.data_root, args.targets_dir))
+        valid_videos = [v for v in valid_videos if sample in v]
+        idx = np.random.choice(len(valid_videos), size=1, replace=False)[0]
+        videos_list = [valid_videos[idx][:-4]]
     else:
         videos_list = [args.video_name]
 

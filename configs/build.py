@@ -59,6 +59,10 @@ def build_data_info(args, basic_build=False):
     if args.use_heatmaps and not args.use_untrimmed:
         raise Exception('We currently have only heatmaps for untrimmed dataset, so --use_heatmaps and '
                         '--use_untrimmed must be True together.')
+    if args.use_heatmaps and args.use_candidates and args.use_goodpoints:
+        raise Exception('With --use_candidates and --use_goodpoints, you can not use --use_heatmaps')
+    if 'ATTENTION' in args.model and (args.use_heatmaps or args.use_trimmed):
+        raise Exception('With attention models you can not use --use_heatmaps and/or --use_trimmed')
 
     if args.model_input.startswith(BASE_FOLDER_RAW_FRAMES) or\
        args.model_input.startswith('candidates'+BASE_FOLDER_RAW_FRAMES) or\
@@ -80,31 +84,41 @@ def build_data_info(args, basic_build=False):
         # no end to end learning because we are starting from features pre-extracted
         args.E2E = ''
 
-    if args.use_goodpoints and args.use_candidates:
-        raise Exception('--use_goodpoints and --use_candidates can not be true together')
-    if args.use_goodpoints:
-        if 'goodpoints' not in args.model_input or 'goodpoints' not in args.model_target:
-            raise Exception('With --use_goodpoints option you must provide input goodpoints features'
-                            '(via --model_input option)  and goodpoints targets(via --model_target option)')
-        if not args.use_untrimmed:
-            raise Exception('With --use_goodpoints, also --use_untrimmed must be used')
-        if args.E2E == 'E2E':
-            raise Exception('We actually do not support goodpoints starting from raw frames')
-
-        args.goodpoints = 'GOODPOINTS'
-    else:
-        args.goodpoints = ''
-    if args.use_candidates:
+    #if args.use_goodpoints and args.use_candidates:
+    #    raise Exception('--use_goodpoints and --use_candidates can not be true together')
+    if args.use_candidates and args.use_goodpoints:
         if 'candidates' not in args.model_input or 'candidates' not in args.model_target:
             raise Exception('With --use_candidates option you must provide input candidates features'
                             '(via --model_input option)  and target candidates(via --model_target option)')
         if not args.use_untrimmed:
             raise Exception('With --use_candidates, also --use_untrimmed must be used')
-        #if args.E2E == 'E2E':
-        #    raise Exception('We actually do not support candidates starting from raw frames')
-
+        args.goodpoints = 'GOODPOINTS'
         args.candidates = 'CANDIDATES'
     else:
-        args.candidates = ''
+
+        if args.use_goodpoints:
+            if 'goodpoints' not in args.model_input or 'goodpoints' not in args.model_target:
+                raise Exception('With --use_goodpoints option you must provide input goodpoints features'
+                                '(via --model_input option)  and goodpoints targets(via --model_target option)')
+            if not args.use_untrimmed:
+                raise Exception('With --use_goodpoints, also --use_untrimmed must be used')
+            if args.E2E == 'E2E':
+                raise Exception('We actually do not support goodpoints starting from raw frames')
+
+            args.goodpoints = 'GOODPOINTS'
+        else:
+            args.goodpoints = ''
+        if args.use_candidates:
+            if 'candidates' not in args.model_input or 'candidates' not in args.model_target:
+                raise Exception('With --use_candidates option you must provide input candidates features'
+                                '(via --model_input option)  and target candidates(via --model_target option)')
+            if not args.use_untrimmed:
+                raise Exception('With --use_candidates, also --use_untrimmed must be used')
+            #if args.E2E == 'E2E':
+            #    raise Exception('We actually do not support candidates starting from raw frames')
+
+            args.candidates = 'CANDIDATES'
+        else:
+            args.candidates = ''
 
     return args
