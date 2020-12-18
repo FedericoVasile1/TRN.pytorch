@@ -153,7 +153,7 @@ class RNNAttention(nn.Module):
         return scores
 
     def step(self, x_t, h_n, c_n):
-        feat_maps = self.feature_extractor(x_t)
+        feat_maps = self.feature_extractor(x_t, torch.zeros(1).cpu())
         feat_maps = self.lin_reduction(feat_maps)
         feat_maps = feat_maps.flatten(start_dim=2)
 

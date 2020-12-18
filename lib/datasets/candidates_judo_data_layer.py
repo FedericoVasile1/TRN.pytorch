@@ -45,6 +45,8 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
         self.use_heatmaps = args.use_heatmaps and dataset_type=='UNTRIMMED'
+        self.use_untrimmed = args.use_untrimmed
+        self.use_trimmed = args.use_trimmed
 
         self.steps = args.steps
         if args.model_input.split('_')[0] == 'candidatesV2' and args.steps > 22:
@@ -106,7 +108,21 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
     def __getitem__(self, index):
         dataset_type, filename, step_target, start, end = self.inputs[index]
 
-        feature_vectors = np.load(osp.join(self.data_root, dataset_type, self.model_input, filename),
+        MODEL_INPUT = None
+        if self.use_trimmed and not self.use_untrimmed:
+            MODEL_INPUT = self.model_input
+        elif self.use_trimmed and self.use_untrimmed:
+            if dataset_type == 'UNTRIMMED':
+                MODEL_INPUT = self.model_input
+            elif dataset_type == 'TRIMMED':
+                MODEL_INPUT = 'i3d_224x224_chunk9'
+        elif self.use_untrimmed and not self.use_trimmed:
+            MODEL_INPUT = self.model_input
+
+        feature_vectors = np.load(osp.join(self.data_root,
+                                           dataset_type,
+                                           MODEL_INPUT,
+                                           filename),
                                   mmap_mode='r')
         feature_vectors = feature_vectors[start:end]
 

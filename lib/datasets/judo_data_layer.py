@@ -85,7 +85,21 @@ class _PerType_JUDODataLayer(data.Dataset):
     def __getitem__(self, index):
         dataset_type, session, step_target, start, end = self.inputs[index]
 
-        feature_vectors = np.load(osp.join(self.data_root, dataset_type, self.model_input, session+'.npy'),
+        MODEL_INPUT = None
+        if self.use_trimmed and not self.use_untrimmed:
+            MODEL_INPUT = self.model_input
+        elif self.use_trimmed and self.use_untrimmed:
+            if dataset_type == 'UNTRIMMED':
+                MODEL_INPUT = self.model_input
+            elif dataset_type == 'TRIMMED':
+                MODEL_INPUT = 'i3d_224x224_chunk9'
+        elif self.use_untrimmed and not self.use_trimmed:
+            MODEL_INPUT = self.model_input
+
+        feature_vectors = np.load(osp.join(self.data_root,
+                                           dataset_type,
+                                           MODEL_INPUT,
+                                           session+'.npy'),
                                   mmap_mode='r')
         feature_vectors = feature_vectors[start:end]
 
