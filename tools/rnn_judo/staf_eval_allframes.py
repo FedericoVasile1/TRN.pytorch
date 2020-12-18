@@ -99,6 +99,15 @@ def main(args):
             # For each chunk, take only the central frame
             target = original_target[args.chunk_size // 2::args.chunk_size]
 
+            candidate_actions = np.load(osp.join(args.data_root, dataset_type, 'candidatesV2ALL_'+args.model_target, session + '.npy'))
+            # round to multiple of CHUNK_SIZE
+            num_frames = candidate_actions.shape[0]
+            num_frames = num_frames - (num_frames % args.chunk_size)
+            candidate_actions = candidate_actions[:num_frames]
+            # For each chunk, take only the central frame
+            candidate_actions = candidate_actions[args.chunk_size // 2::args.chunk_size]
+            COOLDOWN = 0
+
             features_extracted = np.load(osp.join(args.data_root, dataset_type, args.model_input, session + '.npy'),
                                          mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
@@ -111,16 +120,31 @@ def main(args):
                 heatmaps_features_extracted = torch.as_tensor(heatmaps_features_extracted.astype(np.float32))
 
             for count in range(target.shape[0]):
-                if count % args.steps == 0:
-                    h_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
-                    c_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
+                #if count % args.steps == 0:
+                #    h_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
+                #    c_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
 
                 sample = to_device(features_extracted[count], device)
                 if dataset_type == 'UNTRIMMED' and args.use_heatmaps:
                     sample_heatmap = to_device(heatmaps_features_extracted[count], device)
                 else:
                     sample_heatmap = None
-                score, h_n, c_n = model.step(sample, sample_heatmap, h_n, c_n)
+
+                if candidate_actions[count, 1] == 1 and COOLDOWN == 0:
+                    # first step
+                    h_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
+                    c_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
+                    score, h_n, c_n = model.step(sample, sample_heatmap, h_n, c_n)
+                    COOLDOWN = args.steps - 1
+                else:
+                    if COOLDOWN > 0:
+                        # subsequent steps
+                        score, h_n, c_n = model.step(sample, sample_heatmap, h_n, c_n)
+                        COOLDOWN -= 1
+                    else:
+                        # get staf prediction, i.e background
+                        score = torch.zeros(1, args.num_classes, dtype=sample.dtype)
+                        score[0, 0] = 100
 
                 score = softmax(score).cpu().detach().numpy()[0]
                 for c in range(args.chunk_size):

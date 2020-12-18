@@ -61,8 +61,8 @@ def build_data_info(args, basic_build=False):
                         '--use_untrimmed must be True together.')
     if args.use_heatmaps and args.use_candidates and args.use_goodpoints:
         raise Exception('With --use_candidates and --use_goodpoints, you can not use --use_heatmaps')
-    if 'ATTENTION' in args.model and (args.use_heatmaps or args.use_trimmed):
-        raise Exception('With attention models you can not use --use_heatmaps and/or --use_trimmed')
+    if 'ATTENTION' in args.model and args.use_heatmaps:
+        raise Exception('With attention models you can not use --use_heatmaps')
 
     if args.model_input.startswith(BASE_FOLDER_RAW_FRAMES) or\
        args.model_input.startswith('candidates'+BASE_FOLDER_RAW_FRAMES) or\

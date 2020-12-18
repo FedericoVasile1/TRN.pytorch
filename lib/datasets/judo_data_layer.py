@@ -45,6 +45,8 @@ class _PerType_JUDODataLayer(data.Dataset):
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
         self.use_heatmaps = args.use_heatmaps and dataset_type=='UNTRIMMED'
+        self.use_untrimmed = args.use_untrimmed
+        self.use_trimmed = args.use_trimmed
 
         self.inputs = []
         for session in self.sessions:
