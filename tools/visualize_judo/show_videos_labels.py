@@ -22,14 +22,14 @@ if __name__ == '__main__':
     parser.add_argument('--use_untrimmed', default=False, action='store_true')
     parser.add_argument('--data_info', default='data/data_info.json', type=str)
     parser.add_argument('--frames_dir', default='video_frames_25fps', type=str)
-    parser.add_argument('--targets_dir', default='target_frames_25fps', type=str)
+    parser.add_argument('--targets_dir', default='4s_target_frames_25fps', type=str)
     # the fps at which videos frames are previously extracted
     parser.add_argument('--fps', default=25, type=int)
-    parser.add_argument('--chunk_size', default=9, type=int)
+    parser.add_argument('--chunk_size', default=1, type=int)
     parser.add_argument('--phase', default='train', type=str)
     parser.add_argument('--video_name', default='', type=str)
-    parser.add_argument('--save_video', action='store_true')
-    parser.add_argument('--samples', default=2, type=int)
+    parser.add_argument('--save_video', default=False, action='store_true')
+    parser.add_argument('--samples', default=1, type=int)
     parser.add_argument('--seed', default=-1, type=int)
     args = parser.parse_args()
 

@@ -69,6 +69,8 @@ def main(args):
             new_idxendframe -= 1
 
             for i in range(new_idxstartframe, new_idxendframe):
+                if i == l.shape[0]:
+                    break
                 l[i, 0] = 0
                 l[i, 1] = 1
 
@@ -95,14 +97,8 @@ if __name__ == '__main__':
         raise Exception('{} not found'.format(os.path.join(args.data_info)))
     if not os.path.isfile(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.labels_file)):
         raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.labels_file)))
-    if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.extracted_frames_dir)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.extracted_frames_dir)))
-    if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.extracted_features_dir)):
-        raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.extracted_features_dir)))
     if not os.path.isdir(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.target_labels_dir)):
         raise Exception('{} not found'.format(os.path.join(args.data_root + '/' + 'UNTRIMMED', args.target_labels_dir)))
-    if str(args.chunk_size) not in args.extracted_features_dir:
-        raise Exception('--extracted_features_dir and --chunk_size must contain the same chunk number')
 
     # do note modify these lines
     args.use_trimmed = False

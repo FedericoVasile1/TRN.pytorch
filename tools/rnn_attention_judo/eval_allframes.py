@@ -117,7 +117,7 @@ def main(args):
                     # the score and attention weights of the single chunk
                     #  are replicated along all the frames of the chunk
                     score_metrics.append(score)
-                    attn_weights_all.append(attn_weights_t.squeeze(0))
+                    attn_weights_all.append(attn_weights_t.squeeze(0).cpu())
                     # for each frame of the chunk, get its real label
                     target_metrics.append(original_target[count * args.chunk_size + c])
 

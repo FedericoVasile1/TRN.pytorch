@@ -115,7 +115,7 @@ def main(args):
 
                 score = softmax(score).cpu().detach().numpy()[0]
                 score_metrics.append(score)                             # score.shape == (num_classes,)
-                attn_weights_all.append(attn_weights_t.squeeze(0))
+                attn_weights_all.append(attn_weights_t.squeeze(0).cpu())
                 target_metrics.append(target[count])                    # target[count].shape == (num_classes,)
 
         end = time.time()
