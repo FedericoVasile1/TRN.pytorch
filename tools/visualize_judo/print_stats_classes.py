@@ -5,6 +5,7 @@ import argparse
 sys.path.append(os.getcwd())
 from configs.build import build_data_info
 from lib.utils.visualize import print_stats_classes
+from lib.utils import set_seed
 
 if __name__ == '__main__':
     base_dir = os.getcwd()
@@ -25,6 +26,8 @@ if __name__ == '__main__':
     parser.add_argument('--steps', default=16, type=int)        # needed only when --downsample_backgr == True
     parser.add_argument('--show_bar', action='store_true')
     parser.add_argument('--save_bar', action='store_true')
+    parser.add_argument('--seed', default=25, type=int)
+    parser.add_argument('--step', default=1, type=int)
     args = parser.parse_args()
 
     if not os.path.isdir(os.path.join(args.data_root)):

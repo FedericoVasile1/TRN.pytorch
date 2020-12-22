@@ -7,6 +7,7 @@ import os.path as osp
 import os
 import matplotlib.pyplot as plt
 import io
+import random
 
 def show_video_predictions(args,
                            video_name,
@@ -225,11 +226,14 @@ def print_stats_classes(args):
 
     TARGETS_BASE_DIR = os.path.join(args.data_root, args.target_labels_dir)
     tot_samples = 0
-    for video_name in os.listdir(TARGETS_BASE_DIR):
-        if '.npy' not in video_name:
-            continue
-        if valid_samples is not None and video_name[:-4] not in valid_samples:
-            continue
+    random.shuffle(valid_samples)
+    valid_samples = valid_samples[::args.step]
+    for video_name in os.listdir(valid_samples):
+        video_name = video_name + '.npy'
+        #if '.npy' not in video_name:
+        #    continue
+        #if valid_samples is not None and video_name[:-4] not in valid_samples:
+        #    continue
 
         target = np.load(os.path.join(TARGETS_BASE_DIR, video_name))
         num_frames = target.shape[0]
