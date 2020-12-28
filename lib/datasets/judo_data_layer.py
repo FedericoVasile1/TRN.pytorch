@@ -82,25 +82,27 @@ class _PerType_JUDODataLayer(data.Dataset):
 
                 step_target = target[start:end]
 
-                unique, counts = np.unique(step_target.argmax(axis=1), return_counts=True)
+                flag = True
+                if self.training:
+                    unique, counts = np.unique(step_target.argmax(axis=1), return_counts=True)
 
-                # drop if action samples are greater than threshold
-                for action_idx, num_samples in self.class_to_count.items():
-                    if num_samples < 2500:
-                        continue
-                    if action_idx in step_target.argmax(axis=1):
-                        continue
+                    # drop if action samples are greater than threshold
+                    for action_idx, num_samples in self.class_to_count.items():
+                        if num_samples < 2500:
+                            continue
+                        if action_idx in step_target.argmax(axis=1):
+                            flag = False
+                    # count actions labels
+                    for i, action_idx in enumerate(unique):
+                        if action_idx == 0:
+                            # ignore background class
+                            continue
+                        self.class_to_count[action_idx] += counts[i]
 
-                # count actions labels
-                for i, action_idx in enumerate(unique):
-                    if action_idx == 0:
-                        # ignore background class
-                        continue
-                    self.class_to_count[action_idx] += counts[i]
-
-                self.inputs.append([
-                    dataset_type, session, step_target, start, end
-                ])
+                if flag:
+                    self.inputs.append([
+                        dataset_type, session, step_target, start, end
+                    ])
 
     def __getitem__(self, index):
         dataset_type, session, step_target, start, end = self.inputs[index]
