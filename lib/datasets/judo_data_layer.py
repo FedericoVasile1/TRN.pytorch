@@ -74,21 +74,16 @@ class _PerType_JUDODataLayer(data.Dataset):
                 seed = np.random.randint(28+1 - self.steps) if self.training else 0
             for start, end in zip(range(seed, target.shape[0], self.steps),
                                   range(seed + self.steps, target.shape[0] + 1, self.steps)):
-                if args.downsample_backgr and self.training:
-                    background_vect = np.zeros_like(target[start:end])
-                    background_vect[:, 0] = 1
-                    if (target[start:end] == background_vect).all():
-                        continue
 
                 step_target = target[start:end]
 
                 flag = True
-                if self.training:
+                if self.training and args.downsampling > 0:
                     unique, counts = np.unique(step_target.argmax(axis=1), return_counts=True)
 
                     # drop if action samples are greater than threshold
                     for action_idx, num_samples in self.class_to_count.items():
-                        if num_samples < 2500:
+                        if num_samples < args.downsampling:
                             continue
                         if action_idx in step_target.argmax(axis=1):
                             flag = False

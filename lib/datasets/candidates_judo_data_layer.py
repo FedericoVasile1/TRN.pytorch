@@ -78,12 +78,12 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
                     step_target = target[start:end]
 
                     flag = True
-                    if self.training:
+                    if self.training and args.downsampling > 0:
                         unique, counts = np.unique(step_target.argmax(axis=1), return_counts=True)
 
                         # drop if action samples are greater than threshold
                         for action_idx, num_samples in self.class_to_count.items():
-                            if num_samples < 7200:
+                            if num_samples < args.downsampling:
                                 continue
                             if action_idx in step_target.argmax(axis=1):
                                 flag = False
