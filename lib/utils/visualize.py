@@ -7,7 +7,6 @@ import os.path as osp
 import os
 import matplotlib.pyplot as plt
 import io
-import random
 
 def show_video_predictions(args,
                            video_name,
@@ -75,6 +74,9 @@ def show_video_predictions(args,
             H, W, _ = open_cv_frame.shape
 
             attn_weights_t = attn_weights[idx]
+            # WARNING: here we do not normalize attn_weights since it is done in rnn_attention.forward
+            #  In theory, there should be no need to normalize, but if the differences between weights values are
+            #  small, this may be help to understand where the model focus more its attention
             attn_weights_t = attn_weights_t.squeeze(0)
             attn_weights_t = cv2.resize(attn_weights_t.data.numpy().copy(), (W, H), interpolation=cv2.INTER_NEAREST)
             attn_weights_t = np.repeat(np.expand_dims(attn_weights_t, axis=2), 3, axis=2)
@@ -226,14 +228,11 @@ def print_stats_classes(args):
 
     TARGETS_BASE_DIR = os.path.join(args.data_root, args.target_labels_dir)
     tot_samples = 0
-    random.shuffle(valid_samples)
-    valid_samples = valid_samples[::args.step]
-    for video_name in os.listdir(valid_samples):
-        video_name = video_name + '.npy'
-        #if '.npy' not in video_name:
-        #    continue
-        #if valid_samples is not None and video_name[:-4] not in valid_samples:
-        #    continue
+    for video_name in os.listdir(TARGETS_BASE_DIR):
+        if '.npy' not in video_name:
+            continue
+        if valid_samples is not None and video_name[:-4] not in valid_samples:
+            continue
 
         target = np.load(os.path.join(TARGETS_BASE_DIR, video_name))
         num_frames = target.shape[0]

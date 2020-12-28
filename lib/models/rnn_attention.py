@@ -59,6 +59,10 @@ class ScaledDotProductAttention(nn.Module):
         # get probability-normalized weights
         attn_weights = F.softmax(attn_weights, dim=2)
 
+        # WARNING: usually it is wrong to normalize here, it is only a temporary attempt
+        norm  = torch.linalg.norm(attn_weights, dim=2).squeeze(0)       # norm.shape == (batch_size, )
+        attn_weights = (attn_weights.squeeze(1) / norm).unsqueeze(1)
+
         # compute context vector attn
         attn = feat_maps_projected.bmm(attn_weights.permute(0, 2, 1))  # attn.shape == (batch_size, rnn_hidden_size, 1)
         attn = attn.squeeze(2)

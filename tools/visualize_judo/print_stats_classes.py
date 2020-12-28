@@ -57,4 +57,6 @@ if __name__ == '__main__':
     if not os.path.isdir(os.path.join(args.data_root, args.target_labels_dir)):
         raise Exception('{} not found'.format(os.path.join(args.data_root, args.target_labels_dir)))
 
+    set_seed(int(args.seed))
+
     print_stats_classes(args)
