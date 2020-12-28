@@ -47,6 +47,7 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
         self.use_heatmaps = args.use_heatmaps and dataset_type=='UNTRIMMED'
         self.use_untrimmed = args.use_untrimmed
         self.use_trimmed = args.use_trimmed
+        self.class_to_count = {idx_class + 1: 0 for idx_class in range(args.num_classes - 1)}
 
         self.steps = args.steps
         if args.model_input.split('_')[0] == 'candidatesV2' and args.steps > 22:
@@ -75,9 +76,28 @@ class Candidates_PerType_JUDODataLayer(data.Dataset):
                 for start, end in zip(range(seed, target.shape[0], self.steps),
                                       range(seed + self.steps, target.shape[0] + 1, self.steps)):
                     step_target = target[start:end]
-                    self.inputs.append([
-                        dataset_type, filename, step_target, start, end
-                    ])
+
+                    flag = True
+                    if self.training:
+                        unique, counts = np.unique(step_target.argmax(axis=1), return_counts=True)
+
+                        # drop if action samples are greater than threshold
+                        for action_idx, num_samples in self.class_to_count.items():
+                            if num_samples < 7200:
+                                continue
+                            if action_idx in step_target.argmax(axis=1):
+                                flag = False
+                        # count actions labels
+                        for i, action_idx in enumerate(unique):
+                            if action_idx == 0:
+                                # ignore background class
+                                continue
+                            self.class_to_count[action_idx] += counts[i]
+
+                    if flag:
+                        self.inputs.append([
+                            dataset_type, filename, step_target, start, end
+                        ])
 
         elif dataset_type == 'TRIMMED':
             for filename in self.sessions:
