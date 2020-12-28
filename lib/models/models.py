@@ -5,6 +5,7 @@ from .rnn_attention import RNNAttention
 from .bidirectionalrnn import BIDIRECTIONALRNN
 from .encdec import EncDec
 from .convlstm import ConvLSTM
+from .transformer import Transformer
 
 _META_ARCHITECTURES = {
     'LSTM': RNNmodel,
@@ -22,6 +23,9 @@ _META_ARCHITECTURES = {
     'ENCDECBIDIRECTIONALGRU': EncDec,
 
     'CONVLSTM': ConvLSTM,
+
+    'TRANSFORMERLSTM': Transformer,
+    'TRANSFORMERGRU': Transformer,
 }
 
 def build_model(args):

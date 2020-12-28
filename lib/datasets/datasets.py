@@ -38,6 +38,11 @@ _DATA_LAYERS = {
     'GRUJUDOCANDIDATES': Candidates_JUDODataLayer,
 
     'CONVLSTMJUDOE2E': JUDODataLayerE2E,
+
+    'TRANSFORMERGRUJUDO': JUDODataLayer,
+    'TRANSFORMERGRUJUDOCANDIDATES': Candidates_JUDODataLayer,
+    'TRANSFORMERLSTMJUDO': JUDODataLayer,
+    'TRANSFORMERLSTMJUDOCANDIDATES': Candidates_JUDODataLayer,
 }
 
 def build_dataset(args, phase):
