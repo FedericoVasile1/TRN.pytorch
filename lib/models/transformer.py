@@ -14,7 +14,7 @@ class _MyGRUCell(nn.GRUCell):
 
 class Transformer(nn.Module):
     def __init__(self, args):
-        super(RNNmodel, self).__init__()
+        super(Transformer, self).__init__()
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.steps = args.steps

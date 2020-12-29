@@ -1,5 +1,6 @@
 import os.path as osp
 import numpy as np
+import random
 
 import torch
 import torch.utils.data as data
@@ -47,9 +48,16 @@ class _PerType_JUDODataLayer(data.Dataset):
         self.use_heatmaps = args.use_heatmaps and dataset_type=='UNTRIMMED'
         self.use_untrimmed = args.use_untrimmed
         self.use_trimmed = args.use_trimmed
-        self.class_to_count = {idx_class+1: 0 for idx_class in range(args.num_classes-1)}
+
+        self.downsampling = args.downsampling > 0 and dataset_type == 'UNTRIMMED'
+        if self.downsampling:
+            # WE ARE TAKING INTO ACCOUNT ONLY ACTION CLASSES, I.E. BACKGROUND CLASS IS NOT DOWNSAMPLED
+            # MODIFY ALSO LINE 101 IF YOU WNAT TO INCLUDE ALSO BACKGROUND CLASS
+            self.class_to_count = {idx_class+1: 0 for idx_class in range(args.num_classes-1)}
 
         self.inputs = []
+        if self.downsampling:
+            random.shuffle(self.sessions)
         for session in self.sessions:
             if not osp.isfile(osp.join(self.data_root, dataset_type, args.model_target, session+'.npy')):
                 # skip trimmed videos in which the pose model does
@@ -78,7 +86,7 @@ class _PerType_JUDODataLayer(data.Dataset):
                 step_target = target[start:end]
 
                 flag = True
-                if self.training and args.downsampling > 0:
+                if self.training and self.downsampling:
                     unique, counts = np.unique(step_target.argmax(axis=1), return_counts=True)
 
                     # drop if action samples are greater than threshold

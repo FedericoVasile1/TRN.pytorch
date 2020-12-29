@@ -1,6 +1,7 @@
 import os
 import os.path as osp
 import numpy as np
+import random
 
 import torch
 import torch.utils.data as data
@@ -38,8 +39,12 @@ class Candidates_PerType_JUDODataLayerE2E(data.Dataset):
         self.model_input = args.model_input
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
-
         self.chunk_size = args.chunk_size
+
+        self.downsampling = args.downsampling > 0 and dataset_type == 'UNTRIMMED'
+        if self.downsampling:
+            # WE ARE TAKING INTO ACCOUNT BOTH BACKGROUND AND ACTION CLASSES
+            self.class_to_count = {idx_class: 0 for idx_class in range(args.num_classes)}
 
         if args.feature_extractor == 'I3D':
             self.transform = transforms.Compose([
@@ -52,7 +57,10 @@ class Candidates_PerType_JUDODataLayerE2E(data.Dataset):
             raise Exception('Wrong --feature_extractor option. ' + args.feature_extractor + ' unknown')
 
         self.inputs = []
-        for filename in os.listdir(osp.join(args.data_root, dataset_type, args.model_target)):
+        files = os.listdir(osp.join(args.data_root, dataset_type, args.model_target))
+        if self.downsampling:
+            random.shuffle(files)
+        for filename in files:
             if filename.split('___')[1][:-4] not in self.sessions:
                 continue
 
@@ -68,9 +76,17 @@ class Candidates_PerType_JUDODataLayerE2E(data.Dataset):
             target = target[args.chunk_size // 2::args.chunk_size]
 
             for idx_chunk in range(target.shape[0]):
-                self.inputs.append([
-                    dataset_type, filename, target[idx_chunk], idx_chunk, shift
-                ])
+                flag = True
+                if self.training and self.downsampling:
+                    cls_idx = target[idx_chunk].argmax().item()
+                    self.class_to_count[cls_idx] += 1
+                    if self.class_to_count[cls_idx] > args.downsampling:
+                        flag = False
+
+                if flag:
+                    self.inputs.append([
+                        dataset_type, filename, target[idx_chunk], idx_chunk, shift
+                    ])
 
     def __getitem__(self, index):
         dataset_type, filename, target, idx_chunk, shift = self.inputs[index]
