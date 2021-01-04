@@ -47,4 +47,7 @@ def parse_model_args():
 
     parser.add_argument('--use_heatmaps', default=False, action='store_true')
 
+    parser.add_argument('--nhead', default=-1, type=int)
+    parser.add_argument('--num_layers', default=-1, type=int)
+
     return build_data_info(parser.parse_args())

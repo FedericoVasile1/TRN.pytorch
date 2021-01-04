@@ -39,10 +39,8 @@ _DATA_LAYERS = {
 
     'CONVLSTMJUDOE2E': JUDODataLayerE2E,
 
-    'TRANSFORMERGRUJUDO': JUDODataLayer,
-    'TRANSFORMERGRUJUDOCANDIDATES': Candidates_JUDODataLayer,
-    'TRANSFORMERLSTMJUDO': JUDODataLayer,
-    'TRANSFORMERLSTMJUDOCANDIDATES': Candidates_JUDODataLayer,
+    'TRANSFORMERJUDO': JUDODataLayer,
+    'TRANSFORMERJUDOCANDIDATES': Candidates_JUDODataLayer,
 }
 
 def build_dataset(args, phase):
