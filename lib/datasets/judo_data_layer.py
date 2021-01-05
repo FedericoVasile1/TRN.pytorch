@@ -45,7 +45,6 @@ class _PerType_JUDODataLayer(data.Dataset):
         self.steps = args.steps
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')[dataset_type]
-        self.use_heatmaps = args.use_heatmaps and dataset_type=='UNTRIMMED'
         self.use_untrimmed = args.use_untrimmed
         self.use_trimmed = args.use_trimmed
 
@@ -56,7 +55,7 @@ class _PerType_JUDODataLayer(data.Dataset):
             self.class_to_count = {idx_class+1: 0 for idx_class in range(args.num_classes-1)}
 
         self.inputs = []
-        if self.downsampling:
+        if self.downsampling and self.training:
             random.shuffle(self.sessions)
         for session in self.sessions:
             if not osp.isfile(osp.join(self.data_root, dataset_type, args.model_target, session+'.npy')):
@@ -128,21 +127,10 @@ class _PerType_JUDODataLayer(data.Dataset):
                                   mmap_mode='r')
         feature_vectors = feature_vectors[start:end]
 
-        if self.use_heatmaps:
-            heatmaps_feature_vectors = np.load(osp.join(self.data_root,
-                                                        dataset_type,
-                                                        'heatmaps_'+self.model_input,
-                                                        session + '.npy'),
-                                               mmap_mode='r')
-            heatmaps_feature_vectors = heatmaps_feature_vectors[start:end]
-        else:
-            heatmaps_feature_vectors = np.zeros_like(feature_vectors)
-
         feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
-        heatmaps_feature_vectors = torch.as_tensor(heatmaps_feature_vectors.astype(np.float32))
         step_target = torch.as_tensor(step_target.astype(np.float32))
 
-        return feature_vectors, heatmaps_feature_vectors, step_target
+        return feature_vectors, step_target
 
     def __len__(self):
         return len(self.inputs)

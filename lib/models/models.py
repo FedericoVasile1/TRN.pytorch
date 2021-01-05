@@ -24,8 +24,7 @@ _META_ARCHITECTURES = {
 
     'CONVLSTM': ConvLSTM,
 
-    'TRANSFORMERLSTM': Transformer,
-    'TRANSFORMERGRU': Transformer,
+    'TRANSFORMER': Transformer,
 }
 
 def build_model(args):
