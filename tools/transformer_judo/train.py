@@ -76,12 +76,11 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (inputs, heatmaps, targets) in enumerate(data_loaders[phase], start=1):
+                for batch_idx, (inputs, targets) in enumerate(data_loaders[phase], start=1):
                     # inputs.shape == (batch_size, steps, feat_vect_dim [if starting from features])
                     # targets.shape == (batch_size, steps, num_classes)
                     batch_size = inputs.shape[0]
                     inputs = inputs.to(device)
-                    heatmaps = heatmaps.to(device) if args.use_heatmaps else heatmaps
 
                     if training:
                         optimizer.zero_grad()
