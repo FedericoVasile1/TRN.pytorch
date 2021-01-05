@@ -93,7 +93,7 @@ def main(args):
                     if training:
                         optimizer.zero_grad()
 
-                    scores = model(inputs, heatmaps)            # scores.shape == (batch_size, steps, num_classes)
+                    scores = model(inputs)            # scores.shape == (batch_size, steps, num_classes)
 
                     scores = scores.to(device)
                     targets = targets.to(device)

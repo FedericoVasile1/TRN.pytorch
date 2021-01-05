@@ -67,14 +67,9 @@ class FeatureExtractor(nn.Module):
             self.fusion_size = self.feat_vect_dim
             self.input_linear = nn.Identity()
 
-    def forward(self, x, heatmaps):
-        # x.shape == heatmaps.shape == (batch_size, 1024)
+    def forward(self, x):
+        # x.shape == (batch_size, 1024)
         x = self.feature_extractor(x)
-        if self.use_heatmaps:
-            if self.use_trimmed:
-                x += heatmaps
-            else:
-                x = torch.cat((x, heatmaps), dim=1)
         x = self.input_linear(x)
         return x
 

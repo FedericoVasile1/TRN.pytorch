@@ -33,7 +33,7 @@ class RNNmodel(nn.Module):
         self.drop_after = nn.Dropout(args.dropout)
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
-    def forward(self, x, heatmaps):
+    def forward(self, x):
         # x.shape == (batch_size, enc_steps, feat_vect_dim)
         h_n = torch.zeros(x.shape[0],
                           self.hidden_size,
@@ -46,7 +46,7 @@ class RNNmodel(nn.Module):
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
         for step in range(self.steps):
             x_t = x[:, step]
-            out = self.feature_extractor(x_t, heatmaps[:, step])
+            out = self.feature_extractor(x_t)
             if step == 0:
                 out = self.drop_before(out)
 
