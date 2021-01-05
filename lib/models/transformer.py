@@ -14,7 +14,7 @@ class Transformer(nn.Module):
         self.feature_extractor = build_feature_extractor(args)
         self.d_model = self.feature_extractor.fusion_size
 
-        encoder_layer = nn.TransformerEncoderLayer(d_model=self.d_model, nhead=self.nhead)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=self.d_model, nhead=self.nhead, dropout=args.dropout)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=self.num_layers)
 
         self.classifier = nn.Linear(self.d_model, self.num_classes)
