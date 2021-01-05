@@ -62,7 +62,6 @@ class FeatureExtractor(nn.Module):
             self.fusion_size = args.neurons
             self.input_linear = nn.Sequential(
                 nn.Linear(self.feat_vect_dim , self.fusion_size),
-                nn.ReLU(inplace=True),
             )
         else:
             self.fusion_size = self.feat_vect_dim
