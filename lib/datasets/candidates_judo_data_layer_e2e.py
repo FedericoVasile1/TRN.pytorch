@@ -12,59 +12,39 @@ from lib.models.i3d.i3d import I3DNormalization
 
 class Candidates_JUDODataLayerE2E(data.Dataset):
     def __init__(self, args, phase='train'):
-        if args.eval_on_untrimmed:
-            raise Exception('In EndToEnd mode only --use_untrimmed option is supported, so drop --eval_on_untrimmed')
-        else:
-            if args.use_trimmed == args.use_untrimmed == True:
-                raise Exception('In EndToEnd mode only --use_untrimmed option is supported, so drop --use_trimmed')
-            elif args.use_trimmed:
-                raise Exception('In EndToEnd mode only --use_untrimmed option is supported, so drop --use_trimmed')
-            elif args.use_untrimmed:
-                self.datalayer = Candidates_PerType_JUDODataLayerE2E(args, 'UNTRIMMED', phase)
-
-    def __getitem__(self, index):
-        return self.datalayer.__getitem__(index)
-
-    def __len__(self):
-        return self.datalayer.__len__()
-
-class Candidates_PerType_JUDODataLayerE2E(data.Dataset):
-    def __init__(self, args, dataset_type, phase='train'):
-        if args.model != 'CNN3D':
-            raise Exception('This class is intended to be used only for CNN3D model since it does not take into '
-                            'account the --steps arguments, i.e. each chunk is treated independently so one chunk'
-                            'is returned instead a sequence of subsequent chunks "--steps" long.')
-
         self.data_root = args.data_root
         self.model_input = args.model_input
         self.training = phase=='train'
-        self.sessions = getattr(args, phase+'_session_set')[dataset_type]
+        self.sessions = getattr(args, phase+'_session_set')
         self.chunk_size = args.chunk_size
 
-        self.downsampling = args.downsampling > 0 and dataset_type == 'UNTRIMMED'
+        self.downsampling = args.downsampling > 0 and self.training
         if self.downsampling:
             # WE ARE TAKING INTO ACCOUNT BOTH BACKGROUND AND ACTION CLASSES
             self.class_to_count = {idx_class: 0 for idx_class in range(args.num_classes)}
 
-        if args.feature_extractor == 'I3D':
-            self.transform = transforms.Compose([
-                transforms.Resize((224, 320)),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                I3DNormalization(),
-            ])
+        if args.is_3D:
+            if args.feature_extractor == 'I3D':
+                self.transform = transforms.Compose([
+                    transforms.Resize((224, 320)),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    I3DNormalization(),
+                ])
+            else:
+                raise Exception('Wrong --feature_extractor option. ' + args.feature_extractor + ' unknown')
         else:
-            raise Exception('Wrong --feature_extractor option. ' + args.feature_extractor + ' unknown')
+            raise Exception('Wrong --feature_extractor option. CNN2D feature extractors are no longer supported.')
 
         self.inputs = []
-        files = os.listdir(osp.join(args.data_root, dataset_type, args.model_target))
+        files = os.listdir(osp.join(args.data_root, args.model_target))
         if self.downsampling:
             random.shuffle(files)
         for filename in files:
             if filename.split('___')[1][:-4] not in self.sessions:
                 continue
 
-            target = np.load(osp.join(self.data_root, dataset_type, args.model_target, filename))
+            target = np.load(osp.join(self.data_root, args.model_target, filename))
             # temporal data augmentation
             shift = np.random.randint(self.chunk_size) if self.training else 0
             target = target[shift:]
@@ -77,7 +57,7 @@ class Candidates_PerType_JUDODataLayerE2E(data.Dataset):
 
             for idx_chunk in range(target.shape[0]):
                 flag = True
-                if self.training and self.downsampling:
+                if self.downsampling:
                     cls_idx = target[idx_chunk].argmax().item()
                     self.class_to_count[cls_idx] += 1
                     if self.class_to_count[cls_idx] > args.downsampling:
@@ -85,11 +65,11 @@ class Candidates_PerType_JUDODataLayerE2E(data.Dataset):
 
                 if flag:
                     self.inputs.append([
-                        dataset_type, filename, target[idx_chunk], idx_chunk, shift
+                        filename, target[idx_chunk], idx_chunk, shift
                     ])
 
     def __getitem__(self, index):
-        dataset_type, filename, target, idx_chunk, shift = self.inputs[index]
+        filename, target, idx_chunk, shift = self.inputs[index]
 
         start_idx = int(filename.split('___')[0]) + shift
         start_idx = start_idx + idx_chunk * self.chunk_size
@@ -97,7 +77,6 @@ class Candidates_PerType_JUDODataLayerE2E(data.Dataset):
         for i in range(self.chunk_size):
             idx_cur_frame = start_idx + i
             frame = Image.open(osp.join(self.data_root,
-                                        dataset_type,
                                         self.model_input,
                                         filename[:-4],
                                         str(idx_cur_frame)+'.jpg')).convert('RGB')

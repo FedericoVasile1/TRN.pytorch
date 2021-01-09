@@ -4,12 +4,8 @@ __all__ = ['parse_model_args']
 
 def parse_model_args():
     parser = parse_base_args()
+    # WARNING: will be used te UNTRIMMED JUDO dataset! see configs.base_configs.py line 15
     parser.add_argument('--data_root', default='data/JUDO', type=str)
-    parser.add_argument('--use_trimmed', default=False, action='store_true')
-    parser.add_argument('--use_untrimmed', default=False, action='store_true')
-    # if True, trimmed dataset will be all used for training(together with untrimmed training set), while
-    #  validation and test will be done on val/test untrimmed sets
-    parser.add_argument('--eval_on_untrimmed', default=False, action='store_true')
     parser.add_argument('--phases', default=['train', 'val'], type=list)
 
     parser.add_argument('--model', default='GRU', type=str)
@@ -17,6 +13,7 @@ def parse_model_args():
     # number of unrolling steps for rnn
     parser.add_argument('--steps', default=16, type=int)
     parser.add_argument('--dropout', default=0.0, type=float)
+
     # whether or not to put a linear layer between feature extractor and temporal model
     parser.add_argument('--put_linear', action='store_true')
     # neurons of the linear layer above
@@ -26,8 +23,10 @@ def parse_model_args():
     parser.add_argument('--model_input', default='i3d_224x224_chunk9', type=str)
     parser.add_argument('--model_target', default='4s_target_frames_25fps', type=str)
     # in case of starting from pre-extracted features, must specify the dimension of the feature vector
+
     parser.add_argument('--feat_vect_dim', default=-1, type=int)
     # in case of starting from raw frames, must specify the feature extractor to use
+
     parser.add_argument('--feature_extractor', default='', type=str)
     # the feature extractor takes chunk_size frames in input and generate a feature vector.
     #  Common values: 9, 12, 16
@@ -40,13 +39,13 @@ def parse_model_args():
     parser.add_argument('--reduce_lr_epoch', default=-1, type=int)
     parser.add_argument('--reduce_lr_count', default=30, type=int)
 
+    # downsampling or not the action classes.
+    # Specify as parameter the number of samples to which each class will be downsampled
     parser.add_argument('--downsampling', default=-1, type=int)
 
-    parser.add_argument('--use_goodpoints', default=False, action='store_true')
     parser.add_argument('--use_candidates', default=False, action='store_true')
 
-    parser.add_argument('--use_heatmaps', default=False, action='store_true')
-
+    # only for transformer model
     parser.add_argument('--nhead', default=-1, type=int)
     parser.add_argument('--num_layers', default=-1, type=int)
 

@@ -7,66 +7,26 @@ import torch.utils.data as data
 
 class JUDODataLayer(data.Dataset):
     def __init__(self, args, phase='train'):
-        if args.eval_on_untrimmed:
-            if phase == 'train':
-                self.datalayer = _PerType_JUDODataLayer(args, 'UNTRIMMED', phase)
-                self.appo1 = _PerType_JUDODataLayer(args, 'TRIMMED', 'train')
-                self.appo2 = _PerType_JUDODataLayer(args, 'TRIMMED', 'val')
-                self.appo3 = _PerType_JUDODataLayer(args, 'TRIMMED', 'test')
-                self.datalayer.inputs.extend(self.appo1.inputs)
-                self.datalayer.inputs.extend(self.appo2.inputs)
-                self.datalayer.inputs.extend(self.appo3.inputs)
-                del self.appo1
-                del self.appo2
-                del self.appo3
-            else:
-                self.datalayer = _PerType_JUDODataLayer(args, 'UNTRIMMED', phase)
-        else:
-            if args.use_trimmed == args.use_untrimmed == True:
-                self.datalayer = _PerType_JUDODataLayer(args, 'UNTRIMMED', phase)
-                self.appo = _PerType_JUDODataLayer(args, 'TRIMMED', phase)
-                self.datalayer.inputs.extend(self.appo.inputs)
-                del self.appo
-            elif args.use_trimmed:
-                self.datalayer = _PerType_JUDODataLayer(args, 'TRIMMED', phase)
-            elif args.use_untrimmed:
-                self.datalayer = _PerType_JUDODataLayer(args, 'UNTRIMMED', phase)
-
-    def __getitem__(self, index):
-        return self.datalayer.__getitem__(index)
-
-    def __len__(self):
-        return self.datalayer.__len__()
-
-class _PerType_JUDODataLayer(data.Dataset):
-    def __init__(self, args, dataset_type, phase='train'):
         self.data_root = args.data_root
         self.model_input = args.model_input
         self.steps = args.steps
         self.training = phase=='train'
-        self.sessions = getattr(args, phase+'_session_set')[dataset_type]
-        self.use_untrimmed = args.use_untrimmed
-        self.use_trimmed = args.use_trimmed
+        self.sessions = getattr(args, phase+'_session_set')
+        self.chunk_size = args.chunk_size
 
-        self.downsampling = args.downsampling > 0 and dataset_type == 'UNTRIMMED'
+        self.downsampling = args.downsampling > 0 and self.training
         if self.downsampling:
-            # WE ARE TAKING INTO ACCOUNT ONLY ACTION CLASSES, I.E. BACKGROUND CLASS IS NOT DOWNSAMPLED
+            # WE ARE TAKING INTO ACCOUNT ONLY ACTION CLASSES, I.E. BACKGROUND CLASS IS NOT DOWNSAMPLED!
             # MODIFY ALSO LINE 101 IF YOU WNAT TO INCLUDE ALSO BACKGROUND CLASS
             self.class_to_count = {idx_class+1: 0 for idx_class in range(args.num_classes-1)}
 
         self.inputs = []
-        if self.downsampling and self.training:
+        if self.downsampling:
+            # in order to do not downsample always the same samples!
             random.shuffle(self.sessions)
         for session in self.sessions:
-            if not osp.isfile(osp.join(self.data_root, dataset_type, args.model_target, session+'.npy')):
-                # skip trimmed videos in which the pose model does
-                #  not detect any fall(i.e. fall==-1 in fall_detections.csv).
-                # TODO: fix these videos later on, in order to include also them
-                continue
-
             target = np.load(osp.join(self.data_root,
-                                      dataset_type,
-                                      args.model_target if dataset_type=='UNTRIMMED' else '2s_target_frames_25fps',
+                                      args.model_target,
                                       session+'.npy'))
             # round to multiple of chunk_size
             num_frames = target.shape[0]
@@ -75,17 +35,14 @@ class _PerType_JUDODataLayer(data.Dataset):
             # For each chunk, the central frame label is the label of the entire chunk
             target = target[args.chunk_size // 2::args.chunk_size]
 
-            if dataset_type == 'UNTRIMMED':
-                seed = np.random.randint(self.steps) if self.training else 0
-            else:
-                seed = np.random.randint(28+1 - self.steps) if self.training else 0
+            seed = np.random.randint(self.steps) if self.training else 0
             for start, end in zip(range(seed, target.shape[0], self.steps),
                                   range(seed + self.steps, target.shape[0] + 1, self.steps)):
 
                 step_target = target[start:end]
 
                 flag = True
-                if self.training and self.downsampling:
+                if self.downsampling:
                     unique, counts = np.unique(step_target.argmax(axis=1), return_counts=True)
 
                     # drop if action samples are greater than threshold
@@ -103,28 +60,22 @@ class _PerType_JUDODataLayer(data.Dataset):
 
                 if flag:
                     self.inputs.append([
-                        dataset_type, session, step_target, start, end
+                        session, step_target, start, end
                     ])
 
     def __getitem__(self, index):
-        dataset_type, session, step_target, start, end = self.inputs[index]
-
-        MODEL_INPUT = None
-        if self.use_trimmed and not self.use_untrimmed:
-            MODEL_INPUT = self.model_input
-        elif self.use_trimmed and self.use_untrimmed:
-            if dataset_type == 'UNTRIMMED':
-                MODEL_INPUT = self.model_input
-            elif dataset_type == 'TRIMMED':
-                MODEL_INPUT = 'i3d_224x224_chunk9'
-        elif self.use_untrimmed and not self.use_trimmed:
-            MODEL_INPUT = self.model_input
+        session, step_target, start, end = self.inputs[index]
 
         feature_vectors = np.load(osp.join(self.data_root,
-                                           dataset_type,
-                                           MODEL_INPUT,
+                                           self.model_input,
                                            session+'.npy'),
                                   mmap_mode='r')
+        if 'resnext' in self.model_input:
+            num_frames = feature_vectors.shape[0]
+            num_frames = num_frames - (num_frames % self.chunk_size)
+            feature_vectors = feature_vectors[:num_frames]
+            feature_vectors = feature_vectors[self.chunk_size // 2::self.chunk_size]
+
         feature_vectors = feature_vectors[start:end]
 
         feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
