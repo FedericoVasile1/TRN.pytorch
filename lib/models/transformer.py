@@ -44,7 +44,10 @@ class Transformer(nn.Module):
         self.d_model = self.feature_extractor.fusion_size
 
         self.pe = PositionalEncoder(self.d_model, self.steps)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=self.d_model, nhead=self.nhead, dropout=args.dropout)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=self.d_model,
+                                                   nhead=self.nhead,
+                                                   dropout=args.dropout,
+                                                   dim_feedforward=self.d_model * 4)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=self.num_layers)
 
         self.classifier = nn.Linear(self.d_model, self.num_classes)
