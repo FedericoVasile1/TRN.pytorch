@@ -25,14 +25,15 @@ class Transformer(nn.Module):
     def forward(self, x):
         # x.shape == (batch_size, enc_steps, feat_vect_dim)
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
-        transf_x = torch.zeros(x.shape[0], x.shape[1], self.feature_extractor.fusion_size,
-                               dtype=x.dtype, device=x.device)
+        transf_x = torch.zeros(x.shape[0], x.shape[1], self.feature_extractor.fusion_size).to(dtype=x.dtype,
+                                                                                              device=x.device)
 
         for step in range(self.steps):
             transf_x[:, step] = self.feature_extractor(x[:, step])
 
         transf_x = self.transformer(transf_x.transpose(0, 1)).transpose(0, 1)
 
-        scores = self.classifier(transf_x)
+        for step in range(self.steps):
+            scores[:, step] = self.classifier(transf_x[:, step])
 
         return scores

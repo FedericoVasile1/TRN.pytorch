@@ -16,21 +16,6 @@ def show_video_predictions(args,
                            frames_dir='video_frames_24fps',
                            fps=24,
                            transform=None):
-    '''
-    It shows the video_name together with its ground truth, its predictions(if provided), its attention
-     weights(if provided)
-    :param args: ParserArgument object containing main arguments
-    :param video_name: string containing the name of the video
-    :param target_metrics: numpy array of shape(num_frames, num_classes) containing the ground truth of the video.
-                                Notice that the that array that comes here is **already chunked**
-    :param score_metrics: numpy array of shape(num_frames, num_classes) containing the output scores of the model
-    :param attn_weights: shape(num_frames, HH, WW)
-    :param frames_dir: string containing the base folder name, i.e. under the base folder there will be
-                        one folder(i.e. video_name) for each video, this will contains the frames of that video
-    :param fps: int representing the fps at which the video is previously extracted(this number is needed in order
-                    to correctly make the conversion from index of frame to its time in seconds)
-    :return:
-    '''
     if score_metrics is not None:
         pred_metrics = torch.argmax(torch.tensor(score_metrics), dim=1)
     target_metrics = torch.argmax(torch.tensor(target_metrics), dim=1)
@@ -193,15 +178,6 @@ def show_random_videos(args,
                        targets_dir='target_frames_24fps',
                        fps=24,
                        transform=None):
-    '''
-    It shows sampled videos from samples_list, randomly sampled. Furthermore, labels are attached to video.
-    :param args: ParserArgument object containing main arguments
-    :param video_name_list: a list containing the video names from which to sample a video
-    :param samples: int representing the number of video to show
-    :param frames_dir: string containing the base folder name, i.e. under the base folder there will be
-                        one folder(i.e. video_name) for each video, this will contains the frames of that video
-    :return:
-    '''
     num_samples = len(samples_list)
     idx_samples = np.random.choice(num_samples, size=samples, replace=False)
     for i in idx_samples:

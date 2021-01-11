@@ -9,24 +9,16 @@ from lib.models.i3d.i3d import InceptionI3d
 class CNN3D(nn.Module):
     def __init__(self, args):
         super(CNN3D, self).__init__()
-        if not (args.model_input.startswith('video_frames_') or\
-                args.model_input.startswith('candidates_video_frames_')):
-            raise Exception('Wrong --model_input option. The chosen model can only work in end to end training')
 
         if args.model == 'CNN3D':
-            if args.feature_extractor == 'RESNET2+1D':
-                self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
-                self.feature_extractor.fc = nn.Linear(self.feature_extractor.fc.in_features, args.num_classes)
+            if args.feature_extractor == 'I3D':
+                self.model = InceptionI3d()
+                self.model.load_state_dict(torch.load(os.path.join('lib', 'models', 'i3d', 'rgb_imagenet.pt')))
 
                 # TODO choose which part of the network to train, now it's all trainable
-            elif args.feature_extractor == 'I3D':
-                self.feature_extractor = InceptionI3d()
-                # load i3d weights from imagenet + kinetics training
-                self.feature_extractor.load_state_dict(torch.load(os.path.join('lib', 'models', 'i3d', 'rgb_imagenet.pt')))
-                # TODO choose which part of the network to train, now it's all trainable
-                self.feature_extractor.freeze_partial_layers()
+                self.model.freeze_partial_layers()
 
-                self.feature_extractor.replace_logits(args.num_classes)
+                self.model.replace_logits(args.num_classes)
             else:
                 raise Exception('Wrong --feature_extractor option, ' + args.feature_extractor + ' is not supported')
         else:
@@ -34,5 +26,5 @@ class CNN3D(nn.Module):
 
     def forward(self, x):
         # x.shape(batch_size, C, chunk_size, H, W)
-        x = self.feature_extractor(x)
+        x = self.model(x)
         return x

@@ -81,6 +81,12 @@ class Candidates_JUDODataLayer(data.Dataset):
                                            self.model_input,
                                            filename),
                                   mmap_mode='r')
+        if 'resnext' in self.model_input:
+            num_frames = feature_vectors.shape[0]
+            num_frames = num_frames - (num_frames % self.chunk_size)
+            feature_vectors = feature_vectors[:num_frames]
+            feature_vectors = feature_vectors[self.chunk_size // 2::self.chunk_size]
+
         feature_vectors = feature_vectors[start:end]
 
         feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))

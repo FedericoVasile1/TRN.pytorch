@@ -1,5 +1,5 @@
 '''
-File taken from https://github.com/piergiaj/pytorch-i3d
+File taken from https://github.com/piergiaj/pytorch-i3d/blob/master/pytorch_i3d.py
 '''
 import torch
 import torch.nn as nn

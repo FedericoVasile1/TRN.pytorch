@@ -70,9 +70,6 @@ class ScaledDotProductAttention(nn.Module):
         return attn, attn_weights.squeeze(1).view(attn_weights.shape[0], HH, WW)
 
 class RNNAttention(nn.Module):
-    """
-    Notice that here we work only with RGB feature maps; neither optical flow fusion nor feature vectors are allowed.
-    """
     def __init__(self, args):
         super(RNNAttention, self).__init__()
         if 'featuremaps' not in args.model_input:
@@ -82,9 +79,8 @@ class RNNAttention(nn.Module):
 
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
-        self.enc_steps = args.steps
+        self.steps = args.steps
 
-        # The feature_extractor outputs feature maps of shape (batch_size, 512, 7, 7)
         self.feature_extractor = build_feature_extractor(args)
         self.numfeatmaps = self.feature_extractor.feat_vect_dim     # e.g. 512
         if self.numfeatmaps not in (832, 1024):
@@ -120,7 +116,7 @@ class RNNAttention(nn.Module):
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
     def forward(self, x):
-        # x.shape == (batch_size, enc_steps, C, chunk_size, 112, 112) || (batch_size, enc_steps, 3, 224, 224)
+        # x.shape == (batch_size, steps, CC, TT, HH, WW)
         h_n = torch.zeros(x.shape[0],
                           self.hidden_size,
                           device=x.device,
@@ -131,29 +127,29 @@ class RNNAttention(nn.Module):
                           dtype=x.dtype) if self.model == 'LSTMATTENTION' else torch.zeros(1).cpu()
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
 
-        for step in range(self.enc_steps):
+        for step in range(self.steps):
             x_t = x[:, step]
-            feat_maps = self.feature_extractor(x_t, torch.zeros(1).cpu())  # second input is optical flow, in our case will not be used
+            feat_maps = self.feature_extractor(x_t)
             feat_maps = self.lin_reduction(feat_maps)
 
-            # feat_maps.shape == (batch_size, 512, 7, 7)
-            feat_maps = feat_maps.flatten(start_dim=2)      # flatten feature maps to feature vectors
+            # feat_maps.shape == (batch_size, CC, HH, WW)
+            feat_maps = feat_maps.flatten(start_dim=2)      # flatten each feature map to a feature vector
 
-            # project the number of channels down to hidden_size, i.e. from 512 to hidden_size
+            # project the number of channels down to hidden_size, i.e. from CC=1024 to hidden_size
             feat_maps_projected = self.numfeatmaps_to_hidden(feat_maps.permute(0, 2, 1))
-            # feat_maps_projected.shape == (batch_size, 7 * 7, hidden_size)
+            # feat_maps_projected.shape == (batch_size, HH * WW, hidden_size)
             # Permute back to original axis
             feat_maps_projected = feat_maps_projected.permute(0, 2, 1)
 
             # Compute attention weights and context vector(attn)
             attn, _ = self.attention(h_n, feat_maps_projected)
 
-            input = feat_maps.mean(dim=2)       # perform global average pooling. input.shape == (batch_size, 512)
+            input = feat_maps.mean(dim=2)       # perform global average pooling. input.shape == (batch_size, CC)
             input = torch.cat((input, attn), dim=1)
             h_n, c_n = self.rnn(input, (h_n, c_n))
             out = self.classifier(h_n)  # out.shape == (batch_size, num_classes)
 
-            scores[:, step, :] = out
+            scores[:, step] = out
         return scores
 
     def step(self, x_t, h_n, c_n):

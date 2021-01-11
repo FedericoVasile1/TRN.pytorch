@@ -2,7 +2,6 @@ from .thumos_data_layer import THUMOSDataLayer
 from .thumos_data_layer_e2e import THUMOSDataLayerE2E
 from .judo_data_layer import JUDODataLayer
 from .judo_data_layer_e2e import JUDODataLayerE2E
-from .goodpoints_judo_data_layer import Goodpoints_JUDODataLayer
 from .candidates_judo_data_layer import Candidates_JUDODataLayer
 from .candidates_judo_data_layer_e2e import Candidates_JUDODataLayerE2E
 
@@ -12,27 +11,26 @@ _DATA_LAYERS = {
     'GRUTHUMOS': THUMOSDataLayer,
     'GRUTHUMOSE2E': THUMOSDataLayerE2E,
     'CNN3DTHUMOSE2E': THUMOSDataLayerE2E,
-    'CNNTHUMOSE2E': THUMOSDataLayerE2E,
+    'CNN2DTHUMOSE2E': THUMOSDataLayerE2E,
 
-    'LSTMJUDO': JUDODataLayer,
-    'GRUJUDO': JUDODataLayer,
     'CNN3DJUDOE2E': JUDODataLayerE2E,
     'CNN2DJUDOE2E': JUDODataLayerE2E,
+    'LSTMJUDO': JUDODataLayer,
+    'GRUJUDO': JUDODataLayer,
     'BIDIRECTIONALLSTMJUDO': JUDODataLayer,
     'BIDIRECTIONALGRUJUDO': JUDODataLayer,
-    'GRUATTENTIONJUDO': JUDODataLayer,
     'LSTMATTENTIONJUDO': JUDODataLayer,
+    'GRUATTENTIONJUDO': JUDODataLayer,
+    'TRANSFORMERJUDO': JUDODataLayer,
 
-    'LSTMJUDOCANDIDATES': Candidates_JUDODataLayer,
-    'GRUJUDOCANDIDATES': Candidates_JUDODataLayer,
     'CNN3DJUDOE2ECANDIDATES': Candidates_JUDODataLayerE2E,
     'CNN2DJUDOE2ECANDIDATES': Candidates_JUDODataLayerE2E,
+    'LSTMJUDOCANDIDATES': Candidates_JUDODataLayer,
+    'GRUJUDOCANDIDATES': Candidates_JUDODataLayer,
     'BIDIRECTIONALLSTMJUDOCANDIDATES': Candidates_JUDODataLayer,
     'BIDIRECTIONALGRUJUDOCANDIDATES': Candidates_JUDODataLayer,
-    'GRUATTENTIONJUDOCANDIDATES': Candidates_JUDODataLayer,
     'LSTMATTENTIONJUDOCANDIDATES': Candidates_JUDODataLayer,
-
-    'TRANSFORMERJUDO': JUDODataLayer,
+    'GRUATTENTIONJUDOCANDIDATES': Candidates_JUDODataLayer,
     'TRANSFORMERJUDOCANDIDATES': Candidates_JUDODataLayer,
 }
 

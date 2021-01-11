@@ -44,20 +44,22 @@ class RNNmodel(nn.Module):
                           device=x.device,
                           dtype=x.dtype) if self.model == 'LSTM' else torch.zeros(1)
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
-        for step in range(self.steps):
-            x_t = x[:, step]
-            out = self.feature_extractor(x_t)
-            if step == 0:
-                out = self.drop_before(out)
+        transf_x = torch.zeros(x.shape[0], x.shape[1], self.feature_extractor.fusion_size).to(dtype=x.dtype,
+                                                                                              device=x.device)
 
-            h_n, c_n = self.rnn(out, (h_n, c_n))
+        for step in range(self.steps):
+            transf_x[:, step] = self.feature_extractor(x[:, step])
+            if step == 0:
+                transf_x[:, step] = self.drop_before(transf_x[:, step])
+
+            h_n, c_n = self.rnn(transf_x[:, step], (h_n, c_n))
             out = self.classifier(self.drop_after(h_n))  # out.shape == (batch_size, num_classes)
 
-            scores[:, step, :] = out
+            scores[:, step] = out
         return scores
 
-    def step(self, x_t, heatmaps_t, h_n, c_n):
-        out = self.feature_extractor(x_t, heatmaps_t)
+    def step(self, x_t, h_n, c_n):
+        out = self.feature_extractor(x_t)
 
         # to check if we are at the first timestep of the sequence, we exploit the fact that at the first
         #  timestep the hidden state is all zeros.

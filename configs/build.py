@@ -43,8 +43,24 @@ def build_data_info(args, basic_build=False):
     #       where videoN.npy.shape == (num_frames_in_video//chunk_size, feature_vector_dim)
     BASE_FOLDER_FEAT_EXTR = '_chunk'+str(args.chunk_size)
 
-    if ('candidates' in args.model_input or 'candidates' in args.model_target) and not args.use_candidates:
-        raise Exception('You are providing candidates input without using --use_candidates option')
+
+    if args.use_candidates:
+        if 'candidates' not in args.model_input or 'candidates' not in args.model_target:
+            raise Exception('With --use_candidates option you must provide input candidates features'
+                            '(via --model_input option)  and target candidates(via --model_target option)')
+        args.candidates = 'CANDIDATES'
+    else:
+        if 'candidates' in args.model_input or 'candidates' in args.model_target:
+            raise Exception('You are providing candidates input without using --use_candidates option')
+        args.candidates = ''
+
+    if args.model == 'TRANSFORMER' and (args.nhead == -1 or args.num_layers == -1):
+        raise Exception('You are usinga TRANSFORMER model without specifying the number of heads and layers')
+
+    if args.model in ('CNN2D', 'CNN3D') and args.feature_extractor == '':
+        raise Exception('You must specify a feature_extractor, i.e. the specific CNN model that you want.')
+    if args.model not in ('CNN2D', 'CNN3D') and args.feature_extractor != '':
+        raise Exception('--feature_extractor option is actually supported only for CNN2D and CNN3D model.')
 
     if BASE_FOLDER_RAW_FRAMES in args.model_input:
         if args.model not in ('CNN3D', 'CNN2D'):

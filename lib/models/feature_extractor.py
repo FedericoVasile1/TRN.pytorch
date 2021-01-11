@@ -11,67 +11,30 @@ class FeatureExtractor(nn.Module):
         super(FeatureExtractor, self).__init__()
         if args.E2E == '':
             # starting from features extracted
-            self.use_heatmaps = args.use_heatmaps
-            self.use_trimmed = args.use_trimmed
-            self.feat_vect_dim = (args.feat_vect_dim * 2) if args.use_heatmaps and not args.use_trimmed else args.feat_vect_dim
-            self.feature_extractor = nn.Identity()   # no feature extractor needed
-        else:
-            # starting from frames, so choose a feature extractor
-            if args.feature_extractor == 'VGG16':
-                self.feature_extractor = models.vgg16(pretrained=True)
+            self.feat_vect_dim = args.feat_vect_dim
 
-                self.feat_vect_dim = self.feature_extractor.classifier[0].out_features
-                self.feature_extractor.classifier = self.feature_extractor.classifier[:2]   # extract fc6 feature vector
-
-                for param in self.feature_extractor.parameters():
-                    param.requires_grad = False
-
-            elif args.feature_extractor == 'RESNET34':
-                self.feature_extractor = models.resnet34(pretrained=True)
-                self.feat_vect_dim = self.feature_extractor.fc.in_features
-
-                self.feature_extractor.fc = nn.Identity()   # extract feature vector
-
-                for param in self.feature_extractor.parameters():
-                    param.requires_grad = False
-
-            elif args.feature_extractor == 'RESNET2+1D':
-                self.feature_extractor = models.video.r2plus1d_18(pretrained=True)
-                self.feat_vect_dim = self.feature_extractor.fc.in_features
-
-                self.feature_extractor.fc = nn.Identity()
-
-                for param in self.feature_extractor.parameters():
-                    param.requires_grad = False
-
-            elif args.feature_extractor == 'I3D':
-                self.feature_extractor = InceptionI3d()
-                self.feature_extractor.load_state_dict(torch.load(os.path.join('lib', 'models', 'i3d', 'rgb_imagenet.pt')))
-                self.feat_vect_dim = 1024
-                self.feature_extractor.dropout = nn.Identity()
-                self.feature_extractor.logits = nn.Identity()
-
-                for param in self.feature_extractor.parameters():
-                    param.requires_grad = False
-
+            # To put or not a linear layer between the feature extractor and the recurrent model
+            if args.put_linear:
+                self.fusion_size = args.neurons
+                self.feature_extractor = nn.Sequential(
+                    nn.Linear(self.feat_vect_dim, self.fusion_size),
+                    nn.ReLU(inplace='true'),
+                )
             else:
-                raise Exception('Wrong --feature_extractor option. '+args.feature_extractor+' unknown')
+                self.fusion_size = self.feat_vect_dim
+                self.feature_extractor = nn.Identity()
 
-        # To put or not a linear layer between the feature extractor and the recurrent model
-        if args.put_linear:
-            self.fusion_size = args.neurons
-            self.input_linear = nn.Sequential(
-                nn.Linear(self.feat_vect_dim , self.fusion_size),
-                nn.ReLU(inplace='true'),
-            )
         else:
-            self.fusion_size = self.feat_vect_dim
-            self.input_linear = nn.Identity()
+            # Actually this part is empty, it should be fill in case you want to do a CNN+RNN end to
+            #  end training. So here you would put the self.feature_extractor object, similar to CNN2D.py and CNN3D.py
+            if args.model not in ('CNN3D', 'CNN2D'):
+                raise NotImplementedError('Actually we support end to end training only for CNN3D and CNN2D models')
+            else:
+                # we should not get here
+                raise NotImplementedError()
 
     def forward(self, x):
-        # x.shape == (batch_size, 1024)
         x = self.feature_extractor(x)
-        x = self.input_linear(x)
         return x
 
 _FEATURE_EXTRACTORS = {

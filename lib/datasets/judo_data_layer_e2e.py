@@ -32,13 +32,19 @@ class JUDODataLayerE2E(data.Dataset):
             else:
                 raise Exception('Wrong --feature_extractor option. ' + args.feature_extractor + ' unknown')
         else:
-            raise Exception('Wrong --feature_extractor option. CNN2D feature extractors are no longer supported.')
+            if args.feature_extractor == 'RESNEXT101':
+                self.transform = transforms.Compose([
+                    transforms.Resize((224, 320)),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                ])
+            else:
+                raise Exception('Wrong --feature_extractor option. ' + args.feature_extractor + ' unknown')
 
         self.inputs = []
         for session in self.sessions:
-            target = np.load(osp.join(self.data_root,
-                                      args.model_target,
-                                      session+'.npy'))
+            target = np.load(osp.join(self.data_root, args.model_target, session+'.npy'))
             # temporal data augmentation
             shift = np.random.randint(self.chunk_size) if self.training else 0
             target = target[shift:]
@@ -63,6 +69,12 @@ class JUDODataLayerE2E(data.Dataset):
                     ])
 
     def __getitem__(self, index):
+        if self.is_3D:
+            self.getitem_3D(index)
+        else:
+            self.getitem_2D(index)
+
+    def getitem_3D(self, index):
         session, target, idx_chunk, shift = self.inputs[index]
 
         start_idx = shift + idx_chunk * self.chunk_size
@@ -72,16 +84,31 @@ class JUDODataLayerE2E(data.Dataset):
             frame = Image.open(osp.join(self.data_root,
                                         self.model_input,
                                         session,
-                                        str(idx_cur_frame)+'.jpg')).convert('RGB')
+                                        str(idx_cur_frame) + '.jpg')).convert('RGB')
             frame = transforms(frame).to(dtype=torch.float32)
             raw_frames.append(frame)
 
         raw_frames = torch.stack(raw_frames)
-        raw_frames = raw_frames.permute(1, 0, 2, 3)     # channel before
+        raw_frames = raw_frames.permute(1, 0, 2, 3)  # channel before
 
         target = torch.as_tensor(target.astype(np.float32))
 
         return raw_frames, target
+
+    def getitem_2D(self, index):
+        session, target, idx_chunk, shift = self.inputs[index]
+
+        start_idx = shift + idx_chunk * self.chunk_size
+        idx_cur_frame = start_idx + self.chunk_size // 2
+        frame = Image.open(osp.join(self.data_root,
+                                    self.model_input,
+                                    session,
+                                    str(idx_cur_frame) + '.jpg')).convert('RGB')
+        frame = transforms(frame).to(dtype=torch.float32)
+
+        target = torch.as_tensor(target.astype(np.float32))
+
+        return frame, target
 
     def __len__(self):
         return len(self.inputs)

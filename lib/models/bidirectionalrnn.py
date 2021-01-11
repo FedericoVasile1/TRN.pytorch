@@ -9,8 +9,6 @@ class BIDIRECTIONALRNN(nn.Module):
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.steps = args.steps
-        self.use_heatmaps = args.use_heatmaps
-        self.use_trimmed = args.use_trimmed
 
         self.feature_extractor = build_feature_extractor(args)
 
@@ -33,20 +31,18 @@ class BIDIRECTIONALRNN(nn.Module):
 
         self.classifier = nn.Linear(self.hidden_size * 2, self.num_classes)
 
-    def forward(self, x, heatmaps):
-        # x.shape == heatmaps.shape == (batch_size, steps, 1024)
-        scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
-        transf_x = torch.zeros(x.shape[0],
-                               x.shape[1],
-                               (x.shape[2]*2) if self.use_heatmaps and not self.use_trimmed else x.shape[2])
-        transf_x = transf_x.to(dtype=x.dtype, device=x.device)
+    def forward(self, x):
+        # x.shape == (batch_size, steps, feat_vect_dim)
+        scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes).to(dtype=x.dtype)
+        transf_x = torch.zeros(x.shape[0], x.shape[1], self.feature_extractor.fusion_size).to(dtype=x.dtype,
+                                                                                              device=x.device)
 
         for step in range(self.steps):
-            transf_x[:, step, :] = self.feature_extractor(x[:, step], heatmaps[:, step])
+            transf_x[:, step] = self.feature_extractor(x[:, step])
 
         h_ts, _ = self.rnn(transf_x)        # h_ts.shape == (batch_size, enc_steps, 2*hidden_size)
 
         for step in range(self.steps):
-            scores[:, step, :] = self.classifier(h_ts[:, step, :])
+            scores[:, step] = self.classifier(h_ts[:, step])
 
         return scores

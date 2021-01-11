@@ -9,13 +9,13 @@ def parse_model_args():
     parser.add_argument('--phases', default=['train', 'val'], type=list)
 
     parser.add_argument('--model', default='GRU', type=str)
-    parser.add_argument('--hidden_size', default=1024, type=int)
+    parser.add_argument('--hidden_size', default=256, type=int)
     # number of unrolling steps for rnn
-    parser.add_argument('--steps', default=16, type=int)
-    parser.add_argument('--dropout', default=0.0, type=float)
+    parser.add_argument('--steps', default=32, type=int)
+    parser.add_argument('--dropout', default=0.1, type=float)
 
     # whether or not to put a linear layer between feature extractor and temporal model
-    parser.add_argument('--put_linear', action='store_true')
+    parser.add_argument('--put_linear', default=False, action='store_true')
     # neurons of the linear layer above
     parser.add_argument('--neurons', default=128, type=int)
 

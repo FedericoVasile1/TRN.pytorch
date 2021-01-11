@@ -8,16 +8,8 @@ import torch.nn as nn
 from PIL import Image
 
 sys.path.append(os.getcwd())
-import _init_paths
-from lib.models.i3d import InceptionI3d
+from lib.models.i3d.i3d import InceptionI3d
 from lib.datasets.judo_data_layer_e2e import I3DNormalization
-
-class Flatten(nn.Module):
-    def __init__(self):
-        super(Flatten, self).__init__()
-
-    def forward(self, x):
-        return x.view(x.shape[0], -1)
 
 def main():
     os.environ['CUDA_VISIBLE_DEVICES'] = str(1)
@@ -25,11 +17,8 @@ def main():
 
     model = InceptionI3d()
     model.load_state_dict(torch.load('rgb_imagenet.pt'))
-    model.replace_logits(5)     # == num_classes
     model.dropout = nn.Identity()
     model.logits = nn.Identity()
-
-    FEAT_VECT_DIM = 1024
 
     model = model.to(device)
     model.train(False)
@@ -41,35 +30,52 @@ def main():
         I3DNormalization(),
     ])
 
-    #SAMPLE_FRAMES = 9     # generate a feature vector every SAMPLE_FRAMES frames
-    SAMPLE_FRAMES = 6  # generate a feature vector every SAMPLE_FRAMES frames
+    CHUNK_SIZE = 9
+    BATCH_SIZE = 64
 
-    DATA_ROOT = 'data/JUDO'
+    DATA_ROOT = 'data/JUDO/UNTRIMMED'
     VIDEO_FRAMES = 'video_frames_25fps'   # base folder where the video folders (containing the frames) are
-    VIDEO_FEATURES = 'i3d_224x224_chunk6'
+    VIDEO_FEATURES = 'i3d_224x224_chunk'+str(CHUNK_SIZE)
 
     with torch.set_grad_enabled(False):
         videos_dir = os.listdir(os.path.join(DATA_ROOT, VIDEO_FRAMES))
         videos_dir = [dir for dir in videos_dir if '.mp4' in dir]
         for dir in videos_dir:
             num_frames = len(os.listdir(os.path.join(DATA_ROOT, VIDEO_FRAMES, dir)))
-            num_frames = num_frames - (num_frames % SAMPLE_FRAMES)
+            num_frames = num_frames - (num_frames % CHUNK_SIZE)
 
-            feat_vects_video = torch.zeros(num_frames//SAMPLE_FRAMES, FEAT_VECT_DIM, dtype=torch.float32)
-            sample = torch.zeros(SAMPLE_FRAMES, 3, 224, 224, dtype=torch.float32)
-            for idx_frame in range(0, num_frames):
-                # idx_frame+1 because frames start from 1.  e.g. 1.jpg
-                frame = Image.open(os.path.join(DATA_ROOT, VIDEO_FRAMES, dir, str(idx_frame+1)+'.jpg')).convert('RGB')
-                frame = transform(frame).to(dtype=torch.float32)
-                sample[idx_frame%SAMPLE_FRAMES] = frame
-                if idx_frame%SAMPLE_FRAMES == SAMPLE_FRAMES-1:
-                    sample = sample.permute(1, 0, 2, 3).unsqueeze(0).to(device)
+            feat_vects_video = []
+            batch = []
+            for i in range(0, num_frames, CHUNK_SIZE):
+                sample = []
+                for idx_frame in range(i, i+CHUNK_SIZE):
+                    # idx_frame+1 because frames start from 1.  e.g. 1.jpg
+                    frame = Image.open(os.path.join(DATA_ROOT,
+                                                    VIDEO_FRAMES,
+                                                    dir,
+                                                    str(idx_frame+1)+'.jpg')).convert('RGB')
+                    frame = transform(frame).to(dtype=torch.float32)
+                    sample.append(frame)
+
+                sample = torch.stack(sample)
+                batch.append(sample.permute(1, 0, 2, 3))
+                if len(batch) == BATCH_SIZE:
+                    batch = torch.stack(batch).to(device)
                     # forward pass
-                    feat_vect = model(sample)     # TODO: load a batch instead of a single sample
-                    feat_vects_video[idx_frame//SAMPLE_FRAMES] = feat_vect.squeeze(0)
-                    sample = torch.zeros(SAMPLE_FRAMES, 3, 224, 224, dtype=torch.float32)
+                    feat_vect = model(batch)
+                    feat_vects_video.append(feat_vect)
+                    batch = []
 
-            np.save(os.path.join(DATA_ROOT, VIDEO_FEATURES, str(dir)+'.npy'), feat_vects_video.numpy())
+            if len(batch) != 0:
+                batch = torch.stack(batch).to(device)
+                # forward pass
+                feat_vect = model(batch)
+                feat_vects_video.append(feat_vect)
+
+            feat_vects_video = torch.cat(feat_vects_video).cpu()
+            np.save(os.path.join(DATA_ROOT,
+                                 VIDEO_FEATURES,
+                                 str(dir)+'.npy'), feat_vects_video.numpy())
 
 if __name__ == '__main__':
     main()

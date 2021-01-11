@@ -22,8 +22,6 @@ def main(args):
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint, map_location=torch.device('cpu'))
         model.load_state_dict(checkpoint['model_state_dict'])
-    else:
-        model.apply(utl.weights_init)
     if args.distributed:
         model = nn.DataParallel(model)
     model = model.to(device)
@@ -51,7 +49,7 @@ def main(args):
     #with torch.set_grad_enabled(False):
     #    temp = utl.build_data_loader(args, 'train')
     #    dataiter = iter(temp)
-    #    inputs, _, _ = dataiter.next()
+    #    inputs, _ = dataiter.next()
     #    writer.add_graph(model, inputs.to(device))
     #    writer.close()
 
@@ -83,8 +81,8 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (inputs, _, targets) in enumerate(data_loaders[phase], start=1):
-                    # inputs.shape == (batch_size, steps, feat_vect_dim [if starting from features])
+                for batch_idx, (inputs, targets) in enumerate(data_loaders[phase], start=1):
+                    # inputs.shape == (batch_size, steps, CC, TT, HH, WW)
                     # targets.shape == (batch_size, steps, num_classes)
                     batch_size = inputs.shape[0]
                     inputs = inputs.to(device)

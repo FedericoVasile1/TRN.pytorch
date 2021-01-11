@@ -54,17 +54,6 @@ def main(args):
 
     softmax = nn.Softmax(dim=1).to(device)
 
-    if args.eval_on_untrimmed:
-        args.test_session_set = args.test_session_set['UNTRIMMED']
-    else:
-        if args.use_untrimmed == args.use_trimmed == True:
-            args.test_session_set['TRIMMED'].extend(args.test_session_set['UNTRIMMED'])
-            args.test_session_set = args.test_session_set['TRIMMED']
-        elif args.use_trimmed:
-            args.test_session_set = args.test_session_set['TRIMMED']
-        elif args.use_untrimmed:
-            args.test_session_set = args.test_session_set['UNTRIMMED']
-
     utl.set_seed(int(args.seed))
     random.shuffle(args.test_session_set)
 
@@ -78,20 +67,9 @@ def main(args):
         count_frames = 0
 
     for session_idx, session in enumerate(args.test_session_set, start=1):
-        if 'Grand Prix' in session:
-            dataset_type = 'UNTRIMMED'
-        elif 'GoPro' in session:
-            dataset_type = 'TRIMMED'
-        else:
-            raise Exception('Unknown video name: ' + session)
-        if not osp.isfile(osp.join(args.data_root, dataset_type, args.model_target, session + '.npy')):
-            # skip videos in which the pose model does not detect any fall(i.e. fall==-1  in fall_detections.csv).
-            # TODO: fix these videos later on, in order to incluso also them
-            continue
-
         start = time.time()
         with torch.set_grad_enabled(False):
-            original_target = np.load(osp.join(args.data_root, dataset_type, args.model_target, session + '.npy'))
+            original_target = np.load(osp.join(args.data_root, args.model_target, session + '.npy'))
             # round to multiple of CHUNK_SIZE
             num_frames = original_target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
@@ -99,60 +77,69 @@ def main(args):
             # For each chunk, take only the central frame
             target = original_target[args.chunk_size // 2::args.chunk_size]
 
-            candidate_actions = np.load(osp.join(args.data_root, dataset_type, 'candidatesV2ALL_' + args.model_target, session + '.npy'))
+            # it contains staf predictions, i.e. background or candidate
+            candidate_actions = np.load(osp.join(args.data_root, 'candidatesV2ALL_' + args.model_target, session + '.npy'))
             # round to multiple of CHUNK_SIZE
             num_frames = candidate_actions.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
             candidate_actions = candidate_actions[:num_frames]
             # For each chunk, take only the central frame
             candidate_actions = candidate_actions[args.chunk_size // 2::args.chunk_size]
-            #COOLDOWN = 0
 
-            features_extracted = np.load(osp.join(args.data_root, dataset_type, args.model_input, session + '.npy'),
+            features_extracted = np.load(osp.join(args.data_root, args.model_input, session + '.npy'),
                                          mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
-            if dataset_type == 'UNTRIMMED' and args.use_heatmaps:
-                heatmaps_features_extracted = np.load(osp.join(args.data_root,
-                                                               dataset_type,
-                                                               'heatmaps_'+args.model_input,
-                                                               session + '.npy'),
-                                             mmap_mode='r')
-                heatmaps_features_extracted = torch.as_tensor(heatmaps_features_extracted.astype(np.float32))
+            if 'resnext' in args.model_input:
+                num_frames = feature_vectors.shape[0]
+                num_frames = num_frames - (num_frames % args.chunk_size)
+                feature_vectors = feature_vectors[:num_frames]
+                feature_vectors = feature_vectors[args.chunk_size // 2::args.chunk_size]
 
+            COOLDOWN = 0
             samples = []
-            samples_heatmaps = []
             for count in range(target.shape[0]):
-                samples.append(features_extracted[count])
-                if dataset_type == 'UNTRIMMED' and args.use_heatmaps:
-                    samples_heatmaps.append(heatmaps_features_extracted[count])
 
-                if count % args.steps == 0 and count != 0:
-                    samples = torch.stack(samples).unsqueeze(0).to(device)
-                    if dataset_type == 'UNTRIMMED' and args.use_heatmaps:
-                        samples_heatmaps = torch.stack(samples_heatmaps).unsqueeze(0).to(device)
+                if candidate_actions[count, 1] == 1 and COOLDOWN == 0:
+                    # first step
+                    samples.append(features_extracted[count])
+                    COOLDOWN = args.steps - 1
+                else:
+                    if COOLDOWN > 0:
+                        # subsequent steps
+                        COOLDOWN -= 1
+                        samples.append(features_extracted[count])
+                        if len(samples) == args.steps:
+                            samples = torch.stack(samples)
+                            samples = to_device(samples, device)    # samples.shape == (1, steps, feat_vect_dim)
+                            scores = model(samples)
 
-                    if candidate_actions[count, 1] == 1:
-                        scores = model(samples, samples_heatmaps)         # scores.shape == (1, steps, num_classes)
+                            scores = scores.squeeze(0)
+                            scores = softmax(scores).cpu().detach().numpy()
+                            for s in range(len(scores)):
+                                for c in range(args.chunk_size):
+                                    score_metrics.append(scores[s])
+
+                            samples = []
                     else:
-                        scores = torch.zeros(1, args.steps, args.num_classes, dtype=torch.float32)
-                        scores[0, :, 0] = 100
-
-                    scores = scores.squeeze(0)
-                    scores = softmax(scores).cpu().detach().numpy()
-                    for s in range(len(scores)):
-                        for c in range(args.chunk_size):
-                            score_metrics.append(scores[s])
-                    samples = []
+                        # get staf prediction, i.e. background
+                        scores = torch.zeros(args.steps, args.num_classes, dtype=torch.float32)
+                        scores[:, 0] = 100
+                        scores = softmax(scores).numpy()
+                        for s in range(len(scores)):
+                            for c in range(args.chunk_size):
+                                score_metrics.append(scores[s])
 
                 for c in range(args.chunk_size):
                     target_metrics.append(original_target[count * args.chunk_size + c])
 
-            if samples != []:
+            if len(samples) != 0:
                 appo = len(samples)
                 for i in range(appo, args.steps):
                     samples.append(torch.zeros_like(features_extracted[0]))
-                samples = torch.stack(samples).unsqueeze(0).to(device)
+                samples = torch.stack(samples)
+                samples = to_device(samples, device)
                 scores = model(samples)
+
                 scores = scores[:, :appo]
                 scores = scores.squeeze(0)
                 scores = softmax(scores).cpu().detach().numpy()
@@ -169,8 +156,6 @@ def main(args):
         if args.show_predictions:
             appo = args.chunk_size
             args.chunk_size = 1
-            appo2 = args.data_root
-            args.data_root = args.data_root + '/' + dataset_type
             show_video_predictions(args,
                                    session,
                                    target_metrics[count_frames:count_frames + original_target.shape[0]],
@@ -178,21 +163,17 @@ def main(args):
                                    frames_dir='video_frames_25fps',
                                    fps=25)
             args.chunk_size = appo
-            args.data_root = appo2
             count_frames += original_target.shape[0]
 
     if args.save_video:
         # here the video will be saved
         args.chunk_size = 1
-        appo = args.data_root
-        args.data_root = args.data_root + '/' + dataset_type
         show_video_predictions(args,
                                session,
                                target_metrics,
                                score_metrics,
                                frames_dir='video_frames_25fps',
                                fps=25)
-        args.data_root = appo
         # print some stats about the video labels and predictions, then kill the program
         print('\n=== LABEL SEGMENTS ===')
         segments_list = get_segments(target_metrics, args.class_index, 25, args.chunk_size)

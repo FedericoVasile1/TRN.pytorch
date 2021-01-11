@@ -44,7 +44,7 @@ def build_data_loader(args, phase='train'):
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
-        #m.weight.data.normal_(0.0, 0.001)
+        m.weight.data.normal_(0.0, 0.001)
         pass
     elif isinstance(m, nn.Linear):
         m.weight.data.normal_(0.0, 0.001)
@@ -58,6 +58,10 @@ def weights_init(m):
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+
+
+# to delete functions below
+
 def show_video_predictions(args,
                            video_name,
                            enc_target_metrics,
@@ -65,16 +69,6 @@ def show_video_predictions(args,
                            attn_weights=None,
                            frames_dir='video_frames_24fps',
                            fps=24):
-    '''
-    :param args: ParserArgument object containing main arguments
-    :param video_name: string containing the name of the video
-    :param enc_target_metrics: numpy array of shape(num_frames, num_classes) containing the ground truth of the video
-    :param enc_score_metrics: numpy array of shape(num_frames, num_classes) containing the output scores of the model
-    :param attn_weights:
-    :param frames_dir: string containing the base folder name, i.e. under the base folder there will be
-                        one folder(i.e. video_name) for each video, this will contains the frames of that video
-    :return:
-    '''
     if enc_score_metrics is not None:
         enc_pred_metrics = torch.argmax(torch.tensor(enc_score_metrics), dim=1)
     enc_target_metrics = torch.argmax(torch.tensor(enc_target_metrics), dim=1)

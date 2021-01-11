@@ -22,8 +22,6 @@ def main(args):
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint, map_location=torch.device('cpu'))
         model.load_state_dict(checkpoint['model_state_dict'])
-    else:
-        model.apply(utl.weights_init)
     if args.distributed:
         model = nn.DataParallel(model)
     model = model.to(device)

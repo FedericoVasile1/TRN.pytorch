@@ -1,3 +1,6 @@
+'''
+File taken from https://github.com/kenshohara/3D-ResNets-PyTorch/blob/master/models/resnet2p1d.py
+'''
 import math
 from functools import partial
 

@@ -17,6 +17,7 @@ class Candidates_JUDODataLayerE2E(data.Dataset):
         self.training = phase=='train'
         self.sessions = getattr(args, phase+'_session_set')
         self.chunk_size = args.chunk_size
+        self.is_3D = args.is_3D
 
         self.downsampling = args.downsampling > 0 and self.training
         if self.downsampling:
@@ -34,7 +35,15 @@ class Candidates_JUDODataLayerE2E(data.Dataset):
             else:
                 raise Exception('Wrong --feature_extractor option. ' + args.feature_extractor + ' unknown')
         else:
-            raise Exception('Wrong --feature_extractor option. CNN2D feature extractors are no longer supported.')
+            if args.feature_extractor == 'RESNEXT101':
+                self.transform = transforms.Compose([
+                    transforms.Resize((224, 320)),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                ])
+            else:
+                raise Exception('Wrong --feature_extractor option. ' + args.feature_extractor + ' unknown')
 
         self.inputs = []
         files = os.listdir(osp.join(args.data_root, args.model_target))
@@ -69,6 +78,12 @@ class Candidates_JUDODataLayerE2E(data.Dataset):
                     ])
 
     def __getitem__(self, index):
+        if self.is_3D:
+            self.getitem_3D(index)
+        else:
+            self.getitem_2D(index)
+
+    def getitem_3D(self, index):
         filename, target, idx_chunk, shift = self.inputs[index]
 
         start_idx = int(filename.split('___')[0]) + shift
@@ -89,6 +104,24 @@ class Candidates_JUDODataLayerE2E(data.Dataset):
         target = torch.as_tensor(target.astype(np.float32))
 
         return raw_frames, target
+
+    def getitem_2D(self, index):
+        filename, target, idx_chunk, shift = self.inputs[index]
+
+        start_idx = int(filename.split('___')[0]) + shift
+        start_idx = start_idx + idx_chunk * self.chunk_size
+        idx_cur_frame = start_idx + self.chunk_size // 2
+
+        frame = Image.open(osp.join(self.data_root,
+                                    self.model_input,
+                                    filename[:-4],
+                                    str(idx_cur_frame)+'.jpg')).convert('RGB')
+        frame = self.transform(frame).to(dtype=torch.float32)
+
+        target = torch.as_tensor(target.astype(np.float32))
+
+        return frame, target
+
 
     def __len__(self):
         return len(self.inputs)
