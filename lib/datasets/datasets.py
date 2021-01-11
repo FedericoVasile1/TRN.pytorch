@@ -35,5 +35,5 @@ _DATA_LAYERS = {
 }
 
 def build_dataset(args, phase):
-    data_layer = _DATA_LAYERS[args.model + args.dataset + args.E2E + args.goodpoints + args.candidates]
+    data_layer = _DATA_LAYERS[args.model + args.dataset + args.E2E + args.candidates]
     return data_layer(args, phase)

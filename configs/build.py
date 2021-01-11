@@ -74,7 +74,8 @@ def build_data_info(args, basic_build=False):
         # depending on the type of the feature extractor(i.e. 2D or 3D) we will have a different
         #  behavior for the Dataset class(e.g. check lib/datasets/judo_data_layer.__getitem__)
         args.is_3D = True if args.model=='CNN3D' else False
-    elif not args.model_input.endswith(BASE_FOLDER_FEAT_EXTR):
+    #elif not args.model_input.endswith(BASE_FOLDER_FEAT_EXTR):
+    elif 'resnext' not in args.model_input and not args.model_input.endswith(BASE_FOLDER_FEAT_EXTR):
         raise Exception('Wrong --model_input or --chunk_size option. They must indicate the same chunk size')
     elif args.feat_vect_dim == -1:
         raise Exception('Wrong --feat_vect_dim option. When starting from features pre-extracted, the dimension '
