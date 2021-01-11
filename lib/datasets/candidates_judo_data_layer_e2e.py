@@ -79,9 +79,9 @@ class Candidates_JUDODataLayerE2E(data.Dataset):
 
     def __getitem__(self, index):
         if self.is_3D:
-            self.getitem_3D(index)
+            return self.getitem_3D(index)
         else:
-            self.getitem_2D(index)
+            return self.getitem_2D(index)
 
     def getitem_3D(self, index):
         filename, target, idx_chunk, shift = self.inputs[index]
@@ -93,7 +93,7 @@ class Candidates_JUDODataLayerE2E(data.Dataset):
             idx_cur_frame = start_idx + i
             frame = Image.open(osp.join(self.data_root,
                                         self.model_input,
-                                        filename[:-4],
+                                        filename.split('___')[1][:-4],
                                         str(idx_cur_frame)+'.jpg')).convert('RGB')
             frame = self.transform(frame).to(dtype=torch.float32)
             raw_frames.append(frame)
@@ -114,7 +114,7 @@ class Candidates_JUDODataLayerE2E(data.Dataset):
 
         frame = Image.open(osp.join(self.data_root,
                                     self.model_input,
-                                    filename[:-4],
+                                    filename.split('___')[1][:-4],
                                     str(idx_cur_frame)+'.jpg')).convert('RGB')
         frame = self.transform(frame).to(dtype=torch.float32)
 

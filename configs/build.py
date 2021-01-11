@@ -46,8 +46,9 @@ def build_data_info(args, basic_build=False):
 
     if args.use_candidates:
         if 'candidates' not in args.model_input or 'candidates' not in args.model_target:
-            raise Exception('With --use_candidates option you must provide input candidates features'
-                            '(via --model_input option)  and target candidates(via --model_target option)')
+            if args.model_input != 'video_frames_25fps':
+                raise Exception('With --use_candidates option you must provide input candidates features'
+                                '(via --model_input option) and target candidates(via --model_target option)')
         args.candidates = 'CANDIDATES'
     else:
         if 'candidates' in args.model_input or 'candidates' in args.model_target:
@@ -83,13 +84,5 @@ def build_data_info(args, basic_build=False):
     else:
         # no end to end learning because we are starting from features pre-extracted
         args.E2E = ''
-
-    if args.use_candidates:
-        if 'candidates' not in args.model_input or 'candidates' not in args.model_target:
-            raise Exception('With --use_candidates option you must provide input candidates features'
-                            '(via --model_input option)  and target candidates(via --model_target option)')
-        args.candidates = 'CANDIDATES'
-    else:
-        args.candidates = ''
 
     return args

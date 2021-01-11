@@ -70,9 +70,9 @@ class JUDODataLayerE2E(data.Dataset):
 
     def __getitem__(self, index):
         if self.is_3D:
-            self.getitem_3D(index)
+            return self.getitem_3D(index)
         else:
-            self.getitem_2D(index)
+            return self.getitem_2D(index)
 
     def getitem_3D(self, index):
         session, target, idx_chunk, shift = self.inputs[index]
