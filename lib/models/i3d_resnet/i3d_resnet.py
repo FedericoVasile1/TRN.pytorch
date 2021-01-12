@@ -7,7 +7,10 @@ import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 import torch.nn.functional as F
 
-from models.inflate_from_2d_model import inflate_from_2d_model
+import sys
+import os
+sys.path.append(os.getcwd())
+from lib.models.i3d_resnet.inflate_from_2d_model import inflate_from_2d_model
 
 __all__ = ['i3d_resnet']
 
