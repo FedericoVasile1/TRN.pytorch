@@ -77,11 +77,6 @@ def main(args):
             features_extracted = np.load(osp.join(args.data_root, args.model_input, session + '.npy'),
                                          mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
-            if 'resnext' in args.model_input:
-                num_frames = feature_vectors.shape[0]
-                num_frames = num_frames - (num_frames % args.chunk_size)
-                feature_vectors = feature_vectors[:num_frames]
-                feature_vectors = feature_vectors[args.chunk_size // 2::args.chunk_size]
 
             samples = []
             for count in range(target.shape[0]):

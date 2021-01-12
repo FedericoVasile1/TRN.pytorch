@@ -89,11 +89,6 @@ def main(args):
             features_extracted = np.load(osp.join(args.data_root, args.model_input, session + '.npy'),
                                          mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
-            if 'resnext' in args.model_input:
-                num_frames = feature_vectors.shape[0]
-                num_frames = num_frames - (num_frames % args.chunk_size)
-                feature_vectors = feature_vectors[:num_frames]
-                feature_vectors = feature_vectors[args.chunk_size // 2::args.chunk_size]
 
             COOLDOWN = 0
             samples = []
@@ -122,12 +117,11 @@ def main(args):
                             samples = []
                     else:
                         # get staf prediction, i.e. background
-                        scores = torch.zeros(args.steps, args.num_classes, dtype=torch.float32)
-                        scores[:, 0] = 100
-                        scores = softmax(scores).numpy()
-                        for s in range(len(scores)):
-                            for c in range(args.chunk_size):
-                                score_metrics.append(scores[s])
+                        scores = torch.zeros(1, args.num_classes, dtype=torch.float32)
+                        scores[0, 0] = 100
+                        scores = softmax(scores).numpy()[0]
+                        for c in range(args.chunk_size):
+                            score_metrics.append(scores)
 
                 for c in range(args.chunk_size):
                     target_metrics.append(original_target[count * args.chunk_size + c])

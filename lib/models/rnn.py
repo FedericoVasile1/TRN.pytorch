@@ -17,7 +17,7 @@ class Reduction(nn.Module):
         super(Reduction, self).__init__()
 
     def forward(self, x):
-        # x.shape == batch_size, numfeatmaps, T, H, W
+        # x.shape == batch_size, numfeatmaps, TT, HH, WW
         return x.mean(dim=2)
 
 class GlobalAvgPool(nn.Module):
@@ -25,7 +25,7 @@ class GlobalAvgPool(nn.Module):
         super(GlobalAvgPool, self).__init__()
 
     def forward(self, x):
-        # x.shape == batch_size, numfeatmaps, H, W
+        # x.shape == batch_size, numfeatmaps, HH, WW
         return x.mean(dim=(2, 3))
 
 class RNNmodel(nn.Module):
