@@ -12,12 +12,36 @@ class _MyGRUCell(nn.GRUCell):
         h_n, _ = states
         return super(_MyGRUCell, self).forward(x, h_n), torch.zeros(1)
 
+class Reduction(nn.Module):
+    def __init__(self):
+        super(Reduction, self).__init__()
+
+    def forward(self, x):
+        # x.shape == batch_size, numfeatmaps, T, H, W
+        return x.mean(dim=2)
+
+class GlobalAvgPool(nn.Module):
+    def __init__(self):
+        super(GlobalAvgPool, self).__init__()
+
+    def forward(self, x):
+        # x.shape == batch_size, numfeatmaps, H, W
+        return x.mean(dim=(2, 3))
+
 class RNNmodel(nn.Module):
     def __init__(self, args):
         super(RNNmodel, self).__init__()
         self.hidden_size = args.hidden_size
         self.num_classes = args.num_classes
         self.steps = args.steps
+
+        if 'mixed5c' in args.model_input or 'mixed4f' in args.model:
+            self.reduction = nn.Sequential(
+                Reduction(),
+                GlobalAvgPool(),
+            )
+        else:
+            self.reduction = nn.Identity()
 
         self.feature_extractor = build_feature_extractor(args)
 
@@ -48,17 +72,22 @@ class RNNmodel(nn.Module):
                                                                                               device=x.device)
 
         for step in range(self.steps):
-            transf_x[:, step] = self.feature_extractor(x[:, step])
-            if step == 0:
-                transf_x[:, step] = self.drop_before(transf_x[:, step])
+            x_t = x[:, step]
+            transf_x_t = transf_x[:, step]
 
-            h_n, c_n = self.rnn(transf_x[:, step], (h_n, c_n))
+            x_t = self.reduction(x_t)
+            transf_x_t = self.feature_extractor(x_t)
+            if step == 0:
+                transf_x_t = self.drop_before(transf_x_t)
+
+            h_n, c_n = self.rnn(transf_x_t, (h_n, c_n))
             out = self.classifier(self.drop_after(h_n))  # out.shape == (batch_size, num_classes)
 
             scores[:, step] = out
         return scores
 
     def step(self, x_t, h_n, c_n):
+        x_t = self.reduction(x_t)
         out = self.feature_extractor(x_t)
 
         # to check if we are at the first timestep of the sequence, we exploit the fact that at the first
