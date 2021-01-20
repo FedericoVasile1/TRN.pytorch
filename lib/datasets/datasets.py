@@ -2,6 +2,7 @@ from .thumos_data_layer import THUMOSDataLayer
 from .thumos_data_layer_e2e import THUMOSDataLayerE2E
 from .judo_data_layer import JUDODataLayer
 from .candidates_judo_data_layer import Candidates_JUDODataLayer
+from .candidates_judo_data_layer_v2 import Candidates_JUDODataLayer_v2
 
 _DATA_LAYERS = {
     'LSTMTHUMOS': THUMOSDataLayer,
@@ -26,6 +27,8 @@ _DATA_LAYERS = {
     'LSTMATTENTIONJUDOCANDIDATES': Candidates_JUDODataLayer,
     'GRUATTENTIONJUDOCANDIDATES': Candidates_JUDODataLayer,
     'TRANSFORMERJUDOCANDIDATES': Candidates_JUDODataLayer,
+
+    'CNN3DJUDOCANDIDATES': Candidates_JUDODataLayer_v2,
 }
 
 def build_dataset(args, phase):

@@ -16,7 +16,9 @@ def main():
 
     model = i3d_resnet(50, 400, 0.5, without_t_stride=False)
 
-    checkpoint = torch.load('lib/models/i3d_resnet/', map_location='cpu')
+    checkpoint = torch.load('lib/models/i3d_resnet/'
+                            'kinetics400-rgb-i3d-resnet-50-f32-s2-precise_bn-warmupcosine-bs1024-e196.pth',
+                            map_location='cpu')
     model.load_state_dict(checkpoint['state_dict'])
 
     model.dropout = nn.Identity()

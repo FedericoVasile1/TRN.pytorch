@@ -24,18 +24,18 @@ def main():
     model.train(False)
 
     transform = transforms.Compose([
-        transforms.Resize((224, 320)),
-        transforms.CenterCrop(224),
+        transforms.Resize((112, 160)),
+        transforms.CenterCrop(112),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.4345, 0.4051, 0.3775], std=[0.2768, 0.2713, 0.2737]),
     ])
 
-    CHUNK_SIZE = 9
-    BATCH_SIZE = 128
+    CHUNK_SIZE = 16
+    BATCH_SIZE = 64
 
     DATA_ROOT = 'data/JUDO/UNTRIMMED'
     VIDEO_FRAMES = 'video_frames_25fps'   # base folder where the video folders (containing the frames) are
-    VIDEO_FEATURES = 'r2p1d_224x224_chunk'+str(CHUNK_SIZE)
+    VIDEO_FEATURES = 'r2p1d_112x112_chunk'+str(CHUNK_SIZE)
 
     with torch.set_grad_enabled(False):
         videos_dir = os.listdir(os.path.join(DATA_ROOT, VIDEO_FRAMES))

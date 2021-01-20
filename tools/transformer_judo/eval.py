@@ -22,6 +22,9 @@ from configs.judo import parse_model_args as parse_args
 from lib.utils.visualize import plot_bar, plot_to_image, add_pr_curve_tensorboard, get_segments, show_video_predictions
 from lib.models import build_model
 
+def to_device(x, device):
+    return x.unsqueeze(0).to(device)
+
 def main(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -83,7 +86,8 @@ def main(args):
                 samples.append(features_extracted[count])
 
                 if len(samples) == args.steps:
-                    samples = torch.stack(samples).unsqueeze(0).to(device)
+                    samples = torch.stack(samples)
+                    samples = to_device(samples)
                     scores = model(samples)     # scores.shape == (1, steps, num_classes)
 
                     scores = scores.squeeze(0)
@@ -97,7 +101,8 @@ def main(args):
                 appo = len(samples)
                 for i in range(appo, args.steps):
                     samples.append(torch.zeros_like(features_extracted[0]))
-                samples = torch.stack(samples).unsqueeze(0).to(device)
+                samples = torch.stack(samples)
+                samples = to_device(samples)
                 scores = model(samples)
                 scores = scores[:, :appo]
                 scores = scores.squeeze(0)

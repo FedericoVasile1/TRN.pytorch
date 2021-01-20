@@ -31,6 +31,7 @@ def main(args):
 
     score_metrics = []
     target_metrics = []
+    attn_weights_all = []
 
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint)
@@ -89,11 +90,6 @@ def main(args):
             features_extracted = np.load(osp.join(args.data_root, args.model_input, session + '.npy'),
                                          mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
-            if 'resnext' in args.model_input:
-                num_frames = feature_vectors.shape[0]
-                num_frames = num_frames - (num_frames % args.chunk_size)
-                feature_vectors = feature_vectors[:num_frames]
-                feature_vectors = feature_vectors[args.chunk_size // 2::args.chunk_size]
 
             COOLDOWN = 0
             for count in range(target.shape[0]):
@@ -103,22 +99,24 @@ def main(args):
                     h_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
                     c_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
                     sample = to_device(features_extracted[count], device)
-                    score, h_n, c_n = model.step(sample, h_n, c_n)
+                    score, h_n, c_n, attn_weights_t = model.step(sample, h_n, c_n)  # attn_weights_t.shape == (1, HH, WW)
                     COOLDOWN = args.steps - 1
                 else:
                     if COOLDOWN > 0:
                         # subsequent steps
                         sample = to_device(features_extracted[count], device)
-                        score, h_n, c_n = model.step(sample, h_n, c_n)
+                        score, h_n, c_n, attn_weights_t = model.step(sample, h_n, c_n)
                         COOLDOWN -= 1
                     else:
                         # get staf prediction, i.e. background
                         score = torch.zeros(1, args.num_classes, dtype=torch.float32)
-                        score[0, 0] = 100
+                        score[0, 0] = 100   # set background as prediction
+                        attn_weights_t = torch.ones(1, 14, 14, dtype=torch.float32)
 
                 score = softmax(score).cpu().detach().numpy()[0]
                 for c in range(args.chunk_size):
                     score_metrics.append(score)
+                    attn_weights_all.append(attn_weights_t.squeeze(0).cpu())
                     target_metrics.append(original_target[count * args.chunk_size + c])
 
         end = time.time()
@@ -136,7 +134,8 @@ def main(args):
                                    target_metrics[count_frames:count_frames + original_target.shape[0]],
                                    score_metrics[count_frames:count_frames + original_target.shape[0]],
                                    frames_dir='video_frames_25fps',
-                                   fps=25)
+                                   fps=25,
+                                   attn_weights=attn_weights_all)
             args.chunk_size = appo
             count_frames += original_target.shape[0]
 
@@ -148,7 +147,8 @@ def main(args):
                                target_metrics,
                                score_metrics,
                                frames_dir='video_frames_25fps',
-                               fps=25)
+                               fps=25,
+                               attn_weights=attn_weights_all)
         # print some stats about the video labels and predictions, then kill the program
         print('\n=== LABEL SEGMENTS ===')
         segments_list = get_segments(target_metrics, args.class_index, 25, args.chunk_size)

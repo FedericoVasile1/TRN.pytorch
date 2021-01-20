@@ -2,6 +2,7 @@ from .rnn import RNNmodel
 from .rnn_attention import RNNAttention
 from .bidirectionalrnn import BIDIRECTIONALRNN
 from .transformer import Transformer
+from .cnn3d import CNN3D
 
 _META_ARCHITECTURES = {
     'LSTM': RNNmodel,
@@ -11,6 +12,7 @@ _META_ARCHITECTURES = {
     'BIDIRECTIONALLSTM': BIDIRECTIONALRNN,
     'BIDIRECTIONALGRU': BIDIRECTIONALRNN,
     'TRANSFORMER': Transformer,
+    'CNN3D': CNN3D,
 }
 
 def build_model(args):

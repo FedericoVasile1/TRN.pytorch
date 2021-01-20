@@ -8,15 +8,14 @@ import torch.nn as nn
 from PIL import Image
 
 sys.path.append(os.getcwd())
-from lib.models.i3d.i3d import InceptionI3d
-from lib.datasets.judo_data_layer_e2e import I3DNormalization
+from lib.models.i3d.i3d import InceptionI3d, I3DNormalization
 
 def main():
     os.environ['CUDA_VISIBLE_DEVICES'] = str(1)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     model = InceptionI3d()
-    model.load_state_dict(torch.load('rgb_imagenet.pt'))
+    model.load_state_dict(torch.load('lib/models/i3d/rgb_imagenet.pt'))
     model.dropout = nn.Identity()
     model.logits = nn.Identity()
 

@@ -22,6 +22,8 @@ def main(args):
     if osp.isfile(args.checkpoint):
         checkpoint = torch.load(args.checkpoint, map_location=torch.device('cpu'))
         model.load_state_dict(checkpoint['model_state_dict'])
+    else:
+        model.apply(utl.weights_init)
     if args.distributed:
         model = nn.DataParallel(model)
     model = model.to(device)
@@ -46,10 +48,17 @@ def main(args):
 
     logger_APs = utl.setup_logger(osp.join(writer.log_dir, 'APs_per_epoch.txt'))
 
+    #with torch.set_grad_enabled(False):
+    #    temp = utl.build_data_loader(args, 'train')
+    #    dataiter = iter(temp)
+    #    inputs, _ = dataiter.next()
+    #    writer.add_graph(model, inputs.to(device))
+    #    writer.close()
+
     batch_idx_train = 1
     batch_idx_val = 1
-    best_val_mAP = -1
-    epoch_best_val_mAP = -1
+    best_val_map = -1
+    epoch_best_val_map = -1
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
         if epoch == args.reduce_lr_epoch:
             print('=== Learning rate reduction planned for epoch ' + str(args.reduce_lr_epoch) + ' ===')
@@ -75,23 +84,19 @@ def main(args):
 
             with torch.set_grad_enabled(training):
                 for batch_idx, (inputs, targets) in enumerate(data_loaders[phase], start=1):
-                    # inputs.shape == (batch_size, steps, feat_vect_dim [if starting from features])
-                    # targets.shape == (batch_size, steps, num_classes)
+                    # inputs.shape == (batch_size, C, chunk_size, H, W)
+                    # targets.shape == (batch_size, num_classes)
                     batch_size = inputs.shape[0]
                     inputs = inputs.to(device)
 
                     if training:
                         optimizer.zero_grad()
 
-                    scores = model(inputs)            # scores.shape == (batch_size, steps, num_classes)
+                    scores = model(inputs)       # scores.shape == (batch_size, num_classes)
 
                     scores = scores.to(device)
                     targets = targets.to(device)
-                    # sum losses along all timesteps
-                    loss = criterion(scores[:, 0], targets[:, 0].max(axis=1)[1])
-                    for step in range(1, inputs.shape[1]):
-                        loss += criterion(scores[:, step], targets[:, step].max(axis=1)[1])
-                    loss /= inputs.shape[1]      # scale by steps
+                    loss = criterion(scores, targets.max(axis=1)[1])
 
                     losses[phase] += loss.item() * batch_size
 
@@ -100,8 +105,6 @@ def main(args):
                         optimizer.step()
 
                     # Prepare metrics
-                    scores = scores.view(-1, args.num_classes)
-                    targets = targets.view(-1, args.num_classes)
                     scores = softmax(scores).cpu().detach().numpy()
                     targets = targets.cpu().detach().numpy()
                     score_metrics[phase].extend(scores)
@@ -124,7 +127,8 @@ def main(args):
         lr_sched.step(losses['val'] / len(data_loaders['val'].dataset))
 
         writer.add_scalars('Loss_epoch/train_val',
-                           {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
+                           {phase: losses[phase] / len(data_loaders[phase].dataset)
+                            for phase in args.phases},
                            epoch)
 
         result = {phase: utl.compute_result_multilabel(
@@ -143,12 +147,14 @@ def main(args):
         log = 'Epoch: ' + str(epoch)
         log += '\n[train] '
         for cls in range(args.num_classes):
-            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['train']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
+            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['train']['AP'][args.class_index[cls]] * 100)[
+                                                            :4] + ' %'
         log += '| mAP_all_cls: ' + str(result['train']['mAP_all_cls'] * 100)[:4] + ' %'
         log += '| mAP_valid_cls: ' + str(result['train']['mAP_valid_cls'] * 100)[:4] + ' %'
         log += '\n[val  ] '
         for cls in range(args.num_classes):
-            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['val']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
+            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['val']['AP'][args.class_index[cls]] * 100)[
+                                                            :4] + ' %'
         log += '| mAP_all_cls: ' + str(result['val']['mAP_all_cls'] * 100)[:4] + ' %'
         log += '| mAP_valid_cls: ' + str(result['val']['mAP_valid_cls'] * 100)[:4] + ' %'
         log += '\n'
@@ -157,8 +163,8 @@ def main(args):
         mAP = {phase: result[phase]['mAP_valid_cls'] for phase in args.phases}
         writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
 
-        log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f} |'
-        log += ' [val] loss: {:.5f}  mAP: {:.4f}  |\n'
+        log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f}  |'
+        log += ' [val] loss: {:.5f}  mAP: {:.4f}|\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
                               losses['train'] / len(data_loaders['train'].dataset),
@@ -169,20 +175,20 @@ def main(args):
         print(log)
         logger._write(log)
 
-        if best_val_mAP < mAP['val']:
-            best_val_mAP = mAP['val']
-            epoch_best_val_mAP = epoch
+        if best_val_map < mAP['val']:
+            best_val_map = mAP['val']
+            epoch_best_val_map = epoch
 
             # only the best validation map model is saved
-            checkpoint_file = 'model-{}_features-{}.pth'.format(args.model, args.model_input)
+            checkpoint_file = 'model-{}_feature_extractor-{}.pth'.format(args.model, args.feature_extractor)
             torch.save({
-                'val_mAP': best_val_mAP,
+                'val_mAP': best_val_map,
                 'epoch': epoch,
                 'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
             }, osp.join(writer.log_dir, checkpoint_file))
 
-    log = '--- Best validation mAP is {:.1f} % obtained at epoch {} ---'.format(best_val_mAP * 100, epoch_best_val_mAP)
+    log = '--- Best validation mAP is {:.1f} % obtained at epoch {} ---'.format(best_val_map * 100, epoch_best_val_map)
     print(log)
     logger._write(log)
 

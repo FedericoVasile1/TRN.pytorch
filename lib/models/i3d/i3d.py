@@ -342,7 +342,10 @@ class InceptionI3d(nn.Module):
 
         logits = self.logits(self.dropout(self.avg_pool(x)))
         if self._spatial_squeeze:
-            logits = logits.squeeze(3).squeeze(3).squeeze(2)        # logits.shape == (batch_size, num_classes)
+            # logits.shape == (batch_size, num_classes, TT, HH, WW)
+            if logits.size()[2] != 1:
+                logits = logits.mean(dim=2, keepdim=True)
+            logits = logits.squeeze(2).squeeze(2).squeeze(2)
         return logits
 
     def extract_features(self, x):
@@ -366,8 +369,8 @@ class InceptionI3d(nn.Module):
             'Mixed_4c',
             'Mixed_4d',
             'Mixed_4e',
-            #'Mixed_4f',
-            #'MaxPool3d_5a_2x2',
+            'Mixed_4f',
+            'MaxPool3d_5a_2x2',
             #'Mixed_5b',
             #'Mixed_5c',
             #'Logits',
