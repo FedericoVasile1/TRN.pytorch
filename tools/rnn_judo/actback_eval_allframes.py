@@ -79,9 +79,10 @@ def main(args):
             original_target = original_target[:num_frames]
 
             # convert original_target to action and background labels
-            original_target = original_target.argmax(dim=1)
+            original_target = original_target.argmax(axis=1)
             original_target[original_target != 0] = 1
-            original_target = torch.nn.functional.one_hot(original_target, num_classes=2)
+            m = np.eye(args.num_classes)
+            original_target = m[original_target]
 
             # For each chunk, take only the central frame
             target = original_target[args.chunk_size // 2::args.chunk_size]
