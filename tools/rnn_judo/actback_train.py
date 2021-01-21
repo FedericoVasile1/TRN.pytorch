@@ -15,6 +15,7 @@ from lib.models import build_model
 
 def main(args):
     args.num_classes = 2    # HARD-CODED: only action and background classes
+    args.class_index = ['Background', 'Action']
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -95,9 +96,11 @@ def main(args):
                     scores = model(inputs)            # scores.shape == (batch_size, steps, num_classes)
 
                     # convert target to action and background labels
+                    targets = targets.view(-1, targets.shape[2])
                     targets = targets.argmax(dim=1)
                     targets[targets != 0] = 1
                     targets = torch.nn.functional.one_hot(targets, num_classes=2)
+                    targets = targets.view(args.batch_size, args.steps, args.num_classes)
 
                     scores = scores.to(device)
                     targets = targets.to(device)
