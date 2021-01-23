@@ -51,12 +51,12 @@ def main(args):
 
     logger_APs = utl.setup_logger(osp.join(writer.log_dir, 'APs_per_epoch.txt'))
 
-    #with torch.set_grad_enabled(False):
-    #    temp = utl.build_data_loader(args, 'train')
-    #    dataiter = iter(temp)
-    #    inputs, _ = dataiter.next()
-    #    writer.add_graph(model, inputs.to(device))
-    #    writer.close()
+    with torch.set_grad_enabled(False):
+        temp = utl.build_data_loader(args, 'train')
+        dataiter = iter(temp)
+        inputs, _ = dataiter.next()
+        writer.add_graph(model, inputs.to(device))
+        writer.close()
 
     batch_idx_train = 1
     batch_idx_val = 1

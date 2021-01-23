@@ -52,7 +52,7 @@ class OnlyAct_JUDODataLayer(data.Dataset):
                                            filename),
                                   mmap_mode='r').squeeze(axis=0)
 
-        feature_vectors = torch.as_tensor(feature_vector.astype(np.float32))
+        feature_vector = torch.as_tensor(feature_vector.astype(np.float32))
         target = torch.as_tensor(target.astype(np.float32))
 
         return feature_vector, target
