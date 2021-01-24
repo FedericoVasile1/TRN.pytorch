@@ -29,7 +29,7 @@ def show_video_predictions(args,
     idx = 0
     if '___' in video_name:
         start_frame = video_name.split('___')[0]
-        start_frame = int(start_frame) - 1
+        start_frame = int(start_frame) #- 1
     else:
         start_frame = 0
     while idx < num_frames:
