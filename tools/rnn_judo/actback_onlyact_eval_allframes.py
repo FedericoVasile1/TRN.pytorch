@@ -118,9 +118,10 @@ def main(args):
                 score, h_n, c_n = model.step(sample, h_n, c_n)
 
                 score = softmax(score).cpu().detach().numpy()[0]
-                score = score if score==0 else 200
+                zeros = np.zeros((3)).astype(score.dtype)
+                score = np.concatenate(score, zeros)
 
-                if score == 0 and prev_cls == 200:
+                if score.argmax() == 0 and prev_cls == 1:
                     # forward pass of the previous 100 frames to i3d
                     cur_idx_frame = count * args.chunk_size
                     start_frame = cur_idx_frame - 100
@@ -136,6 +137,8 @@ def main(args):
                     sample = to_device(sample, device)
                     act_score = act_model(sample)
                     act_score = softmax(act_score).cpu().detach().numpy()[0]
+                    act_zero = np.zeros((1))
+                    act_score = np.concatenate(act_zero, act_score)
                     for i in range(1, 101):
                         score_metrics[-i] = act_score
 
@@ -143,7 +146,12 @@ def main(args):
                     score_metrics.append(score)
                     target_metrics.append(original_target[count * args.chunk_size + c])
 
-                prev_cls = score
+                prev_cls = score.argmax()
+
+            for j in range(original_target.shape[0]):
+                if score_metrics[-j][-1] == score_metrics[-j][-2] == score_metrics[-j][-3] == 0:
+                    # there is no specific action prediction, so this is an error
+                    raise Exception()
 
         end = time.time()
 
