@@ -33,6 +33,10 @@ class OnlyAct_JUDODataLayer(data.Dataset):
                                       filename))
 
             flag = True
+            if target[0] == 1:
+                flag = False
+            target = target[1:]
+
             if self.downsampling:
                 cls = target.argmax()
                 self.class_to_count[cls] += 1

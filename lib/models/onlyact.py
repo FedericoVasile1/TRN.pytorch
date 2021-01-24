@@ -1,7 +1,4 @@
-
 import torch.nn as nn
-
-from lib.models.i3d.i3d import Unit3D
 
 class OnlyAct(nn.Module):
     def __init__(self, args):
