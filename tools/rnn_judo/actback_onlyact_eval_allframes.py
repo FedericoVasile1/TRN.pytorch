@@ -40,16 +40,22 @@ def main(args):
         checkpoint = torch.load(args.checkpoint)
     else:
         raise(RuntimeError('Cannot find the checkpoint {}'.format(args.checkpoint)))
+    appo = args.num_classes
+    args.num_classes = 2
     model = build_model(args).to(device)
+    args.num_classes = appo
     model.load_state_dict(checkpoint['model_state_dict'])
     model.train(False)
 
     model2 = InceptionI3d()
-    model2.load_state_dict(os.path.joint('lib', 'models', 'i3d', 'rgb_imagenet.pt'))
+    model2.load_state_dict(torch.load(os.path.join('lib', 'models', 'i3d', 'rgb_imagenet.pt')))
     model2.dropout = nn.Identity()
     model2.logits = nn.Identity()
     model2.train(False)
+    appo = args.num_classes
+    args.num_classes = 4
     model3 = OnlyAct(args)
+    args.num_classes = appo
     chp = torch.load('best_results/onlyact_i3d_224x224_chunk100_ONLYACT_b32/model-ONLYACT_feature_extractor-.pth')
     model3.load_state_dict(chp['model_state_dict'])
     model3.train(False)
@@ -119,7 +125,9 @@ def main(args):
 
                 score = softmax(score).cpu().detach().numpy()[0]
                 zeros = np.zeros((3)).astype(score.dtype)
-                score = np.concatenate(score, zeros)
+                score = np.concatenate((score, zeros))
+                if score.argmax() == 1:
+                    score[-1] = 0.01
 
                 if score.argmax() == 0 and prev_cls == 1:
                     # forward pass of the previous 100 frames to i3d
@@ -133,12 +141,12 @@ def main(args):
                                                         str(start_frame + i + 1) + '.jpg')).convert('RGB')
                         frame = transform(frame).to(dtype=torch.float32)
                         sample.append(frame)
-                    sample = torch.stack().permute(1, 0, 2 ,3)
+                    sample = torch.stack(sample).permute(1, 0, 2 ,3)
                     sample = to_device(sample, device)
                     act_score = act_model(sample)
                     act_score = softmax(act_score).cpu().detach().numpy()[0]
                     act_zero = np.zeros((1))
-                    act_score = np.concatenate(act_zero, act_score)
+                    act_score = np.concatenate((act_zero, act_score))
                     for i in range(1, 101):
                         score_metrics[-i] = act_score
 
@@ -149,7 +157,7 @@ def main(args):
                 prev_cls = score.argmax()
 
             for j in range(original_target.shape[0]):
-                if score_metrics[-j][-1] == score_metrics[-j][-2] == score_metrics[-j][-3] == 0:
+                if score_metrics[-j][-1] == 0.01:
                     # there is no specific action prediction, so this is an error
                     raise Exception()
 
