@@ -10,13 +10,15 @@ class THUMOSDataLayer(data.Dataset):
         self.model_input = args.model_input
         self.steps = args.steps
         self.training = phase=='train'
-        self.chunk_size = args.chunk_size
         self.sessions = getattr(args, phase+'_session_set')
+        self.chunk_size = args.chunk_size
 
         self.inputs = []
         for session in self.sessions:
-            target = np.load(osp.join(self.data_root, 'target_frames_24fps', session+'.npy'))
-            # round to multiple of CHUNK_SIZE
+            target = np.load(osp.join(self.data_root,
+                                      args.model_target,
+                                      session+'.npy'))
+            # round to multiple of chunk_size
             num_frames = target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
             target = target[:num_frames]
@@ -29,16 +31,20 @@ class THUMOSDataLayer(data.Dataset):
 
                 step_target = target[start:end]
                 self.inputs.append([
-                    session, start, end, step_target,
+                    session, step_target, start, end
                 ])
 
     def __getitem__(self, index):
-        session, start, end, step_target = self.inputs[index]
+        session, step_target, start, end = self.inputs[index]
 
-        feature_vectors = np.load(osp.join(self.data_root, self.model_input, session+'.npy'), mmap_mode='r')
+        feature_vectors = np.load(osp.join(self.data_root,
+                                           self.model_input,
+                                           session+'.npy'),
+                                  mmap_mode='r')
+
         feature_vectors = feature_vectors[start:end]
-        feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
 
+        feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
         step_target = torch.as_tensor(step_target.astype(np.float32))
 
         return feature_vectors, step_target

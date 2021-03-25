@@ -135,7 +135,7 @@ class RNNAttention(nn.Module):
             # feat_maps.shape == (batch_size, CC, HH, WW)
             feat_maps = feat_maps.flatten(start_dim=2)      # flatten each feature map to a feature vector
 
-            # project the number of channels down to hidden_size, i.e. from CC=1024 to hidden_size
+            # project the number of channels down to hidden_size, e.g. from CC=1024 to hidden_size
             feat_maps_projected = self.numfeatmaps_to_hidden(feat_maps.permute(0, 2, 1))
             # feat_maps_projected.shape == (batch_size, HH * WW, hidden_size)
             # Permute back to original axis

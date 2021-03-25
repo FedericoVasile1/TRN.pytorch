@@ -9,7 +9,7 @@ from lib.models.i3d.i3d import InceptionI3d
 class FeatureExtractor(nn.Module):
     def __init__(self, args):
         super(FeatureExtractor, self).__init__()
-        # Actually, we support only features- pre-extracted training
+        # Actually, we support only features pre-extracted training
         self.feature_extractor = nn.Identity()
 
         # To put or not a linear layer between the feature extractor and the recurrent model

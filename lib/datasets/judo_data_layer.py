@@ -17,7 +17,7 @@ class JUDODataLayer(data.Dataset):
         self.downsampling = args.downsampling > 0 and self.training
         if self.downsampling:
             # WE ARE TAKING INTO ACCOUNT ONLY ACTION CLASSES, I.E. BACKGROUND CLASS IS NOT DOWNSAMPLED!
-            # MODIFY ALSO LINE 101 IF YOU WNAT TO INCLUDE ALSO BACKGROUND CLASS
+            # MODIFY ALSO LINE 101 IF YOU WANT TO INCLUDE ALSO BACKGROUND CLASS
             self.class_to_count = {idx_class+1: 0 for idx_class in range(args.num_classes-1)}
 
         self.inputs = []

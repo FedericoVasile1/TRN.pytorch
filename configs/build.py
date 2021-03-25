@@ -24,7 +24,6 @@ def build_data_info(args, basic_build=False):
         raise Exception('Wrong --data_root option. Unknow dataset')
 
     with open(args.data_info, 'r') as f:
-        data_info = json.load(f)[args.dataset]
         args.class_index = data_info['class_index']
         args.num_classes = len(args.class_index)
 
@@ -53,9 +52,6 @@ def build_data_info(args, basic_build=False):
         if 'candidates' in args.model_input or 'candidates' in args.model_target:
             raise Exception('You are providing candidates input without using --use_candidates option')
         args.candidates = ''
-
-    if args.model == 'TRANSFORMER' and (args.nhead == -1 or args.num_layers == -1):
-        raise Exception('You are usinga TRANSFORMER model without specifying the number of heads and layers')
 
     if BASE_FOLDER_RAW_FRAMES in args.model_input:
         raise Exception('End to end training is no longer supported')

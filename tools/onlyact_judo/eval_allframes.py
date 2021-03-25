@@ -71,7 +71,7 @@ def main(args):
 
     files = os.listdir(os.path.join(args.data_root, args.model_target))
     for session_idx, session in enumerate(files, start=1):
-        if session.split('___')[1][:-4] not in args.sessions:
+        if session.split('___')[1][:-4] not in args.test_session_set:
             continue
 
         start = time.time()
@@ -87,7 +87,7 @@ def main(args):
             score = model(sample)
 
             score = softmax(score).cpu().detach().numpy()[0]
-            for c in args.chunk_size:
+            for c in range(args.chunk_size):
                 score_metrics.append(score)
                 target_metrics.append(target)
 
