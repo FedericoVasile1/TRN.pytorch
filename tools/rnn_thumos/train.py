@@ -118,7 +118,7 @@ def main(args):
                         writer.add_scalar('Loss_iter/train', loss.item(), batch_idx_train)
                         batch_idx_train += 1
                     else:
-                        writer.add_scalar('Loss_iter/val', loss.item(), batch_idx_test)
+                        writer.add_scalar('Loss_iter/test', loss.item(), batch_idx_test)
                         batch_idx_test += 1
 
                     if args.verbose:
@@ -130,7 +130,7 @@ def main(args):
 
         lr_sched.step(losses['test'] / len(data_loaders['test'].dataset))
 
-        writer.add_scalars('Loss_epoch/train_val',
+        writer.add_scalars('Loss_epoch/train_test',
                            {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
                            epoch)
 
@@ -156,13 +156,13 @@ def main(args):
         log += '\n[test ] '
         for cls in range(args.num_classes):
             log += '| ' + args.class_index[cls] + ' AP: ' + str(result['test']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
-        log += '| mAP_all_cls: ' + str(result['val']['mAP_all_cls'] * 100)[:4] + ' %'
-        log += '| mAP_valid_cls: ' + str(result['val']['mAP_valid_cls'] * 100)[:4] + ' %'
+        log += '| mAP_all_cls: ' + str(result['test']['mAP_all_cls'] * 100)[:4] + ' %'
+        log += '| mAP_valid_cls: ' + str(result['test']['mAP_valid_cls'] * 100)[:4] + ' %'
         log += '\n'
         logger_APs._write(str(log))
 
         mAP = {phase: result[phase]['mAP_valid_cls'] for phase in args.phases}
-        writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
+        writer.add_scalars('mAP_epoch/train_test', {phase: mAP[phase] for phase in args.phases}, epoch)
 
         log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f} |'
         log += ' [test] loss: {:.5f}  mAP: {:.4f}  |\n'

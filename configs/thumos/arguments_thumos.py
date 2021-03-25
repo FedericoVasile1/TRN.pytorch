@@ -48,4 +48,7 @@ def parse_model_args():
     parser.add_argument('--dilatation_rates', default='1,2,4', type=str)
     parser.add_argument('--num_filters', default='1024,512,512', type=str)
 
+    # do not modify. this is useless for thumos dataset
+    parser.add_argument('--use_candidates', default=False, action='store_true')
+
     return build_data_info(parser.parse_args())
