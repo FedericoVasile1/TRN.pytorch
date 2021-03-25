@@ -134,6 +134,7 @@ def main(args):
                            {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
                            epoch)
 
+        '''
         result = {phase: utl.compute_result_multilabel(
             args.dataset,
             args.class_index,
@@ -146,7 +147,20 @@ def main(args):
             return_APs=True,
             samples_all_valid=False,
         ) for phase in args.phases}
+        '''
+        result_file = 'inputs-{}-epoch-{}.json'.format(args.inputs, epoch)
+        # Compute result for encoder
+        mAP = {phase: utl.eval_utils_original.compute_result_multilabel(
+            args.class_index,
+            score_metrics[phase],
+            target_metrics[phase],
+            save_dir=None,
+            result_file=None,
+            ignore_class=[0, 21],
+            save=False,
+        ) for phase in args.phases}
 
+        '''
         log = 'Epoch: ' + str(epoch)
         log += '\n[train] '
         for cls in range(args.num_classes):
@@ -163,6 +177,7 @@ def main(args):
 
         mAP = {phase: result[phase]['mAP_valid_cls'] for phase in args.phases}
         writer.add_scalars('mAP_epoch/train_test', {phase: mAP[phase] for phase in args.phases}, epoch)
+        '''
 
         log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f} |'
         log += ' [test] loss: {:.5f}  mAP: {:.4f}  |\n'
