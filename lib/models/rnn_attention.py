@@ -82,7 +82,7 @@ class RNNAttention(nn.Module):
         self.steps = args.steps
 
         self.feature_extractor = build_feature_extractor(args)
-        self.numfeatmaps = self.feature_extractor.feat_vect_dim     # e.g. 512
+        self.numfeatmaps = self.feature_extractor.fusion_size     # e.g. 512
         if self.numfeatmaps not in (832, 1024):
             raise Exception('i3d_mixed4f requires 832.\ni3d_mixed5c requires 1024')
 
@@ -153,7 +153,7 @@ class RNNAttention(nn.Module):
         return scores
 
     def step(self, x_t, h_n, c_n):
-        feat_maps = self.feature_extractor(x_t, torch.zeros(1).cpu())
+        feat_maps = self.feature_extractor(x_t)
         feat_maps = self.lin_reduction(feat_maps)
         feat_maps = feat_maps.flatten(start_dim=2)
 

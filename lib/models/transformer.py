@@ -7,7 +7,7 @@ class Transformer(nn.Module):
     def __init__(self, args):
         super(Transformer, self).__init__()
         self.nhead = args.nhead
-        self.num_layers = args.num_layers_transformer
+        self.num_layers = args.num_layers
         self.num_classes = args.num_classes
         self.steps = args.steps
 

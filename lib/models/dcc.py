@@ -122,8 +122,18 @@ class DCCModel(nn.Module):
         self.classifier = nn.Linear(self.num_filters[-1], args.num_classes)
 
     def forward(self, x):
-        x = x.permute(0, 2, 1)
+        # x.shape == (batch_size, timesequence_length, in_channels)
+        transf_x = torch.zeros(x.shape[0], x.shape[1], self.feature_extractor.fusion_size).to(dtype=x.dtype,
+                                                                                              device=x.device)
+
+        for step in range(x.shape[1]):
+            transf_x[:, step] = self.feature_extractor(x[:, step])
+
+        out = transf_x.permute(0, 2, 1)
         for l in self.dcc_blocks:
-            x = l(x)
-        x = self.classifier(x.permute(0, 2, 1))
-        return x
+            out = l(out)
+        out = self.classifier(out.permute(0, 2, 1))
+        return out
+
+    def step(self, x):
+        pass

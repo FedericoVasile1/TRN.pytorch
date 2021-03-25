@@ -35,7 +35,7 @@ class RNNmodel(nn.Module):
         self.num_classes = args.num_classes
         self.steps = args.steps
 
-        if 'mixed5c' in args.model_input or 'mixed4f' in args.model:
+        if 'mixed5c' in args.model_input or 'mixed4f' in args.model_input:
             self.reduction = nn.Sequential(
                 Reduction(),
                 GlobalAvgPool(),
@@ -68,12 +68,9 @@ class RNNmodel(nn.Module):
                           device=x.device,
                           dtype=x.dtype) if self.model == 'LSTM' else torch.zeros(1)
         scores = torch.zeros(x.shape[0], x.shape[1], self.num_classes, dtype=x.dtype)
-        transf_x = torch.zeros(x.shape[0], x.shape[1], self.feature_extractor.fusion_size).to(dtype=x.dtype,
-                                                                                              device=x.device)
 
         for step in range(self.steps):
             x_t = x[:, step]
-            transf_x_t = transf_x[:, step]
 
             x_t = self.reduction(x_t)
             transf_x_t = self.feature_extractor(x_t)

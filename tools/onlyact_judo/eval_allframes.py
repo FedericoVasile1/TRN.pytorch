@@ -77,7 +77,9 @@ def main(args):
         start = time.time()
         with torch.set_grad_enabled(False):
             target = np.load(osp.join(args.data_root, args.model_target, session))
-            target = torch.as_tensor(target.astype(np.float32))
+            if target[0] == 1:
+                continue
+            target = target[1:]
 
             feature_extracted = np.load(osp.join(args.data_root, args.model_input, session),
                                          mmap_mode='r').squeeze(axis=0)
@@ -87,9 +89,8 @@ def main(args):
             score = model(sample)
 
             score = softmax(score).cpu().detach().numpy()[0]
-            for c in range(args.chunk_size):
-                score_metrics.append(score)
-                target_metrics.append(target)
+            score_metrics.append(score)
+            target_metrics.append(target)
 
         end = time.time()
 
