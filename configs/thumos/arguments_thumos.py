@@ -38,6 +38,11 @@ def parse_model_args():
     parser.add_argument('--reduce_lr_epoch', default=-1, type=int)
     parser.add_argument('--reduce_lr_count', default=30, type=int)
 
+    # only for trn model
+    parser.add_argument('--enc_steps', default=64, type=int)
+    parser.add_argument('--dec_steps', default=8, type=int)
+
+
     # only for transformer model
     parser.add_argument('--nhead', default=2, type=int)
     parser.add_argument('--num_layers_transformer', default=1, type=int)

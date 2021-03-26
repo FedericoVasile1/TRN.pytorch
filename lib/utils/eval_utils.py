@@ -61,12 +61,15 @@ def compute_result_multilabel(dataset_name,
     # Compute AP
     result['AP'] = OrderedDict()
     for cls in range(len(class_index)):
+        if cls != 0 and cls in ignore_class:
+            continue
         result['AP'][class_index[cls]] = average_precision_score((target_metrics[valid_index, cls]==1).astype(np.int),
                                                                  score_metrics[valid_index, cls])
         if verbose:
             print('{} AP: {:.5f}'.format(class_index[cls], result['AP'][class_index[cls]]))
 
-    # Compute mAP considering also ignored classes
+    # Compute mAP considering also ignored classes,
+    #  all classes means all valid classes plus background class
     result['mAP_all_cls'] = np.mean(list(result['AP'].values()))
     if verbose:
         print('mAP all classes: {:.5f}'.format(result['mAP_all_cls']))

@@ -36,8 +36,8 @@ class GeneralizedTRN(nn.Module):
 
         self.classifier = nn.Linear(self.hidden_size, self.num_classes)
 
-    def encoder(self, camera_input, sensor_input, future_input, enc_hx, enc_cx):
-        fusion_input = self.feature_extractor(camera_input, sensor_input)
+    def encoder(self, camera_input, future_input, enc_hx, enc_cx):
+        fusion_input = self.feature_extractor(camera_input)
         fusion_input = torch.cat((fusion_input, future_input), 1)
         enc_hx, enc_cx = \
                 self.enc_cell(self.enc_drop(fusion_input), (enc_hx, enc_cx))
@@ -50,10 +50,10 @@ class GeneralizedTRN(nn.Module):
         dec_score = self.classifier(self.dec_drop(dec_hx))
         return dec_hx, dec_cx, dec_score
 
-    def step(self, camera_input, sensor_input, future_input, enc_hx, enc_cx):
+    def step(self, camera_input, future_input, enc_hx, enc_cx):
         # Encoder -> time t
         enc_hx, enc_cx, enc_score = \
-                self.encoder(camera_input, sensor_input, future_input, enc_hx, enc_cx)
+                self.encoder(camera_input, future_input, enc_hx, enc_cx)
 
         # Decoder -> time t + 1
         dec_score_stack = []
@@ -70,7 +70,8 @@ class GeneralizedTRN(nn.Module):
 
         return future_input, enc_hx, enc_cx, enc_score, dec_score_stack
 
-    def forward(self, camera_inputs, sensor_inputs):
+    def forward(self, camera_inputs):
+        # camera_inputs.shape == (batch_size, enc_steps, feat_vect_dim)
         batch_size = camera_inputs.shape[0]
         enc_hx = camera_inputs.new_zeros((batch_size, self.hidden_size))
         enc_cx = camera_inputs.new_zeros((batch_size, self.hidden_size))
@@ -82,7 +83,6 @@ class GeneralizedTRN(nn.Module):
         for enc_step in range(self.enc_steps):
             enc_hx, enc_cx, enc_score = self.encoder(
                 camera_inputs[:, enc_step],
-                sensor_inputs[:, enc_step],
                 future_input, enc_hx, enc_cx,
             )
             enc_score_stack.append(enc_score)

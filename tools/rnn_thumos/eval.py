@@ -185,11 +185,17 @@ def main(args):
     # For each sample, takes the predicted class based on his scores
     pred_metrics = score_metrics.argmax(dim=1)
 
-    result = classification_report(target_metrics, pred_metrics, target_names=args.class_index, output_dict=True)
-    logger._write(json.dumps(result, indent=2))
-
     # drop cliff diving class
+    labels_indices = np.arange(len(args.class_index)).tolist()
+    labels_indices.pop(5)
     args.class_index.pop(5)
+
+    result = classification_report(target_metrics,
+                                   pred_metrics,
+                                   labels=labels_indices,
+                                   target_names=args.class_index,
+                                   output_dict=True)
+    logger._write(json.dumps(result, indent=2))
 
     # Log unnormalized confusion matrix for encoder
     conf_mat = confusion_matrix(target_metrics, pred_metrics)
