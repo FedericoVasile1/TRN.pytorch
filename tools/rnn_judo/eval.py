@@ -77,8 +77,7 @@ def main(args):
             # For each chunk, take only the central frame
             target = target[args.chunk_size // 2::args.chunk_size]
 
-            features_extracted = np.load(osp.join(args.data_root, args.model_input, session + '.npy'),
-                                         mmap_mode='r')
+            features_extracted = np.load(osp.join(args.data_root, args.model_input, session + '.npy'), mmap_mode='r')
             features_extracted = torch.as_tensor(features_extracted.astype(np.float32))
 
             for count in range(target.shape[0]):

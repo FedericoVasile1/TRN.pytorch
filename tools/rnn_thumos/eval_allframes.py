@@ -17,22 +17,15 @@ import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
 sys.path.append(os.getcwd())
-import _init_paths
-import utils as utl
-from configs.thumos import parse_trn_args as parse_args
+from lib import utils as utl
+from configs.thumos import parse_model_args as parse_args
 from lib.utils.visualize import plot_bar, plot_to_image, add_pr_curve_tensorboard, get_segments, show_video_predictions
-from models import build_model
+from lib.models import build_model
 
 def to_device(x, device):
     return x.unsqueeze(0).to(device)
 
 def main(args):
-    if not args.model_input.endswith('chunk' + str(args.chunk_size)):
-        raise Exception('Wrong pair of argumets. --camera_feature and --chunk_size indicate a different chunk size')
-    if args.model_input not in ('i3d_224x224_chunk9', 'i3d_224x224_chunk6', 'resnet2+1d_112x112_chunk6'):
-        raise Exception('Wrong --camera_feature option. Supported '
-                        'values: {i3d_224x224_chunk6|i3d_224x224_chunk9|resnet2+1d_112x112_chunk6}')
-
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -93,7 +86,7 @@ def main(args):
                     c_n = to_device(torch.zeros(model.hidden_size, dtype=features_extracted.dtype), device)
 
                 sample = to_device(features_extracted[count], device)
-                score, h_n, c_n = model.step(sample, torch.zeros(1), h_n, c_n)
+                score, h_n, c_n = model.step(sample, h_n, c_n)
 
                 score = softmax(score).cpu().detach().numpy()[0]
                 for c in range(args.chunk_size):
@@ -143,7 +136,8 @@ def main(args):
                                       save_dir=None,
                                       result_file=None,
                                       save=False,
-                                      ignore_class=[0, 21],
+                                      ignore_class=[0, 5, 21],
+                                      switch=True,
                                       return_APs=False,
                                       samples_all_valid=False,
                                       verbose=True, )
@@ -156,7 +150,8 @@ def main(args):
                                            save_dir=None,
                                            result_file=None,
                                            save=False,
-                                           ignore_class=[0, 21],
+                                           ignore_class=[0, 5, 21],
+                                           switch=True,
                                            return_APs=True,
                                            samples_all_valid=False,
                                            verbose=True, )
