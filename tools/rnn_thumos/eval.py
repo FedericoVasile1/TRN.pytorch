@@ -163,11 +163,12 @@ def main(args):
     writer.add_image(args.dataset + ': per-class AP', np.transpose(figure, (2, 0, 1)), 0)
     writer.close()
 
-    # Prepare variables
-    score_metrics = np.array(score_metrics)
     # Assign cliff diving (5) as diving (8)
+    score_metrics = np.array(score_metrics)
     switch_index = np.where(score_metrics[:, 5] > score_metrics[:, 8])[0]
     score_metrics[switch_index, 8] = score_metrics[switch_index, 5]
+
+    # Prepare variables
     score_metrics = torch.tensor(score_metrics)  # shape == (num_videos * num_frames_in_video, num_classes)
     target_metrics = torch.tensor(target_metrics).argmax(dim=1) # shape == (num_videos * num_frames_in_video)
 

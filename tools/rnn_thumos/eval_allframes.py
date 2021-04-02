@@ -69,7 +69,7 @@ def main(args):
     for session_idx, session in enumerate(args.test_session_set, start=1):
         start = time.time()
         with torch.set_grad_enabled(False):
-            original_target = np.load(osp.join(args.data_root, 'target_frames_24fps', session+'.npy'))
+            original_target = np.load(osp.join(args.data_root, args.model_target, session+'.npy'))
             # round to multiple of CHUNK_SIZE
             num_frames = original_target.shape[0]
             num_frames = num_frames - (num_frames % args.chunk_size)
@@ -168,18 +168,19 @@ def main(args):
     writer.add_image(args.dataset + ': per-class AP', np.transpose(figure, (2, 0, 1)), 0)
     writer.close()
 
-    # Prepare variables
-    score_metrics = np.array(score_metrics)
     # Assign cliff diving (5) as diving (8)
+    score_metrics = np.array(score_metrics)
     switch_index = np.where(score_metrics[:, 5] > score_metrics[:, 8])[0]
     score_metrics[switch_index, 8] = score_metrics[switch_index, 5]
+
+    # Prepare variables
     score_metrics = torch.tensor(score_metrics)  # shape == (num_videos * num_frames_in_video, num_classes)
     target_metrics = torch.tensor(target_metrics).argmax(dim=1)  # shape == (num_videos * num_frames_in_video)
 
     # Log precision recall curve for encoder
     for idx_class in range(len(args.class_index)):
         if idx_class == 21 or idx_class == 5:
-            continue  # ignore ambiguos class and cliff diving class
+            continue  # ignore ambiguous class and cliff diving class
         add_pr_curve_tensorboard(writer,
                                  args.class_index[idx_class],
                                  idx_class,
@@ -190,11 +191,18 @@ def main(args):
     # For each sample, takes the predicted class based on his scores
     pred_metrics = score_metrics.argmax(dim=1)
 
-    result = classification_report(target_metrics, pred_metrics, target_names=args.class_index, output_dict=True)
+    # drop cliff diving class
+    labels_indices = np.arange(len(args.class_index)).tolist()
+    labels_indices.pop(5)
+    args.class_index.pop(5)
+
+    result = classification_report(target_metrics,
+                                   pred_metrics,
+                                   labels_indices=labels_indices,
+                                   target_names=args.class_index,
+                                   output_dict=True)
     logger._write(json.dumps(result, indent=2))
 
-    # drop cliff diving class
-    args.class_index.pop(5)
 
     # Log unnormalized confusion matrix for encoder
     conf_mat = confusion_matrix(target_metrics, pred_metrics)

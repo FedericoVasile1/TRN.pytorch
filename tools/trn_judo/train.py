@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 sys.path.append(os.getcwd())
 from lib import utils as utl
-from configs.thumos import parse_model_args as parse_args
+from configs.judo import parse_model_args as parse_args
 from lib.models import build_model
 
 def main(args):
@@ -26,7 +26,8 @@ def main(args):
         model = nn.DataParallel(model)
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
+    enc_criterion = nn.CrossEntropyLoss().to(device)
+    dec_criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     lr_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=args.reduce_lr_count, verbose=True)
     if osp.isfile(args.checkpoint):
@@ -54,9 +55,9 @@ def main(args):
         writer.close()
 
     batch_idx_train = 1
-    batch_idx_test = 1
-    best_test_mAP = -1
-    epoch_best_test_mAP = -1
+    batch_idx_val = 1
+    best_val_mAP = -1
+    epoch_best_val_mAP = -1
     for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
         if epoch == args.reduce_lr_epoch:
             print('=== Learning rate reduction planned for epoch ' + str(args.reduce_lr_epoch) + ' ===')
@@ -81,7 +82,7 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (inputs, targets) in enumerate(data_loaders[phase], start=1):
+                for batch_idx, (inputs, (enc_targets, dec_targets)) in enumerate(data_loaders[phase], start=1):
                     # inputs.shape == (batch_size, steps, feat_vect_dim [if starting from features])
                     # targets.shape == (batch_size, steps, num_classes)
                     batch_size = inputs.shape[0]
@@ -90,15 +91,13 @@ def main(args):
                     if training:
                         optimizer.zero_grad()
 
-                    scores = model(inputs)            # scores.shape == (batch_size, steps, num_classes)
+                    enc_scores, dec_scores = model(inputs)
 
-                    scores = scores.to(device)
-                    targets = targets.to(device)
-                    # sum losses along all timesteps
-                    loss = criterion(scores[:, 0], targets[:, 0].max(axis=1)[1])
-                    for step in range(1, inputs.shape[1]):
-                        loss += criterion(scores[:, step], targets[:, step].max(axis=1)[1])
-                    loss /= inputs.shape[1]      # scale by steps
+                    enc_scores = enc_scores.to(device)
+                    enc_targets = enc_targets.to(device)
+                    enc_loss = enc_criterion(enc_scores, enc_targets)
+                    dec_loss = dec_criterion(dec_scores, dec_targets)
+                    loss = enc_loss + dec_loss
 
                     losses[phase] += loss.item() * batch_size
 
@@ -118,8 +117,8 @@ def main(args):
                         writer.add_scalar('Loss_iter/train', loss.item(), batch_idx_train)
                         batch_idx_train += 1
                     else:
-                        writer.add_scalar('Loss_iter/test', loss.item(), batch_idx_test)
-                        batch_idx_test += 1
+                        writer.add_scalar('Loss_iter/val', loss.item(), batch_idx_val)
+                        batch_idx_val += 1
 
                     if args.verbose:
                         print('[{:5s}] Epoch: {:2}  Iteration: {:3}  Loss: {:.5f}'.format(phase,
@@ -128,9 +127,9 @@ def main(args):
                                                                                           loss.item()))
         end = time.time()
 
-        lr_sched.step(losses['test'] / len(data_loaders['test'].dataset))
+        lr_sched.step(losses['val'] / len(data_loaders['val'].dataset))
 
-        writer.add_scalars('Loss_epoch/train_test',
+        writer.add_scalars('Loss_epoch/train_val',
                            {phase: losses[phase] / len(data_loaders[phase].dataset) for phase in args.phases},
                            epoch)
 
@@ -142,10 +141,9 @@ def main(args):
             save_dir=None,
             result_file=None,
             save=False,
-            ignore_class=[0, 5, 21],        # ignore cliff diving (5) since it will be treated as diving (8)
-            switch=True,                    # convert cliff diving samples to diving
+            ignore_class=[0],
             return_APs=True,
-            samples_all_valid=False,
+            samples_all_valid=True,
         ) for phase in args.phases}
 
         log = 'Epoch: ' + str(epoch)
@@ -154,43 +152,43 @@ def main(args):
             log += '| ' + args.class_index[cls] + ' AP: ' + str(result['train']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
         log += '| mAP_all_cls: ' + str(result['train']['mAP_all_cls'] * 100)[:4] + ' %'
         log += '| mAP_valid_cls: ' + str(result['train']['mAP_valid_cls'] * 100)[:4] + ' %'
-        log += '\n[test ] '
+        log += '\n[val  ] '
         for cls in range(args.num_classes):
-            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['test']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
-        log += '| mAP_all_cls: ' + str(result['test']['mAP_all_cls'] * 100)[:4] + ' %'
-        log += '| mAP_valid_cls: ' + str(result['test']['mAP_valid_cls'] * 100)[:4] + ' %'
+            log += '| ' + args.class_index[cls] + ' AP: ' + str(result['val']['AP'][args.class_index[cls]] * 100)[:4] + ' %'
+        log += '| mAP_all_cls: ' + str(result['val']['mAP_all_cls'] * 100)[:4] + ' %'
+        log += '| mAP_valid_cls: ' + str(result['val']['mAP_valid_cls'] * 100)[:4] + ' %'
         log += '\n'
         logger_APs._write(str(log))
 
         mAP = {phase: result[phase]['mAP_valid_cls'] for phase in args.phases}
-        writer.add_scalars('mAP_epoch/train_test', {phase: mAP[phase] for phase in args.phases}, epoch)
+        writer.add_scalars('mAP_epoch/train_val', {phase: mAP[phase] for phase in args.phases}, epoch)
 
         log = 'Epoch: {:2} | [train] loss: {:.5f}  mAP: {:.4f} |'
-        log += ' [test] loss: {:.5f}  mAP: {:.4f}  |\n'
+        log += ' [val] loss: {:.5f}  mAP: {:.4f}  |\n'
         log += 'running_time: {:.2f} sec'
         log = str(log).format(epoch,
                               losses['train'] / len(data_loaders['train'].dataset),
                               mAP['train'],
-                              losses['test'] / len(data_loaders['test'].dataset),
-                              mAP['test'],
+                              losses['val'] / len(data_loaders['val'].dataset),
+                              mAP['val'],
                               end - start)
         print(log)
         logger._write(log)
 
-        if best_test_mAP < mAP['test']:
-            best_test_mAP = mAP['test']
-            epoch_best_test_mAP = epoch
+        if best_val_mAP < mAP['val']:
+            best_val_mAP = mAP['val']
+            epoch_best_val_mAP = epoch
 
-            # only the best test map model is saved
+            # only the best validation map model is saved
             checkpoint_file = 'model-{}_features-{}.pth'.format(args.model, args.model_input)
             torch.save({
-                'test_mAP': best_test_mAP,
+                'val_mAP': best_val_mAP,
                 'epoch': epoch,
                 'model_state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
             }, osp.join(writer.log_dir, checkpoint_file))
 
-    log = '--- Best test mAP is {:.1f} % obtained at epoch {} ---'.format(best_test_mAP * 100, epoch_best_test_mAP)
+    log = '--- Best validation mAP is {:.1f} % obtained at epoch {} ---'.format(best_val_mAP * 100, epoch_best_val_mAP)
     print(log)
     logger._write(log)
 

@@ -99,6 +99,9 @@ class GeneralizedTRN(nn.Module):
                 future_input = future_input + self.future_linear(dec_hx)
             future_input = future_input / self.dec_steps
 
-        enc_scores = torch.stack(enc_score_stack, dim=1).view(-1, self.num_classes)
-        dec_scores = torch.stack(dec_score_stack, dim=1).view(-1, self.num_classes)
+        #enc_scores = torch.stack(enc_score_stack, dim=1).view(-1, self.num_classes)
+        #dec_scores = torch.stack(dec_score_stack, dim=1).view(-1, self.num_classes)
+        enc_scores = torch.stack(enc_score_stack, dim=1)    # enc_scores.shape == (batch_size, enc_steps, num_classes)
+        dec_scores = torch.stack(dec_score_stack, dim=1)\
+            .view(batch_size, self.enc_steps, self.dec_steps, self.num_classes)
         return enc_scores, dec_scores

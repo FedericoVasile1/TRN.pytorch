@@ -37,9 +37,10 @@ class THUMOSDataLayer(data.Dataset):
 
             seed = np.random.randint(self.steps) if self.training else 0
             for start, end in zip(range(seed, target.shape[0], self.steps),
-                                  range(seed + self.steps, target.shape[0], self.steps)):
+                                  range(seed + self.steps, target.shape[0] + 1, self.steps)):
 
                 step_target = target[start:end]
+
                 if args.model == 'TRN':
                     dec_step_target = get_dec_target(target[start:end + args.dec_steps])
                 else:

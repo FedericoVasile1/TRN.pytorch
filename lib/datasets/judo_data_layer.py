@@ -5,6 +5,16 @@ import random
 import torch
 import torch.utils.data as data
 
+def get_dec_target(self, target_vector):
+    target_matrix = np.zeros((self.enc_steps, self.dec_steps, target_vector.shape[-1]))
+    for i in range(self.enc_steps):
+        for j in range(self.dec_steps):
+            # 0 -> [1, 2, 3]
+            # target_matrix[i,j] = target_vector[i+j+1,:]
+            # 0 -> [0, 1, 2]
+            target_matrix[i, j] = target_vector[i + j, :]
+    return target_matrix
+
 class JUDODataLayer(data.Dataset):
     def __init__(self, args, phase='train'):
         self.data_root = args.data_root
@@ -59,8 +69,12 @@ class JUDODataLayer(data.Dataset):
                         self.class_to_count[action_idx] += counts[i]
 
                 if flag:
+                    if args.model == 'TRN':
+                        dec_step_target = get_dec_target(target[start:end + args.dec_steps])
+                    else:
+                        dec_step_target = None
                     self.inputs.append([
-                        session, step_target, start, end
+                        session, (step_target, dec_step_target), start, end
                     ])
 
     def __getitem__(self, index):
@@ -76,7 +90,7 @@ class JUDODataLayer(data.Dataset):
         feature_vectors = torch.as_tensor(feature_vectors.astype(np.float32))
         step_target = torch.as_tensor(step_target.astype(np.float32))
 
-        return feature_vectors, step_target
+        return feature_vectors, step_target[0] if step_target[1] is None else step_target
 
     def __len__(self):
         return len(self.inputs)

@@ -14,7 +14,7 @@ def parse_model_args():
     parser.add_argument('--dropout', default=0.1, type=float)
 
     # whether or not to put a linear layer between feature extractor and temporal model
-    parser.add_argument('--put_linear', action='store_true')
+    parser.add_argument('--put_linear', default=False, action='store_true')
     # neurons of the linear layer above
     parser.add_argument('--neurons', default=512, type=int)
 
@@ -29,7 +29,7 @@ def parse_model_args():
     parser.add_argument('--feature_extractor', default='', type=str)
     # the feature extractor takes chunk_size frames in input and generate a feature vector.
     #  Common values: 9, 12, 16
-    parser.add_argument('--chunk_size', default=9, type=int)
+    parser.add_argument('--chunk_size', default=-1, type=int)
 
     parser.add_argument('--show_predictions', action='store_true')
     parser.add_argument('--save_video', action='store_true')
@@ -38,10 +38,12 @@ def parse_model_args():
     parser.add_argument('--reduce_lr_epoch', default=-1, type=int)
     parser.add_argument('--reduce_lr_count', default=30, type=int)
 
+    # DO NOT MODIFY. this is useless for thumos dataset
+    parser.add_argument('--use_candidates', default=False, action='store_true')
+
     # only for trn model
     parser.add_argument('--enc_steps', default=64, type=int)
     parser.add_argument('--dec_steps', default=8, type=int)
-
 
     # only for transformer model
     parser.add_argument('--nhead', default=2, type=int)
@@ -52,8 +54,5 @@ def parse_model_args():
     parser.add_argument('--kernel_sizes', default='2,2,2', type=str)
     parser.add_argument('--dilatation_rates', default='1,2,4', type=str)
     parser.add_argument('--num_filters', default='1024,512,512', type=str)
-
-    # do not modify. this is useless for thumos dataset
-    parser.add_argument('--use_candidates', default=False, action='store_true')
 
     return build_data_info(parser.parse_args())

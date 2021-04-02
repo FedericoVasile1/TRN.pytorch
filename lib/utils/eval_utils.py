@@ -73,7 +73,7 @@ def compute_result_multilabel(dataset_name,
     result['mAP_all_cls'] = np.mean(list(result['AP'].values()))
     if verbose:
         print('mAP all classes: {:.5f}'.format(result['mAP_all_cls']))
-    # Compute mAP without considering ignored classes
+    # Compute mAP without considering ignored classes (also background class is an ignored class)
     valid_APs = [result['AP'][class_index[cls]] for cls in range(len(class_index)) if cls not in ignore_class]
     result['mAP_valid_cls'] = np.mean(valid_APs)
     if verbose:
