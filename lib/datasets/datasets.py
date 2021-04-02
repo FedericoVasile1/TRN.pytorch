@@ -12,6 +12,9 @@ _DATA_LAYERS = {
     'GRUTHUMOSE2E': THUMOSDataLayerE2E,
     'CNN3DTHUMOSE2E': THUMOSDataLayerE2E,
     'CNN2DTHUMOSE2E': THUMOSDataLayerE2E,
+    'TRANSFORMERTHUMOS': THUMOSDataLayer,
+    'DCCTHUMOS': THUMOSDataLayer,
+    'TRNTHUMOS': THUMOSDataLayer,
 
     'LSTMJUDO': JUDODataLayer,
     'GRUJUDO': JUDODataLayer,
@@ -20,6 +23,8 @@ _DATA_LAYERS = {
     'LSTMATTENTIONJUDO': JUDODataLayer,
     'GRUATTENTIONJUDO': JUDODataLayer,
     'TRANSFORMERJUDO': JUDODataLayer,
+    'DCCJUDO': JUDODataLayer,
+    'TRNJUDO': JUDODataLayer,
 
     'LSTMJUDOCANDIDATES': Candidates_JUDODataLayer,
     'GRUJUDOCANDIDATES': Candidates_JUDODataLayer,

@@ -4,6 +4,8 @@ from .bidirectionalrnn import BIDIRECTIONALRNN
 from .transformer import Transformer
 from .cnn3d import CNN3D
 from .onlyact import OnlyAct
+from .dcc import DCCModel
+from .trn import GeneralizedTRN
 
 _META_ARCHITECTURES = {
     'LSTM': RNNmodel,
@@ -13,6 +15,8 @@ _META_ARCHITECTURES = {
     'BIDIRECTIONALLSTM': BIDIRECTIONALRNN,
     'BIDIRECTIONALGRU': BIDIRECTIONALRNN,
     'TRANSFORMER': Transformer,
+    'DCC': DCCModel,
+    'TRN': GeneralizedTRN,
     'CNN3D': CNN3D,
     'ONLYACT': OnlyAct,
 }
