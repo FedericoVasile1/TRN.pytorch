@@ -190,6 +190,10 @@ def main(args):
                 'optimizer_state_dict': optimizer.state_dict(),
             }, osp.join(writer.log_dir, checkpoint_file))
 
+        if epoch - epoch_best_test_mAP > args.reduce_lr_count * 2:
+            print('Stop training at epoch '+epoch+' due to no improving in the last '+(epoch-epoch_best_test_mAP)+' epochs')
+            break
+
     log = '--- Best test mAP is {:.1f} % obtained at epoch {} ---'.format(best_test_mAP * 100, epoch_best_test_mAP)
     print(log)
     logger._write(log)

@@ -37,7 +37,7 @@ def parse_model_args():
     parser.add_argument('--video_name', default='', type=str)
 
     parser.add_argument('--reduce_lr_epoch', default=-1, type=int)
-    parser.add_argument('--reduce_lr_count', default=30, type=int)
+    parser.add_argument('--reduce_lr_count', default=20, type=int)
 
     # downsampling or not the action classes.
     # Specify as parameter the number of samples to which each class will be downsampled

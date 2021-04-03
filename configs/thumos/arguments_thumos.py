@@ -36,7 +36,7 @@ def parse_model_args():
     parser.add_argument('--video_name', default='', type=str)
 
     parser.add_argument('--reduce_lr_epoch', default=-1, type=int)
-    parser.add_argument('--reduce_lr_count', default=30, type=int)
+    parser.add_argument('--reduce_lr_count', default=20, type=int)
 
     # DO NOT MODIFY. this is useless for thumos dataset
     parser.add_argument('--use_candidates', default=False, action='store_true')
