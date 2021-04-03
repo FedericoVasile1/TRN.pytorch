@@ -54,7 +54,7 @@ def parse_model_args():
     parser.add_argument('--num_layers_transformer', default=1, type=int)
 
     # only for dilated causal convolution model
-    parser.add_argument('--num_layers_dcc', default=1, type=int)
+    parser.add_argument('--num_layers_dcc', default=3, type=int)
     parser.add_argument('--kernel_sizes', default='2,2,2', type=str)
     parser.add_argument('--dilatation_rates', default='1,2,4', type=str)
     parser.add_argument('--num_filters', default='1024,512,512', type=str)

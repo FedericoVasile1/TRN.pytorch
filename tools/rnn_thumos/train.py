@@ -174,7 +174,7 @@ def main(args):
                               losses['test'] / len(data_loaders['test'].dataset),
                               mAP['test'],
                               end - start)
-        print(log)
+        #print(log)
         logger._write(log)
 
         if best_test_mAP < mAP['test']:

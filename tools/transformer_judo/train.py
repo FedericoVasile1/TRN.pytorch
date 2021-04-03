@@ -182,6 +182,10 @@ def main(args):
                 'optimizer_state_dict': optimizer.state_dict(),
             }, osp.join(writer.log_dir, checkpoint_file))
 
+        if epoch - epoch_best_val_mAP > args.reduce_lr_count * 2:
+            print('Stop training at epoch '+epoch+' due to no improving in the last '+(epoch-epoch_best_val_mAP)+' epochs')
+            break
+
     log = '--- Best validation mAP is {:.1f} % obtained at epoch {} ---'.format(best_val_mAP * 100, epoch_best_val_mAP)
     print(log)
     logger._write(log)

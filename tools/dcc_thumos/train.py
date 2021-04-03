@@ -26,8 +26,7 @@ def main(args):
         model = nn.DataParallel(model)
     model = model.to(device)
 
-    enc_criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
-    dec_criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
+    criterion = nn.CrossEntropyLoss(ignore_index=21).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     lr_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=args.reduce_lr_count, verbose=True)
     if osp.isfile(args.checkpoint):
@@ -82,48 +81,30 @@ def main(args):
                 continue
 
             with torch.set_grad_enabled(training):
-                for batch_idx, (inputs, (enc_targets, dec_targets)) in enumerate(data_loaders[phase], start=1):
-                    # inputs.shape == (batch_size, enc_steps, feat_vect_dim [if starting from features])
-                    # enc_targets.shape == (batch_size, enc_steps, num_classes)
-                    # dec_targets.shape == (batch_size, enc_steps, dec_steps, num_classes)
+                for batch_idx, (inputs, targets) in enumerate(data_loaders[phase], start=1):
+                    # inputs.shape == (batch_size, steps, feat_vect_dim [if starting from features])
+                    # targets.shape == (batch_size, steps, num_classes)
                     batch_size = inputs.shape[0]
                     inputs = inputs.to(device)
 
                     if training:
                         optimizer.zero_grad()
 
-                    enc_scores, dec_scores = model(inputs)
+                    scores = model(inputs)            # scores.shape == (batch_size, steps, num_classes)
 
-                    enc_scores = enc_scores.to(device)
-                    dec_scores = dec_scores.to(device)
-                    enc_targets = enc_targets.to(device)
-                    dec_targets = dec_targets.to(device)
-
-                    # encoder loss
-                    enc_loss = enc_criterion(enc_scores[:, 0], enc_targets[:, 0].max(axis=1)[1])
-                    for step in range(1, enc_targets.shape[1]):
-                        enc_loss += enc_criterion(enc_scores[:, step], enc_targets[:, step].max(axis=1)[1])
-                    enc_loss /= enc_targets.shape[1]
-
-                    # decoder loss
-                    dec_losses = []
-                    for e_step in range(0, enc_targets.shape[1]):
-                        appo = dec_criterion(dec_scores[:, e_step, 0], dec_targets[:, e_step, 0].max(axis=1)[1])
-                        for d_step in range(1, dec_targets.shape[2]):
-                            appo += dec_criterion(dec_scores[:, e_step, d_step], dec_targets[:, e_step, d_step].max(axis=1)[1])
-                        dec_losses.append(appo / dec_targets.shape[2])
-                    dec_loss = torch.tensor(dec_losses).mean()
-
-                    loss = enc_loss + dec_loss
+                    scores = scores.to(device)
+                    targets = targets.to(device)
+                    # sum losses along all timesteps
+                    loss = criterion(scores[:, 0], targets[:, 0].max(axis=1)[1])
+                    for step in range(1, inputs.shape[1]):
+                        loss += criterion(scores[:, step], targets[:, step].max(axis=1)[1])
+                    loss /= inputs.shape[1]      # scale by steps
 
                     losses[phase] += loss.item() * batch_size
 
                     if training:
                         loss.backward()
                         optimizer.step()
-
-                    scores = enc_scores
-                    targets = enc_targets
 
                     # Prepare metrics
                     scores = scores.view(-1, args.num_classes)
@@ -193,7 +174,7 @@ def main(args):
                               losses['test'] / len(data_loaders['test'].dataset),
                               mAP['test'],
                               end - start)
-        #print(log)
+        print(log)
         logger._write(log)
 
         if best_test_mAP < mAP['test']:
