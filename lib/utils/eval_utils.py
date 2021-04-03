@@ -62,6 +62,7 @@ def compute_result_multilabel(dataset_name,
     result['AP'] = OrderedDict()
     for cls in range(len(class_index)):
         if cls != 0 and cls in ignore_class:
+            result['AP'][class_index[cls]] = 0.0
             continue
         result['AP'][class_index[cls]] = average_precision_score((target_metrics[valid_index, cls]==1).astype(np.int),
                                                                  score_metrics[valid_index, cls])

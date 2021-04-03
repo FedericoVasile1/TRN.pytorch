@@ -107,8 +107,8 @@ def main(args):
 
                     # decoder loss
                     dec_losses = []
-                    for e_step in range(1, enc_targets.shape[1]):
-                        appo = dec_criterion(dec_scores[:, e_step, d_step], dec_targets[:, e_step, d_step].max(axis=1)[1])
+                    for e_step in range(0, enc_targets.shape[1]):
+                        appo = dec_criterion(dec_scores[:, e_step, 0], dec_targets[:, e_step, 0].max(axis=1)[1])
                         for d_step in range(1, dec_targets.shape[2]):
                             appo += dec_criterion(dec_scores[:, e_step, d_step], dec_targets[:, e_step, d_step].max(axis=1)[1])
                         dec_losses.append(appo / dec_targets.shape[2])
@@ -123,6 +123,7 @@ def main(args):
                         optimizer.step()
 
                     scores = enc_scores
+                    targets = enc_targets
 
                     # Prepare metrics
                     scores = scores.view(-1, args.num_classes)

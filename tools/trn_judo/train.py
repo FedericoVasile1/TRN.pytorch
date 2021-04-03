@@ -83,8 +83,9 @@ def main(args):
 
             with torch.set_grad_enabled(training):
                 for batch_idx, (inputs, (enc_targets, dec_targets)) in enumerate(data_loaders[phase], start=1):
-                    # inputs.shape == (batch_size, steps, feat_vect_dim [if starting from features])
-                    # targets.shape == (batch_size, steps, num_classes)
+                    # inputs.shape == (batch_size, enc_steps, feat_vect_dim [if starting from features])
+                    # enc_targets.shape == (batch_size, enc_steps, num_classes)
+                    # dec_targets.shape == (batch_size, enc_steps, dec_steps, num_classes)
                     batch_size = inputs.shape[0]
                     inputs = inputs.to(device)
 
@@ -94,9 +95,25 @@ def main(args):
                     enc_scores, dec_scores = model(inputs)
 
                     enc_scores = enc_scores.to(device)
+                    dec_scores = dec_scores.to(device)
                     enc_targets = enc_targets.to(device)
-                    enc_loss = enc_criterion(enc_scores, enc_targets)
-                    dec_loss = dec_criterion(dec_scores, dec_targets)
+                    dec_targets = dec_targets.to(device)
+
+                    # encoder loss
+                    enc_loss = enc_criterion(enc_scores[:, 0], enc_targets[:, 0].max(axis=1)[1])
+                    for step in range(1, enc_targets.shape[1]):
+                        enc_loss += enc_criterion(enc_scores[:, step], enc_targets[:, step].max(axis=1)[1])
+                    enc_loss /= enc_targets.shape[1]
+
+                    # decoder loss
+                    dec_losses = []
+                    for e_step in range(0, enc_targets.shape[1]):
+                        appo = dec_criterion(dec_scores[:, e_step, 0], dec_targets[:, e_step, 0].max(axis=1)[1])
+                        for d_step in range(1, dec_targets.shape[2]):
+                            appo += dec_criterion(dec_scores[:, e_step, d_step], dec_targets[:, e_step, d_step].max(axis=1)[1])
+                        dec_losses.append(appo / dec_targets.shape[2])
+                    dec_loss = torch.tensor(dec_losses).mean()
+
                     loss = enc_loss + dec_loss
 
                     losses[phase] += loss.item() * batch_size
@@ -104,6 +121,9 @@ def main(args):
                     if training:
                         loss.backward()
                         optimizer.step()
+
+                    scores = enc_scores
+                    targets = enc_targets
 
                     # Prepare metrics
                     scores = scores.view(-1, args.num_classes)
